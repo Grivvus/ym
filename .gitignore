@@ -1,0 +1,9 @@
+# global gitignore file for this project
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+venv/
+.venv/
+.vscode/
+.env
+.coverage

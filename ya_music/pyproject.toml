@@ -1,0 +1,38 @@
+[project]
+name = "ya-music"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "litestar>=2.13.0",
+    "psycopg>=3.2.3",
+    "pydantic-settings>=2.7.0",
+    "pydantic>=2.10.4",
+    "sqlalchemy>=2.0.36",
+    "uvicorn[standard]>=0.34.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.14.0",
+    "pytest>=8.3.4",
+    "wemake-python-styleguide>=0.19.2",
+]
+
+[tool.mypy]
+plugins = "pydantic.mypy"
+python_version = "3.12"
+
+[tool.ruff]
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".pyenv",
+    ".pytest_cache",
+    ".venv",
+    "venv",
+    "tests",
+]
+target-version = "3.12"
+indent-width = 4
