@@ -1,0 +1,22 @@
+services:
+  backend:
+    build:
+      context: ya_music/
+    container_name: ya_music_service_1
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgresql
+    env_file:
+      - ya_music/.env
+    restart: no
+    command: "uv run /app/app/main.py"
+
+  postgresql:
+    image: postgres
+    volumes:
+      - /home/grivvus/docker_volumes/postgres/ya_music:/var/lib/postgresql/data/
+    env_file:
+      - ya_music/.env
+
+    restart: no
