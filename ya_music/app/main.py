@@ -1,18 +1,24 @@
-from litestar import Litestar
-import uvicorn
-
 import asyncio
 import logging
 
-from app.routes import index
-from app.settings import settings
+import uvicorn
+from litestar import Litestar
 
-app = Litestar([index])
+from app.settings import settings
+from app.configuration import openapi_config
+
+app = Litestar(
+    route_handlers=[],
+    openapi_config=openapi_config,
+)
 
 
 async def main():
     config = uvicorn.Config(
-        "main:app", log_level=settings.LOG_LEVEL, host="0.0.0.0"
+        app="main:app",
+        log_level=settings.LOG_LEVEL,
+        host=settings.APPLICATION_HOST,
+        port=settings.APPLICATION_PORT,
     )
     server = uvicorn.Server(config)
     logging.info("start uvicorn server")
