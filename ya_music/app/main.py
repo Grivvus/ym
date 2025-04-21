@@ -3,12 +3,19 @@ import logging
 
 import uvicorn
 from litestar import Litestar
+from litestar.middleware.base import DefineMiddleware
 
 from app.settings import settings
-from app.configuration import openapi_config
+from app.openapi_configuration import openapi_config
+from app.security.authentication_middleware import JWTAuthenticationMiddleware
+
+auth_mw = DefineMiddleware(
+    JWTAuthenticationMiddleware, exclide=["schema"],
+)
 
 app = Litestar(
     route_handlers=[],
+    middleware=[auth_mw],
     openapi_config=openapi_config,
 )
 

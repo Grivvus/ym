@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     POSTGRES_USER: str
     POSTGRES_DB_NAME: str
 
+    JWT_SECRET: str
+
     @computed_field
     @property
     def db_url(self) -> str:
