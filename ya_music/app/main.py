@@ -8,13 +8,14 @@ from litestar.middleware.base import DefineMiddleware
 from app.settings import settings
 from app.openapi_configuration import openapi_config
 from app.security.authentication_middleware import JWTAuthenticationMiddleware
+from app.api.http import user
 
 auth_mw = DefineMiddleware(
-    JWTAuthenticationMiddleware, exclide=["schema"],
+    JWTAuthenticationMiddleware, exclude=["schema"],
 )
 
 app = Litestar(
-    route_handlers=[],
+    route_handlers=[user.index, user.login],
     middleware=[auth_mw],
     openapi_config=openapi_config,
 )

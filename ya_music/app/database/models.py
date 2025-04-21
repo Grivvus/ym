@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Interger, String, ForeignKey, TIMESTAMP, func
+    Integer, String, ForeignKey, TIMESTAMP, func
 )
 from sqlalchemy.orm import (
     DeclarativeBase, Mapped, mapped_column, relationship
@@ -23,17 +23,17 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(insert_default=func.now())
 
 
-class Artist(Base):
-    __tablename__ = "artist"
-
-
-class Track(Base):
-    __tablename__ = "track"
-
-
-class Album(Base):
-    __tablename__ = "album"
-
-
-class Playlist(Base):
-    __tablename__ = "playlist"
+# class Artist(Base):
+#     __tablename__ = "artist"
+#
+#
+# class Track(Base):
+#     __tablename__ = "track"
+#
+#
+# class Album(Base):
+#     __tablename__ = "album"
+#
+#
+# class Playlist(Base):
+#     __tablename__ = "playlist"
