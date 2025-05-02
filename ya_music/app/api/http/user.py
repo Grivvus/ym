@@ -1,18 +1,17 @@
-from litestar import Request, Response, get, post
+from litestar import Controller, Request, Response, get, patch
 from litestar.datastructures import State
 
-from app.security.jwt import Token
 from app.database.models import User
+from app.security.jwt import Token
+from app.services.auth import authorize_by_token
 
 
-@get("/")
-def index() -> str:
-    return "Hello world"
+class UserController(Controller):
+    path = "/user"
 
-
-@post("/login")
-def login(request: Request[User, Token, State]) -> None:
-    user = request.user
-    auth = request.auth
-    assert isinstance(user, User)
-    assert isinstance(auth, Token)
+    @get("/get")
+    async def get(self, request: Request) -> dict[str, str]:
+        payload: Token = await authorize_by_token(request)
+        return {
+            "message": f"hello {payload.username}"
+        }

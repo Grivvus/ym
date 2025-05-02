@@ -1,20 +1,19 @@
 from datetime import datetime, timedelta
-from uuid import UUID
 
 from jose import JWTError, jwt
-from pydantic import UUID4, BaseModel
+from litestar.exceptions import NotAuthorizedException
+from pydantic import BaseModel
 
 from app.settings import settings
-from litestar.exceptions import NotAuthorizedException
 
 DEFAULT_TIME_DELTA = timedelta(days=1)
 ALGORITHM = "HS256"
 
 
 class Token(BaseModel):
-    exp: datetime
-    iat: datetime
-    sub: UUID4
+    expiration: datetime
+    issued_at: datetime
+    username: str
 
 
 def decode_jwt_token(encoded_token: str) -> Token:
@@ -30,11 +29,11 @@ def decode_jwt_token(encoded_token: str) -> Token:
 
 
 def encode_jwt_token(
-    user_id: UUID, expiration: timedelta = DEFAULT_TIME_DELTA
+    username: str, expiration: timedelta = DEFAULT_TIME_DELTA
 ) -> str:
     token = Token(
-        exp=datetime.now() + expiration,
-        iat=datetime.now(),
-        sub=user_id,
+        expiration=datetime.now() + expiration,
+        issued_at=datetime.now(),
+        username=username,
     )
     return jwt.encode(token.dict(), settings.JWT_SECRET, algorithm=ALGORITHM)

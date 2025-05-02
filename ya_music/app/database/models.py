@@ -1,11 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import (
-    Integer, String, ForeignKey, TIMESTAMP, func
-)
-from sqlalchemy.orm import (
-    DeclarativeBase, Mapped, mapped_column, relationship
-)
+from sqlalchemy import String, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
@@ -16,9 +12,9 @@ class User(Base):
     __tablename__ = "user"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str] = mapped_column(String(50))
+    username: Mapped[str] = mapped_column(String(50), unique=True)
     email: Mapped[str] = mapped_column(String(318))  # 64 + @ + 253
-    password: Mapped[str] = mapped_column(String(32))
+    password: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(insert_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(insert_default=func.now())
 
