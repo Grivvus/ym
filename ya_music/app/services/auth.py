@@ -12,7 +12,7 @@ from app.security.jwt import Token, decode_jwt_token, encode_jwt_token
 async def authenticate_user(user: UserLogin) -> str:
     stmt = select(User).where(User.username == user.username)
     fetched_user: User | None = None
-    with get_session() as session:
+    with get_session()() as session:
         result = session.execute(stmt)
         fetched_user = result.scalar_one_or_none()
 
@@ -30,7 +30,7 @@ async def register_user(user: UserRegister) -> str:
         email=user.email,
         password=user.password
     )
-    with get_session() as session:
+    with get_session()() as session:
         try:
             session.add(new_user)
             session.commit()
