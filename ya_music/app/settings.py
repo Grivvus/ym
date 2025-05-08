@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     POSTGRES_PORT: str
     POSTGRES_PASSWORD: str
     POSTGRES_USER: str
-    POSTGRES_DB_NAME: str
+    POSTGRES_DB: str
 
     JWT_SECRET: str
 
@@ -28,7 +28,15 @@ class Settings(BaseSettings):
         return "postgresql+psycopg://"\
             + f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"\
             + f"{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/"\
-            + f"{self.POSTGRES_DB_NAME}"
+            + f"{self.POSTGRES_DB}"
+
+    @computed_field
+    @property
+    def db_url_alembic(self) -> str:
+        return "postgresql+psycopg://"\
+            + f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"\
+            + "0.0.0.0:{self.POSTGRES_PORT}/"\
+            + f"{self.POSTGRES_DB}"
 
 
 settings = Settings()

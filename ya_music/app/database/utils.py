@@ -1,3 +1,4 @@
+import logging
 from contextlib import contextmanager
 from typing import Generator
 
@@ -35,3 +36,18 @@ def get_async_db_engine(db_url: str = settings.db_url) -> AsyncEngine:
 def get_async_session() -> async_sessionmaker[AsyncSession]:
     session_factory = async_sessionmaker(get_async_db_engine())
     return session_factory
+
+
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
+    session = Session()
+    try:
+        yield session
+        session.commit()
+    except Exception as exc:
+        logging.log(f"SQLAlchemy exception inside session {exc}")
+        session.rollback()
+        raise
+    finally:
+        session.close()

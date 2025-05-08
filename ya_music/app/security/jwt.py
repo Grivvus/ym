@@ -1,39 +1,30 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-from jose import JWTError, jwt
-from litestar.exceptions import NotAuthorizedException
-from pydantic import BaseModel
+from litestar.security.jwt import Token
+from passlib.context import CryptContext
 
 from app.settings import settings
 
 DEFAULT_TIME_DELTA = timedelta(days=1)
 ALGORITHM = "HS256"
+pwd_context = CryptContext(["bcrypt"], deprecated="auto")
 
 
-class Token(BaseModel):
-    expiration: datetime
-    issued_at: datetime
-    username: str
-
-
-def decode_jwt_token(encoded_token: str) -> Token:
-    try:
-        payload = jwt.decode(
-            token=encoded_token,
-            key=settings.JWT_SECRET,
-            algorithms=[ALGORITHM]
-        )
-        return Token(**payload)
-    except JWTError as e:
-        raise NotAuthorizedException("Invalid token") from e
+def decode_jwt_token(encoded_token: str) -> str:
+    payload = Token.decode(encoded_token, settings.JWT_SECRET, ALGORITHM)
+    return payload.sub
 
 
 def encode_jwt_token(
-    username: str, expiration: timedelta = DEFAULT_TIME_DELTA
+    username: str, expires_delta: timedelta = DEFAULT_TIME_DELTA
 ) -> str:
-    token = Token(
-        expiration=datetime.now() + expiration,
-        issued_at=datetime.now(),
-        username=username,
-    )
-    return jwt.encode(token.dict(), settings.JWT_SECRET, algorithm=ALGORITHM)
+    t = Token(datetime.now(timezone.utc) + expires_delta, username)
+    return t.encode(settings.JWT_SECRET, ALGORITHM)
+
+
+def verify_password(plain_password: str, hashed: str) -> bool:
+    return pwd_context.verify(plain_password, hashed)
+
+
+def hash_password(plain: str) -> str:
+    return pwd_context.hash(plain)

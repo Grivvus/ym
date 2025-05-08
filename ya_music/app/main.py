@@ -3,16 +3,28 @@ import logging
 
 import uvicorn
 from litestar import Litestar
+from litestar.logging import LoggingConfig
 
 from app.api.http.auth import AuthController
 from app.api.http.user import UserController
 from app.openapi_configuration import openapi_config
 from app.settings import settings
 
+logging_config = LoggingConfig(
+    root={"level": "INFO", "handlers": ["queue_listener"]},
+    formatters={
+        "standard": {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        }
+    },
+    log_exceptions="always",
+)
 app = Litestar(
     route_handlers=[AuthController, UserController],
     openapi_config=openapi_config,
+    logging_config=logging_config
 )
+app.debug = True
 
 
 async def main():
