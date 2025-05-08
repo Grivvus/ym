@@ -6,17 +6,23 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - postgresql
+      - db
     env_file:
       - ya_music/.env
     restart: no
     command: "uv run /app/app/main.py"
 
-  postgresql:
+  db:
     image: postgres
-    volumes:
-      - /home/grivvus/docker_volumes/postgres/ya_music:/var/lib/postgresql/data/
     env_file:
       - ya_music/.env
-
+    environment:
+      POSTGRES_PASSWORD: "hackme"
+      POSTGRES_USER: "postgres"
+      POSTGRES_DB: "postgres"
+    # command: ["-c", "log_min_messages=debug"]
+    ports:
+      - 5432:5432
+    volumes:
+      - /home/grivvus/docker_volumes/postgres/ya_music:/var/lib/postgresql/data/
     restart: no
