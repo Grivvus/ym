@@ -1,4 +1,4 @@
-from litestar import Controller, get, post, status_codes
+from litestar import Controller, post, status_codes
 from litestar.exceptions import HTTPException
 
 from app.schemas.user import UserLogin, UserRegister

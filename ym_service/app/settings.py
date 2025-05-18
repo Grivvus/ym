@@ -22,6 +22,11 @@ class Settings(BaseSettings):
 
     JWT_SECRET: str
 
+    S3_HOST: str
+    S3_PORT: str
+    S3_ROOT_USER: str
+    S3_ROOT_PASSWORD: str
+
     @computed_field
     @property
     def db_url(self) -> str:

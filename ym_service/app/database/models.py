@@ -13,7 +13,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(50), unique=True)
-    email: Mapped[str] = mapped_column(String(318))  # 64 + @ + 253
+    email: Mapped[str | None] = mapped_column(String(318))  # 64 + @ + 253
     password: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(insert_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(insert_default=func.now())

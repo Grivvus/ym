@@ -1,6 +1,5 @@
 import logging
 from contextlib import contextmanager
-from typing import Generator
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.ext.asyncio import (AsyncEngine, AsyncSession,
