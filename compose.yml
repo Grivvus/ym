@@ -7,6 +7,7 @@ services:
       - "8000:8000"
     depends_on:
       - db
+      - minio
     env_file:
       - ya_music/.env
     restart: no
