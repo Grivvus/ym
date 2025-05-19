@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     def db_url_alembic(self) -> str:
         return "postgresql+psycopg://"\
             + f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"\
-            + "0.0.0.0:{self.POSTGRES_PORT}/"\
+            + f"0.0.0.0:{self.POSTGRES_PORT}/"\
             + f"{self.POSTGRES_DB}"
 
 
