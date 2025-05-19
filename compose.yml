@@ -1,21 +1,21 @@
 services:
   backend:
     build:
-      context: ya_music/
-    container_name: ya_music_service_1
+      context: ym_service/
+    container_name: ym_service
     ports:
       - "8000:8000"
     depends_on:
       - db
       - minio
     env_file:
-      - ya_music/.env
+      - ym_service/.env
     restart: no
 
   db:
     image: postgres
     env_file:
-      - ya_music/.env
+      - ym_service/.env
     environment:
       POSTGRES_PASSWORD: "hackme"
       POSTGRES_USER: "postgres"
@@ -23,9 +23,9 @@ services:
     # command: ["-c", "log_min_messages=debug"]
     ports:
       - 5432:5432
+    restart: no
     volumes:
       - /home/grivvus/docker_volumes/postgres/ya_music:/var/lib/postgresql/data/
-    restart: no
 
   minio:
     image: minio/minio
@@ -37,6 +37,7 @@ services:
       MINIO_ROOT_USER: "minio"
       MINIO_ROOT_PASSWORD: "hackme123"
     command: server /data --console-address ":9001"
+    restart: no
     volumes:
       - minio_data:/data
 

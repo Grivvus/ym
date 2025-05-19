@@ -22,13 +22,14 @@ dependencies = [
 [dependency-groups]
 dev = [
     "mypy>=1.14.0",
+    "pip>=25.1.1",
     "pytest>=8.3.4",
     "wemake-python-styleguide>=0.19.2",
 ]
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
-python_version = "3.13"
+python_version = "3.12"
 
 [tool.ruff]
 exclude = [
