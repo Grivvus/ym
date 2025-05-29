@@ -33,11 +33,16 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), unique=True)
     email: Mapped[str | None] = mapped_column(String(318), unique=True)  # 64 + @ + 253
     password: Mapped[str] = mapped_column(String)
-    created_at: Mapped[datetime] = mapped_column(insert_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(insert_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        insert_default=func.now(), onupdate=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        insert_default=func.now(), onupdate=func.now(),
+    )
 
     playlists_owned: Mapped[list[Playlist]] = relationship(
-        back_populates="owner"
+        back_populates="owner",
+        cascade="all, delete-orphan",
     )
 
 
@@ -85,5 +90,5 @@ class Playlist(Base):
     name: Mapped[str] = mapped_column(String)
 
     owner_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"))
-    owner: Mapped[User | None] = relationship(back_populates="playlist_owned")
+    owner: Mapped[User | None] = relationship(back_populates="playlists_owned")
     tracks: Mapped[list[Track]] = relationship(secondary=track_playlist)

@@ -4,6 +4,7 @@ from litestar import Controller, Request, get, post
 from litestar.datastructures import UploadFile
 from litestar.enums import RequestEncodingType
 from litestar.params import Body
+from litestar.response import File
 
 from app.database.storage import upload_image
 from app.services.auth import authorize_by_token
@@ -28,3 +29,7 @@ class UserController(Controller):
     ) -> None:
         data.filename = "avatar"
         await upload_image(username, data)
+
+    # @get("/avatar", media_type="image/png")
+    # async def get_avatar(self, username: str) -> File:
+    #     ...

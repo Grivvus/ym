@@ -17,6 +17,7 @@ dependencies = [
     "psycopg-binary>=3.2.7",
     "passlib>=1.7.4",
     "minio>=7.2.15",
+    "bcrypt>=4.3.0",
 ]
 
 [dependency-groups]

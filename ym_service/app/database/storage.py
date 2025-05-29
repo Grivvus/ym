@@ -43,3 +43,7 @@ async def upload_image(bucket_name: str, file: UploadFile) -> None:
     except minio.error.S3Error as e:
         logging.error(f"Error while uploading file {e}")
         raise HTTPException(status_codes.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+async def get_image(bucket_name: str, filname: str | int) -> BytesIO:
+    ...
