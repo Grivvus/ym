@@ -15,3 +15,9 @@ class UserRegister(BaseModel):
 class TokenResponse(BaseModel):
     token_type: str
     access_token: str
+
+
+class UserChangePassword(BaseModel):
+    username: str
+    current_password: SecretStr
+    new_password: SecretStr
