@@ -45,5 +45,20 @@ async def upload_image(bucket_name: str, file: UploadFile) -> None:
         raise HTTPException(status_codes.HTTP_503_SERVICE_UNAVAILABLE)
 
 
-async def get_image(bucket_name: str, filname: str | int) -> BytesIO:
-    ...
+async def download_image(bucket_name: str, filename: str) -> BytesIO | None:
+    storage = get_storage_client()
+
+    if not storage.bucket_exists(bucket_name):
+        storage.make_bucket(bucket_name)
+        return None
+
+    try:
+        response = storage.get_object(bucket_name, filename)
+        data = response.data
+        return BytesIO(data)
+    except minio.error.S3Error as e:
+        logging.error(f"Error while downloading file {e}")
+        raise HTTPException(status_codes.HTTP_503_SERVICE_UNAVAILABLE)
+    finally:
+        response.close()
+        response.release_conn()

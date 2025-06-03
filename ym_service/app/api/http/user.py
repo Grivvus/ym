@@ -1,14 +1,19 @@
 import logging
 from typing import Annotated
 
-from litestar import Controller, Request, get, patch, post, put, status_codes
+from litestar import (Controller, Request, Response, get, patch, post, put,
+                      status_codes)
 from litestar.datastructures import UploadFile
 from litestar.enums import RequestEncodingType
-from litestar.exceptions import HTTPException, NotAuthorizedException
+from litestar.exceptions import (ClientException, HTTPException,
+                                 NotAuthorizedException)
 from litestar.params import Body
 from litestar.response import File
+from litestar.response.file import ASGIFileResponse
+from litestar.response.streaming import Stream
+from pydantic import EmailStr
 
-from app.database.storage import upload_image
+from app.database.storage import download_image, upload_image
 from app.schemas.user import UserChangePassword
 from app.services.auth import authorize_by_token
 from app.services.user import user_service_provider
@@ -18,13 +23,13 @@ class UserController(Controller):
     path = "/user"
 
     @get("/get")
-    async def get(self, request: Request) -> dict[str, str]:
+    async def get_user(self, request: Request) -> dict[str, str]:
         username: str = await authorize_by_token(request)
         return {
             "message": f"hello {username}"
         }
 
-    @post("/upload_avatar")
+    @post("/avatar")
     async def upload_avatar(
         self, username: str,
         data: Annotated[
@@ -32,11 +37,53 @@ class UserController(Controller):
         ],
     ) -> None:
         data.filename = "avatar"
-        await upload_image(username, data)
+        user_id = await user_service_provider.get_user_id(username)
+        await upload_image(str(user_id), data)
 
-    # @get("/avatar", media_type="image/png")
-    # async def get_avatar(self, username: str) -> File:
-    #     ...
+    @get("/avatar", media_type="image/png")
+    async def download_avatar(self, username: str) -> Stream | None:
+        user_id = await user_service_provider.get_user_id(username)
+        data = await download_image(str(user_id), "avatar")
+        if data is None:
+            return None
+        return Stream(content=data, media_type="image/png")
+
+    @patch("/email")
+    async def change_email(
+        self, username: str,
+        data: dict[str, str]
+    ) -> None:
+        try:
+            await user_service_provider.change_email(
+                username,
+                EmailStr(data.get("email")),
+            )
+        except NotAuthorizedException as e:
+            logging.warning(f"User {username} can't change email, exc: {e}")
+            raise HTTPException(
+                "Can't change email; this email is used",
+                status_codes.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            logging.error(f"Unexpected exception {e}")
+            raise HTTPException(
+                "Unexpected error", status_codes.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @patch("/username")
+    async def change_username(
+        self, username: str, data: dict[str, str]
+    ) -> None:
+        try:
+            await user_service_provider.change_username(
+                username, data.get("new_username")
+            )
+        except NotAuthorizedException as e:
+            logging.warning(f"No permission to do this {e}")
+            raise HTTPException(
+                f"No permission to do this {e}",
+                status_codes.HTTP_401_UNAUTHORIZED
+            )
 
     @patch("/change_password")
     async def change_password(

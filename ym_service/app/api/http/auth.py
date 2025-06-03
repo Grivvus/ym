@@ -8,7 +8,7 @@ from app.services.auth import authenticate_user, register_user
 class AuthController(Controller):
     path = "/auth"
 
-    @post("/login")
+    @post("/login", status_code=status_codes.HTTP_200_OK)
     async def login(self, data: UserLogin) -> TokenResponse:
         if not data.username or not data.password:
             raise HTTPException(
