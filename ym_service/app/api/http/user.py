@@ -14,7 +14,7 @@ from litestar.response.streaming import Stream
 from pydantic import EmailStr
 
 from app.database.storage import download_image, upload_image
-from app.schemas.user import UserChangePassword
+from app.schemas.user import UserChange, UserChangePassword
 from app.services.auth import authorize_by_token
 from app.services.user import user_service_provider
 
@@ -48,42 +48,33 @@ class UserController(Controller):
             return None
         return Stream(content=data, media_type="image/png")
 
-    @patch("/email")
-    async def change_email(
-        self, username: str,
-        data: dict[str, str]
-    ) -> None:
-        try:
-            await user_service_provider.change_email(
-                username,
-                EmailStr(data.get("email")),
-            )
-        except NotAuthorizedException as e:
-            logging.warning(f"User {username} can't change email, exc: {e}")
-            raise HTTPException(
-                "Can't change email; this email is used",
-                status_codes.HTTP_400_BAD_REQUEST,
-            )
-        except Exception as e:
-            logging.error(f"Unexpected exception {e}")
-            raise HTTPException(
-                "Unexpected error", status_codes.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    @patch("/username")
-    async def change_username(
-        self, username: str, data: dict[str, str]
-    ) -> None:
-        try:
-            await user_service_provider.change_username(
-                username, data.get("new_username")
-            )
-        except NotAuthorizedException as e:
-            logging.warning(f"No permission to do this {e}")
-            raise HTTPException(
-                f"No permission to do this {e}",
-                status_codes.HTTP_401_UNAUTHORIZED
-            )
+    @patch("/")
+    async def change(self, data: UserChange) -> None:
+        if data.new_username is not None:
+            try:
+                await user_service_provider.change_username(
+                    data.username, data.new_username
+                )
+            except NotAuthorizedException as e:
+                logging.warning(f"No permission to do this {e}")
+                raise HTTPException(
+                    f"No permission to do this {e}",
+                    status_codes.HTTP_401_UNAUTHORIZED
+                )
+        if data.new_email is not None:
+            try:
+                await user_service_provider.change_email(
+                    data.username,
+                    EmailStr(data.new_email),
+                )
+            except NotAuthorizedException as e:
+                logging.warning(
+                    f"User {data.username} can't change email, exc: {e}"
+                )
+                raise HTTPException(
+                    "Can't change email; this email is used",
+                    status_codes.HTTP_400_BAD_REQUEST,
+                )
 
     @patch("/change_password")
     async def change_password(

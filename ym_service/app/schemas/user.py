@@ -21,3 +21,9 @@ class UserChangePassword(BaseModel):
     username: str
     current_password: SecretStr
     new_password: SecretStr
+
+
+class UserChange(BaseModel):
+    username: str
+    new_username: str | None
+    new_email: EmailStr | None

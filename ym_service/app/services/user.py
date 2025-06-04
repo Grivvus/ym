@@ -1,9 +1,11 @@
 import logging
 
+from litestar import status_codes
 from litestar.exceptions import (ClientException, HTTPException,
                                  NotAuthorizedException)
 from pydantic import EmailStr
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 
 from app.database.models import User
 from app.database.utils import get_session
@@ -44,17 +46,22 @@ class _UserService:
             fetched_user = result.scalar_one_or_none()
         if fetched_user is None:
             raise NotAuthorizedException("wrong username")
-        with get_session()() as session:
-            fetched_user.email = new_email
-            session.add(fetched_user)
-            session.commit()
-            logging.info(f"User {username} change email")
+        try:
+            with get_session()() as session:
+                fetched_user.email = new_email
+                session.add(fetched_user)
+                session.commit()
+                logging.info(f"User {username} change email")
+        except IntegrityError as e:
+            logging.warning(e)
+            raise HTTPException(
+                "this email is used already",
+                status_codes.HTTP_400_BAD_REQUEST
+            )
 
     async def change_username(
-        self, username: str, new_username: str | None
+        self, username: str, new_username: str
     ) -> None:
-        if new_username is None:
-            raise ClientException("Missing new_username field in body")
         stmt = select(User).where(User.username == username)
         fetched_user: User | None = None
         with get_session()() as session:
@@ -62,11 +69,18 @@ class _UserService:
             fetched_user = result.scalar_one_or_none()
         if fetched_user is None:
             raise NotAuthorizedException("wrong username")
-        with get_session()() as session:
-            fetched_user.username = new_username
-            session.add(fetched_user)
-            session.commit()
-            logging.info(f"User {username} change email")
+        try:
+            with get_session()() as session:
+                fetched_user.username = new_username
+                session.add(fetched_user)
+                session.commit()
+                logging.info(f"User {username} change email")
+        except IntegrityError as e:
+            logging.warning(e)
+            raise HTTPException(
+                "New username is used already",
+                status_codes.HTTP_400_BAD_REQUEST
+            )
 
     async def get_user_id(self, username: str) -> int:
         stmt = select(User).where(User.username == username)
