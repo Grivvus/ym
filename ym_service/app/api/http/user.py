@@ -29,7 +29,7 @@ class UserController(Controller):
             "message": f"hello {username}"
         }
 
-    @post("/avatar")
+    @post("/avatar/{username:str}")
     async def upload_avatar(
         self, username: str,
         data: Annotated[
@@ -40,7 +40,7 @@ class UserController(Controller):
         user_id = await user_service_provider.get_user_id(username)
         await upload_image(str(user_id), data)
 
-    @get("/avatar", media_type="image/png")
+    @get("/avatar/{username:str}", media_type="image/png")
     async def download_avatar(self, username: str) -> Stream | None:
         user_id = await user_service_provider.get_user_id(username)
         data = await download_image(str(user_id), "avatar")
