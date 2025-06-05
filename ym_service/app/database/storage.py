@@ -59,6 +59,6 @@ async def download_image(bucket_name: str, filename: str) -> BytesIO | None:
     except minio.error.S3Error as e:
         logging.error(f"Error while downloading file {e}")
         raise HTTPException(status_codes.HTTP_503_SERVICE_UNAVAILABLE)
-    finally:
-        response.close()
-        response.release_conn()
+    # finally:
+    #     response.close()
+    #     response.release_conn()

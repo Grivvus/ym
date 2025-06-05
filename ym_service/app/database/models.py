@@ -71,6 +71,8 @@ class Track(Base):
     artists: Mapped[list[Artist]] = relationship(
         secondary=artist_track, back_populates="tracks"
     )
+    album_id: Mapped[int] = mapped_column(ForeignKey("album.id"))
+    album: Mapped[Album] = relationship(back_populates="tracks")
 
 
 class Album(Base):
@@ -81,6 +83,7 @@ class Album(Base):
 
     artist_id: Mapped[int] = mapped_column(ForeignKey("artist.id"))
     artist: Mapped[Artist] = relationship(back_populates="albums")
+    tracks: Mapped[list[Track]] = relationship(back_populates="album")
 
 
 class Playlist(Base):

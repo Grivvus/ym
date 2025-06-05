@@ -38,12 +38,12 @@ class UserController(Controller):
     ) -> None:
         data.filename = "avatar"
         user_id = await user_service_provider.get_user_id(username)
-        await upload_image(str(user_id), data)
+        await upload_image("img" + str(user_id), data)
 
     @get("/avatar/{username:str}", media_type="image/png")
     async def download_avatar(self, username: str) -> Stream | None:
         user_id = await user_service_provider.get_user_id(username)
-        data = await download_image(str(user_id), "avatar")
+        data = await download_image("img" + str(user_id), "avatar")
         if data is None:
             return None
         return Stream(content=data, media_type="image/png")
