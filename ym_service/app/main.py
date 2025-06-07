@@ -5,7 +5,10 @@ import uvicorn
 from litestar import Litestar
 from litestar.logging import LoggingConfig
 
+from app.api.http.album import AlbumController
+from app.api.http.artist import ArtistController
 from app.api.http.auth import AuthController
+from app.api.http.track import TrackController
 from app.api.http.user import UserController
 from app.openapi_configuration import openapi_config
 from app.settings import settings
@@ -20,7 +23,10 @@ logging_config = LoggingConfig(
     log_exceptions="always",
 )
 app = Litestar(
-    route_handlers=[AuthController, UserController],
+    route_handlers=[
+        AlbumController, ArtistController, AuthController,
+        TrackController, UserController,
+    ],
     openapi_config=openapi_config,
     logging_config=logging_config
 )

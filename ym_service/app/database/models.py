@@ -50,12 +50,15 @@ class Artist(Base):
     __tablename__ = "artist"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String)
+    name: Mapped[str] = mapped_column(String, unique=True)
 
     albums: Mapped[list[Album]] = relationship(back_populates="artist")
     tracks: Mapped[list[Track]] = relationship(
         secondary=artist_track, back_populates="artists"
     )
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class Track(Base):
@@ -67,6 +70,7 @@ class Track(Base):
     is_uploaded_by_user: Mapped[bool] = mapped_column(
         Boolean(create_constraint=True)
     )
+    url: Mapped[str] = mapped_column(String, unique=True)
 
     artists: Mapped[list[Artist]] = relationship(
         secondary=artist_track, back_populates="tracks"
@@ -84,6 +88,9 @@ class Album(Base):
     artist_id: Mapped[int] = mapped_column(ForeignKey("artist.id"))
     artist: Mapped[Artist] = relationship(back_populates="albums")
     tracks: Mapped[list[Track]] = relationship(back_populates="album")
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class Playlist(Base):

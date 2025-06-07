@@ -23,6 +23,7 @@ async def upload_image(bucket_name: str, file: UploadFile) -> None:
         "bad realization of upload_image, possible slow and block flow"
     )
     storage = get_storage_client()
+    bucket_name = bucket_name.lower()
 
     if not storage.bucket_exists(bucket_name):
         storage.make_bucket(bucket_name)
@@ -33,7 +34,7 @@ async def upload_image(bucket_name: str, file: UploadFile) -> None:
     try:
         res = storage.put_object(
             bucket_name,
-            file.filename,
+            file.filename.lower(),
             file_data,
             len(bytes_),
         )
@@ -47,6 +48,8 @@ async def upload_image(bucket_name: str, file: UploadFile) -> None:
 
 async def download_image(bucket_name: str, filename: str) -> BytesIO | None:
     storage = get_storage_client()
+    bucket_name = bucket_name.lower()
+    filename = filename.lower()
 
     if not storage.bucket_exists(bucket_name):
         storage.make_bucket(bucket_name)
@@ -62,3 +65,52 @@ async def download_image(bucket_name: str, filename: str) -> BytesIO | None:
     # finally:
     #     response.close()
     #     response.release_conn()
+
+
+async def upload_track(
+    bucket_name: str, file_name: str, file: UploadFile,
+) -> None:
+    logging.warning(
+        "bad realization of upload_image, possible slow and block flow"
+    )
+    storage = get_storage_client()
+    bucket_name = bucket_name.lower()
+    file_name = file_name.lower()
+
+    if not storage.bucket_exists(bucket_name):
+        storage.make_bucket(bucket_name)
+
+    bytes_ = await file.read()
+    file_data = BytesIO(bytes_)
+
+    try:
+        res = storage.put_object(
+            bucket_name,
+            file_name,
+            file_data,
+            len(bytes_),
+        )
+        logging.info(
+            f"file {file.filename} uploaded successfully with res {res}"
+        )
+    except minio.error.S3Error as e:
+        logging.error(f"Error while uploading file {e}")
+        raise HTTPException(status_codes.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+async def download_track(bucket_name: str, filename: str) -> BytesIO | None:
+    storage = get_storage_client()
+    bucket_name = bucket_name.lower()
+    filename = filename.lower()
+
+    if not storage.bucket_exists(bucket_name):
+        storage.make_bucket(bucket_name)
+        return None
+
+    try:
+        response = storage.get_object(bucket_name, filename)
+        data = response.data
+        return BytesIO(data)
+    except minio.error.S3Error as e:
+        logging.error(f"Error while downloading file {e}")
+        raise HTTPException(status_codes.HTTP_503_SERVICE_UNAVAILABLE)
