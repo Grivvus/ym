@@ -5,24 +5,24 @@ from pydantic import BaseModel
 class TrackMetadata(BaseModel):
     id: int
     name: str
-    artists: str | None
+    artist: str | None
     album: str
     url: str
 
 
 class UploadMetadata(BaseModel):
     name: str
-    artists: str | None
+    artist: str | None
     album: str | None
 
 
 class TrackStorageId(BaseModel):
-    artists: str
+    artist: str
     album: str
     name: str
 
     def get_bucket_name(self) -> str:
-        return self.artists
+        return self.artist
 
     def get_file_name(self) -> str:
         return f"{self.album}.{self.name}"
@@ -30,7 +30,7 @@ class TrackStorageId(BaseModel):
 
 class TrackUploadWithMeta(BaseModel):
     name: str
-    artists: str | None = None
+    artist: str | None = None
     album: str | None = None
     file: UploadFile
 

@@ -1,4 +1,5 @@
 import logging
+from io import BytesIO
 from typing import Sequence
 
 from litestar import status_codes
@@ -24,7 +25,7 @@ class _TrackService:
 
     async def get_track_by_id(self, id: int) -> TrackMetadata | None:
         stmt = select(Track).where(Track.id == id).options(
-            selectinload(Track.artists),
+            selectinload(Track.artist),
             selectinload(Track.album)
         )
         fetched_track: Track | None
@@ -33,26 +34,34 @@ class _TrackService:
             fetched_track = result.scalar_one_or_none()
         if fetched_track is None:
             return None
-        if not fetched_track.artists:
-            logging.warning("artists is empty")
-            artists_str = "anamnez"
-        else:
-            artists_str = ", ".join(
-                [str(artist) for artist in fetched_track.artists]
-            )[:-2]
-        print(str(fetched_track.album))
-        print(str(fetched_track.artists))
+        if not fetched_track.artist:
+            logging.error("artists is empty")
+            raise RuntimeError("track should has at least 1 artist")
         return TrackMetadata(
             id=fetched_track.id, name=fetched_track.name,
-            artists=artists_str, album=str(fetched_track.album),
+            artist=str(fetched_track.artist),
+            album=str(fetched_track.album),
             url=fetched_track.url,
         )
+
+    async def get_raw_track_by_id(self, id: int) -> Track:
+        stmt = select(Track).where(Track.id == id).options(
+            selectinload(Track.artist),
+            selectinload(Track.album)
+        )
+        fetched_track: Track | None
+        with get_session()() as session:
+            result = session.execute(stmt)
+            fetched_track = result.scalar_one_or_none()
+        if fetched_track is None:
+            raise ValueError("No suck track")
+        return fetched_track
 
     async def get_initial_tracks(self) -> list[TrackMetadata]:
         stmt = (
             select(Track)
             .options(
-                selectinload(Track.artists),
+                selectinload(Track.artist),
                 selectinload(Track.album)
             )
         )
@@ -62,9 +71,9 @@ class _TrackService:
             fetched_tracks = result.scalars().unique().all()
         ret = []
         for ft in fetched_tracks:
-            artsts_str = ", ".join(str(ft.artists))[:-2]
             ret.append(TrackMetadata(
-                id=ft.id, name=ft.name, artists=artsts_str,
+                id=ft.id, name=ft.name,
+                artist=str(ft.artist),
                 album=str(ft.album),
                 url=f"{str(ft.album)}.{ft.name}",
             ))
@@ -78,22 +87,17 @@ class _TrackService:
         artist_id: int | None
         album_id: int | None
 
-        if upload_metadata.artists is None:
-            upload_metadata.artists = "unkown"
+        if upload_metadata.artist is None:
+            upload_metadata.artist = "unkown"
         if upload_metadata.album is None:
             upload_metadata.album = "unkown"
-        if upload_metadata.artists.count(","):
-            artist_id = await artist_service_provider.get_id(
-                upload_metadata.artists.split(",")[0]
-            )
-        else:
-            artist_id = await artist_service_provider.get_id(
-                upload_metadata.artists
-            )
+        artist_id = await artist_service_provider.get_id(
+            upload_metadata.artist
+        )
         if artist_id is None:
             logging.info("artist didn't exist branch")
             artist_id = await artist_service_provider.create(
-                upload_metadata.artists
+                upload_metadata.artist
             )
             logging.info("creating album")
             album_id = await album_service_provider.create(
@@ -118,11 +122,21 @@ class _TrackService:
                 is_uploaded_by_user=is_uploaded_by_user,
                 url=url_str,
                 album_id=album_id,
+                artist_id=artist_id,
             )
             session.add(track)
             session.commit()
-            await storage.upload_track(upload_metadata.artists, url_str, data)
+            await storage.upload_track(
+                f"{artist_id}-{album_id}", upload_metadata.name, data
+            )
             return track.id
+
+    async def download_track(self, track_id: int) -> BytesIO:
+        track = await self.get_raw_track_by_id(track_id)
+        data = await storage.download_track(
+            f"{track.artist_id}-{track.album_id}", track.name
+        )
+        return data
 
 
 track_service_provider = _TrackService()

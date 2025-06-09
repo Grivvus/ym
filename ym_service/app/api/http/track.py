@@ -34,32 +34,20 @@ class TrackController(Controller):
         ret_id = await track_service_provider.upload_track(
             UploadMetadata(
                 name=data.name,
-                artists=data.artists,
+                artist=data.artist,
                 album=data.album,
             ), True, data.file
         )
         return ret_id
 
-    @get("/track/{artists_name:str}/{album_name:str}/{track_name:str}")
-    async def get_track(
-        self, artists_name: str, album_name: str, track_name: str
-    ) -> Stream | None:
-        data = await download_track(artists_name, f"{album_name}.{track_name}")
-        if data is None:
-            return None
-        return Stream(content=data, media_type="audio/mpeg")
-
-    @get("/track/{track_id:int}")
+    @get("/{track_id:int}")
     async def get_track_by_id(self, track_id: int) -> Stream | None:
-        meta = await track_service_provider.get_track_by_id(track_id)
-        if meta is None:
-            return None
-        data = await download_track(meta.artists, f"{meta.album}.{meta.name}")
+        data = await track_service_provider.download_track(track_id)
         if data is None:
             return None
         return Stream(content=data, media_type="audio/mpeg")
 
-    @get("track_meta/{id:int}")
+    @get("/track_meta/{id:int}")
     async def get_track_meta_by_id(self, id: int) -> TrackMetadata:
         tm = await track_service_provider.get_track_by_id(id)
         if tm is None:

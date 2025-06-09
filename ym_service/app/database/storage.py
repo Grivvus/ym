@@ -18,7 +18,9 @@ def get_storage_client() -> minio.Minio:
     )
 
 
-async def upload_image(bucket_name: str, file: UploadFile) -> None:
+async def upload_image(
+    bucket_name: str, filename: str, file: UploadFile,
+) -> None:
     logging.warning(
         "bad realization of upload_image, possible slow and block flow"
     )
@@ -34,7 +36,7 @@ async def upload_image(bucket_name: str, file: UploadFile) -> None:
     try:
         res = storage.put_object(
             bucket_name,
-            file.filename.lower(),
+            filename.lower(),
             file_data,
             len(bytes_),
         )
@@ -98,14 +100,13 @@ async def upload_track(
         raise HTTPException(status_codes.HTTP_503_SERVICE_UNAVAILABLE)
 
 
-async def download_track(bucket_name: str, filename: str) -> BytesIO | None:
+async def download_track(bucket_name: str, filename: str) -> BytesIO:
     storage = get_storage_client()
     bucket_name = bucket_name.lower()
     filename = filename.lower()
 
     if not storage.bucket_exists(bucket_name):
-        storage.make_bucket(bucket_name)
-        return None
+        raise ValueError("no suck bucket")
 
     try:
         response = storage.get_object(bucket_name, filename)

@@ -18,13 +18,6 @@ track_playlist = Table(
     Column("playlist_id", ForeignKey("playlist.id"), primary_key=True),
 )
 
-artist_track = Table(
-    "artist_track",
-    Base.metadata,
-    Column("artist_id", ForeignKey("artist.id"), primary_key=True),
-    Column("track_id", ForeignKey("track.id"), primary_key=True),
-)
-
 
 class User(Base):
     __tablename__ = "user"
@@ -53,9 +46,7 @@ class Artist(Base):
     name: Mapped[str] = mapped_column(String, unique=True)
 
     albums: Mapped[list[Album]] = relationship(back_populates="artist")
-    tracks: Mapped[list[Track]] = relationship(
-        secondary=artist_track, back_populates="artists"
-    )
+    tracks: Mapped[list[Track]] = relationship(back_populates="artist")
 
     def __str__(self) -> str:
         return self.name
@@ -72,9 +63,9 @@ class Track(Base):
     )
     url: Mapped[str] = mapped_column(String, unique=True)
 
-    artists: Mapped[list[Artist]] = relationship(
-        secondary=artist_track, back_populates="tracks"
-    )
+    artist_id: Mapped[int] = mapped_column(ForeignKey("artist.id"))
+    artist: Mapped[list[Artist]] = relationship(back_populates="tracks")
+
     album_id: Mapped[int] = mapped_column(ForeignKey("album.id"))
     album: Mapped[Album] = relationship(back_populates="tracks")
 
