@@ -65,7 +65,7 @@ class UserController(Controller):
             try:
                 await user_service_provider.change_email(
                     data.username,
-                    EmailStr(data.new_email),
+                    data.new_email,
                 )
             except NotAuthorizedException as e:
                 logging.warning(

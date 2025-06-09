@@ -68,7 +68,7 @@ class _UserService:
             result = session.execute(stmt)
             fetched_user = result.scalar_one_or_none()
         if fetched_user is None:
-            raise NotAuthorizedException("wrong username")
+            raise NotAuthorizedException(f"wrong username {username}")
         try:
             with get_session()() as session:
                 fetched_user.username = new_username
