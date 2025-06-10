@@ -18,6 +18,7 @@ dependencies = [
     "passlib>=1.7.4",
     "minio>=7.2.15",
     "bcrypt>=4.3.0",
+    "pillow>=11.2.1",
 ]
 
 [dependency-groups]

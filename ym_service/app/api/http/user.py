@@ -37,13 +37,13 @@ class UserController(Controller):
         user = await user_service_provider.get_user(username)
         await upload_image("avatars", f"{user.id}-user", data)
 
-    @get("/avatar/{username:str}", media_type="image/*")
+    @get("/avatar/{username:str}", media_type="image/webp")
     async def download_avatar(self, username: str) -> Stream | None:
         user = await user_service_provider.get_user(username)
         data = await download_image("avatars", f"{user.id}-user")
         if data is None:
             return None
-        return Stream(content=data, media_type="image/*")
+        return Stream(content=data, media_type="image/webp")
 
     @patch("/")
     async def change(self, data: UserChange) -> None:

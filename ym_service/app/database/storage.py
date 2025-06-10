@@ -6,6 +6,7 @@ from litestar import status_codes
 from litestar.datastructures import UploadFile
 from litestar.exceptions import HTTPException
 
+from app.services.image_converter import converter
 from app.settings import settings
 
 
@@ -32,13 +33,14 @@ async def upload_image(
 
     bytes_ = await file.read()
     file_data = BytesIO(bytes_)
+    converted_file_data = converter.to_webp(file_data)
 
     try:
         res = storage.put_object(
             bucket_name,
             filename.lower(),
-            file_data,
-            len(bytes_),
+            BytesIO(converted_file_data),
+            len(converted_file_data),
         )
         logging.info(
             f"file {file.filename} uploaded successfully with res {res}"
