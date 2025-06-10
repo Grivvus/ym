@@ -12,8 +12,8 @@ class TrackMetadata(BaseModel):
 
 class UploadMetadata(BaseModel):
     name: str
-    artist: str | None
-    album: str | None
+    artist: str | None = None
+    album: str | None = None
 
 
 class TrackStorageId(BaseModel):
@@ -28,10 +28,7 @@ class TrackStorageId(BaseModel):
         return f"{self.album}.{self.name}"
 
 
-class TrackUploadWithMeta(BaseModel):
-    name: str
-    artist: str | None = None
-    album: str | None = None
+class TrackUploadWithMeta(UploadMetadata):
     file: UploadFile
 
     class Config:

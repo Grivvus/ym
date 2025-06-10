@@ -102,5 +102,15 @@ class _UserService:
             raise NotAuthorizedException("wrong username")
         return fetched_user
 
+    async def get_user_by_id(self, id: int) -> User:
+        stmt = select(User).where(User.id == id)
+        fetched_user: User | None = None
+        with get_session()() as session:
+            result = session.execute(stmt)
+            fetched_user = result.scalar_one_or_none()
+        if fetched_user is None:
+            raise NotAuthorizedException("wrong username")
+        return fetched_user
+
 
 user_service_provider = _UserService()

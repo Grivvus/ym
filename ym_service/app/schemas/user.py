@@ -1,6 +1,12 @@
 from pydantic import BaseModel, EmailStr, SecretStr
 
 
+class BasicUserSchema(BaseModel):
+    id: int
+    username: str
+    email: EmailStr | None
+
+
 class UserLogin(BaseModel):
     username: str
     password: SecretStr
@@ -13,6 +19,9 @@ class UserRegister(BaseModel):
 
 
 class TokenResponse(BaseModel):
+    id: int
+    username: str
+    email: EmailStr | None
     token_type: str
     access_token: str
 

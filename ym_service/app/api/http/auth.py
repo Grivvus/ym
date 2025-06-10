@@ -15,8 +15,11 @@ class AuthController(Controller):
                 status_code=status_codes.HTTP_400_BAD_REQUEST,
                 detail="username and password are requires",
             )
-        token = await authenticate_user(data)
-        return TokenResponse(token_type="bearer", access_token=token)
+        user, token = await authenticate_user(data)
+        return TokenResponse(
+            id=user.id, username=user.username, email=user.email,
+            token_type="bearer", access_token=token,
+        )
 
     @post("/register")
     async def register(self, data: UserRegister) -> TokenResponse:
@@ -26,5 +29,8 @@ class AuthController(Controller):
                 detail="username, password are requires",
             )
 
-        token = await register_user(data)
-        return TokenResponse(token_type="bearer", access_token=token)
+        user, token = await register_user(data)
+        return TokenResponse(
+            id=user.id, username=user.username, email=user.email,
+            token_type="bearer", access_token=token,
+        )

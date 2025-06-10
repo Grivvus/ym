@@ -10,7 +10,7 @@ from app.security.jwt import (decode_jwt_token, encode_jwt_token,
                               hash_password, verify_password)
 
 
-async def authenticate_user(user: UserLogin) -> str:
+async def authenticate_user(user: UserLogin) -> tuple[User, str]:
     stmt = select(User).where(User.username == user.username)
     fetched_user: User | None = None
     with get_session()() as session:
@@ -23,10 +23,10 @@ async def authenticate_user(user: UserLogin) -> str:
         user.password.get_secret_value(), fetched_user.password
     ):
         raise NotAuthorizedException("wrong password")
-    return encode_jwt_token(fetched_user.username)
+    return fetched_user, encode_jwt_token(fetched_user.username)
 
 
-async def register_user(user: UserRegister) -> str:
+async def register_user(user: UserRegister) -> tuple[User, str]:
     with get_session().begin() as session:
         try:
             new_user = User(
@@ -41,7 +41,7 @@ async def register_user(user: UserRegister) -> str:
                 status_codes.HTTP_400_BAD_REQUEST,
                 detail="username is not unique"
             )
-    return encode_jwt_token(user.username)
+    return new_user, encode_jwt_token(user.username)
 
 
 async def authorize_by_token(request: Request) -> str:

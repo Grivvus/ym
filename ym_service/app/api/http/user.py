@@ -5,16 +5,12 @@ from litestar import (Controller, Request, Response, get, patch, post, put,
                       status_codes)
 from litestar.datastructures import UploadFile
 from litestar.enums import RequestEncodingType
-from litestar.exceptions import (ClientException, HTTPException,
-                                 NotAuthorizedException)
+from litestar.exceptions import HTTPException, NotAuthorizedException
 from litestar.params import Body
-from litestar.response import File
-from litestar.response.file import ASGIFileResponse
 from litestar.response.streaming import Stream
-from pydantic import EmailStr
 
 from app.database.storage import download_image, upload_image
-from app.schemas.user import UserChange, UserChangePassword
+from app.schemas.user import BasicUserSchema, UserChange, UserChangePassword
 from app.services.auth import authorize_by_token
 from app.services.user import user_service_provider
 
@@ -22,12 +18,14 @@ from app.services.user import user_service_provider
 class UserController(Controller):
     path = "/user"
 
-    @get("/get")
-    async def get_user(self, request: Request) -> dict[str, str]:
-        username: str = await authorize_by_token(request)
-        return {
-            "message": f"hello {username}"
-        }
+    @get("/{id:int}")
+    async def get_user(self, id: int) -> BasicUserSchema:
+        user = await user_service_provider.get_user_by_id(id)
+        return BasicUserSchema(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+        )
 
     @post("/avatar/{username:str}")
     async def upload_avatar(
