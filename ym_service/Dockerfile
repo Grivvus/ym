@@ -8,9 +8,11 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 ENV PYTHONPATH=/app
 
 COPY pyproject.toml /app/
+COPY uv.lock /app/
 
-RUN uv sync --no-dev
+RUN uv pip install \
+    --system \
+    --no-cache \
+    --requirement /app/pyproject.toml
 
 COPY . /app/
-
-CMD ["uv", "run", "--no-dev", "/app/app/main.py"]
