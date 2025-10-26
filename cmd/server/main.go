@@ -15,12 +15,11 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// @title My API
+// @title ym
 // @version 1.0
-// @description API для загрузки файлов
+// @description ym music service
 // @host localhost:8000
 // @BasePath /
-
 func main() {
 	r := api.GetDefaultRoute()
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
