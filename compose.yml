@@ -1,5 +1,5 @@
 services:
-  backend:
+  backendpy:
     build:
       context: ym_service/
     container_name: ym_service
@@ -19,11 +19,11 @@ services:
   db:
     image: postgres
     env_file:
-      - ym_service/.env
+      - .env
     environment:
       POSTGRES_PASSWORD: "hackme"
       POSTGRES_USER: "postgres"
-      POSTGRES_DB: "postgres"
+      POSTGRES_DB: "ym"
     # command: ["-c", "log_min_messages=debug"]
     ports:
       - 5432:5432
@@ -57,11 +57,5 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: /home/grivvus/docker_volumes/postgres/ya_music
-      o: bind
-  ym_service_volume:
-    driver: local
-    driver_opts:
-      type: none
-      device: /home/grivvus/Py_Projects/ym/ym_service/app
+      device: /home/grivvus/docker_volumes/postgres/ym
       o: bind

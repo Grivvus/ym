@@ -25,7 +25,7 @@ func GetDefaultRoute() *gin.Engine {
 }
 
 // UploadFile godoc
-// @Summary Upload file
+// @Summary Upload file and saves it in files/ dir
 // @Description Uploads a file via multipart/form-data
 // @Tags files
 // @Accept multipart/form-data

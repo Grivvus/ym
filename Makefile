@@ -2,9 +2,16 @@ EXECUTABLE_NAME ?= server
 
 generate_swagger:
 	@echo "Generate swagger"
-	@swag init -d cmd/server/,internal/api
+	@go tool swag init -d cmd/server/,internal/api
 
-build: generate_swagger
+generate_sqlc:
+	@echo "Generate sqlc"
+	@go tool sqlc generate -f ./db/sqlc.yml
+
+generate: generate_sqlc generate_swagger
+	@echo "Generate everything"
+
+build: migration_uo generate
 	@echo "Building server"
 	@mkdir -p .bin
 	@go build -o ./bin/${EXECUTABLE_NAME} ./cmd/server
@@ -20,3 +27,11 @@ test:
 clean:
 	@echo "deleting binaries"
 	@rm ./bin/*
+
+migration_up:
+	@echo "migration up"
+	@go tool goose -env=.env -dir=db/migrations/ up
+
+migration_down:
+	@echo "migration down"
+	@go tool goose -env=.env -dir=db/migrations/ down
