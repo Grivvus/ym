@@ -2,8 +2,8 @@ basePath: /
 host: localhost:8000
 info:
   contact: {}
-  description: API для загрузки файлов
-  title: My API
+  description: ym music service
+  title: ym
   version: "1.0"
 paths:
   /api/upload:
@@ -28,7 +28,7 @@ paths:
           description: bad request
           schema:
             type: string
-      summary: Upload file
+      summary: Upload file and saves it in files/ dir
       tags:
       - files
 swagger: "2.0"

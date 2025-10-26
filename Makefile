@@ -2,7 +2,7 @@ EXECUTABLE_NAME ?= server
 
 generate_swagger:
 	@echo "Generate swagger"
-	@go tool swag init -d cmd/server/,internal/api
+	@go tool swag init -d cmd/server/,internal/api -o ./api -ot go,yaml
 
 generate_sqlc:
 	@echo "Generate sqlc"
@@ -11,7 +11,7 @@ generate_sqlc:
 generate: generate_sqlc generate_swagger
 	@echo "Generate everything"
 
-build: migration_uo generate
+build: migration_up generate
 	@echo "Building server"
 	@mkdir -p .bin
 	@go build -o ./bin/${EXECUTABLE_NAME} ./cmd/server

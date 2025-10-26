@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/Grivvus/ym/docs"
+	_ "github.com/Grivvus/ym/api"
 	"github.com/Grivvus/ym/internal/api"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
