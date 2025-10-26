@@ -1,0 +1,34 @@
+basePath: /
+host: localhost:8000
+info:
+  contact: {}
+  description: API для загрузки файлов
+  title: My API
+  version: "1.0"
+paths:
+  /api/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads a file via multipart/form-data
+      parameters:
+      - description: file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: uploaded
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+      summary: Upload file
+      tags:
+      - files
+swagger: "2.0"
