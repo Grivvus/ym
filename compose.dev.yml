@@ -1,0 +1,94 @@
+services:
+  # backendpy:
+  #   build:
+  #     context: ym_service/
+  #   container_name: ym_service
+  #   ports:
+  #     - "8001:8001"
+  #   depends_on:
+  #     - db
+  #     - minio
+  #   env_file:
+  #     - ym_service/.env
+  #   command: uvicorn main:app --reload --host 0.0.0.0
+  #   working_dir: /app/app
+  #   volumes:
+  #     - ./ym_service/app:/app/app
+  #   restart: no
+
+  service:
+    depends_on:
+      db:
+        condition: service_healthy
+      storage:
+        condition: service_started
+    build:
+      context: .
+    env_file:
+      - .env
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+          include: "*.go"
+    ports:
+      - "8000:8000"
+
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.goose
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  db:
+    image: postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_PASSWORD: "hackme"
+      POSTGRES_USER: "postgres"
+      POSTGRES_DB: "ym"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    ports:
+      - 5432:5432
+    restart: no
+    volumes:
+      - postgres_volume:/var/lib/postgresql/data/
+
+  storage:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: "minio"
+      MINIO_ROOT_PASSWORD: "hackme123"
+    command: server /data --console-address ":9001"
+    restart: no
+    volumes:
+      - minio_data:/data
+
+
+volumes:
+  minio_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/grivvus/docker_volumes/minio
+      o: bind
+  postgres_volume:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/grivvus/docker_volumes/postgres/ym
+      o: bind
