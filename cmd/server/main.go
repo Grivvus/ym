@@ -8,25 +8,13 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	_ "github.com/Grivvus/ym/api"
-	"github.com/Grivvus/ym/internal/api"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// @title ym
-// @version 1.0
-// @description ym music service
-// @host localhost:8000
-// @BasePath /
 func main() {
-	r := api.GetDefaultRoute()
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	server := &http.Server{
 		Addr:    ":8000",
-		Handler: r,
+		Handler: nil,
 	}
 
 	go func() {
