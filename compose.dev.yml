@@ -34,16 +34,6 @@ services:
     ports:
       - "8000:8000"
 
-  migrator:
-    build:
-      context: .
-      dockerfile: Dockerfile.goose
-    depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - .env
-
   db:
     image: postgres
     env_file:
@@ -63,6 +53,17 @@ services:
     restart: no
     volumes:
       - postgres_volume:/var/lib/postgresql/data/
+
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.goose
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+
 
   storage:
     image: minio/minio
