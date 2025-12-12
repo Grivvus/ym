@@ -14,6 +14,7 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 
 COPY --from=builder /app/server /usr/bin/server
+COPY --from=builder /app/api/openapi.yml /api/openapi.yml
 RUN chmod +x /usr/bin/server
 
 ENTRYPOINT ["/usr/bin/server"]
