@@ -2,3 +2,81 @@ openapi: 3.0.3
 info:
   title: ym music service
   version: "0.1.0"
+
+components:
+  schemas:
+
+    UserAuth:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+
+    TokenResponse:
+      type: object
+      required:
+        - token_type
+        - access_token
+      properties:
+        token_type:
+          type: string
+        access_token:
+          type: string
+
+paths:
+  /auth/login:
+    post:
+      summary: "login user into account"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserAuth'
+      responses:
+        '200':
+          description: User was logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Error on invalid user credentionals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /auth/register:
+    post:
+      summary: "register new user"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserAuth'
+      responses:
+        '201':
+          description: New user account was created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Error if user already exist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
