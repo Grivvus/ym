@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,6 +13,7 @@ import (
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/handlers"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
@@ -20,13 +22,16 @@ func main() {
 	var server api.ServerInterface = handlers.RootHandler{}
 
 	r := chi.NewMux()
+	r.Use(middleware.Logger)
 
+	/* swagger-related routes */
 	r.Get("/openapi.yml", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "/api/openapi.yml")
 	})
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/openapi.yml"),
 	))
+	/* swagger-related routes end */
 
 	h := api.HandlerFromMux(server, r)
 
@@ -34,6 +39,8 @@ func main() {
 		Addr:    ":8000",
 		Handler: h,
 	}
+
+	slog.Info("starting server on", "port", "8000")
 
 	go func() {
 		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
