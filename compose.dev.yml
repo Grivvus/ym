@@ -1,20 +1,4 @@
 services:
-  # backendpy:
-  #   build:
-  #     context: ym_service/
-  #   container_name: ym_service
-  #   ports:
-  #     - "8000:8000"
-  #   depends_on:
-  #     - db
-  #     - storage
-  #   env_file:
-  #     - ym_service/.env
-  #   command: uvicorn main:app --reload --host 0.0.0.0
-  #   working_dir: /app/app
-  #   volumes:
-  #     - ./ym_service/app:/app/app
-  #   restart: no
 
   service:
     depends_on:
