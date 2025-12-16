@@ -18,6 +18,18 @@ components:
           type: string
           format: password
 
+    UserReturn:
+      type: object
+      required:
+        - username
+        - email
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          nullable: true
+
     TokenResponse:
       type: object
       required:
@@ -27,6 +39,12 @@ components:
         token_type:
           type: string
         access_token:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
           type: string
 
 paths:
@@ -76,7 +94,35 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /user/{userId}:
+    get:
+      summary: get user by id
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: integer
+          required: true
+          description: user id, represented by int
+
+      responses:
+        '200':
+          description: Successfully fetching user data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserReturn'
+        '401':
+          description: 'Unauthorized access, if something goes wrong with tokens'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User with this id not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
