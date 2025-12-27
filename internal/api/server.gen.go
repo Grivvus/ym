@@ -8,16 +8,78 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
 )
+
+// ErrorResponse defines model for ErrorResponse.
+type ErrorResponse struct {
+	Error *string `json:"error,omitempty"`
+}
+
+// MessageResponse defines model for MessageResponse.
+type MessageResponse struct {
+	Msg *string `json:"msg,omitempty"`
+}
+
+// TokenResponse defines model for TokenResponse.
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+}
+
+// UserAuth defines model for UserAuth.
+type UserAuth struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+// UserChangePassword defines model for UserChangePassword.
+type UserChangePassword struct {
+	NewPassword string `json:"new_password"`
+	OldPassword string `json:"old_password"`
+}
+
+// UserReturn defines model for UserReturn.
+type UserReturn struct {
+	Email    *string `json:"email"`
+	Username string  `json:"username"`
+}
+
+// UserUpdate defines model for UserUpdate.
+type UserUpdate struct {
+	NewEmail    *string `json:"new_email,omitempty"`
+	NewUsername *string `json:"new_username,omitempty"`
+}
+
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody = UserAuth
+
+// RegisterJSONRequestBody defines body for Register for application/json ContentType.
+type RegisterJSONRequestBody = UserAuth
+
+// ChangeUserJSONRequestBody defines body for ChangeUser for application/json ContentType.
+type ChangeUserJSONRequestBody = UserUpdate
+
+// ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
+type ChangePasswordJSONRequestBody = UserChangePassword
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// login user into account
 	// (POST /auth/login)
-	PostAuthLogin(w http.ResponseWriter, r *http.Request)
+	Login(w http.ResponseWriter, r *http.Request)
 	// register new user
 	// (POST /auth/register)
-	PostAuthRegister(w http.ResponseWriter, r *http.Request)
+	Register(w http.ResponseWriter, r *http.Request)
+	// get user by id
+	// (GET /user/{userId})
+	GetUserById(w http.ResponseWriter, r *http.Request, userId int)
+	// update user
+	// (PATCH /user/{userId})
+	ChangeUser(w http.ResponseWriter, r *http.Request, userId int)
+	// change user's password
+	// (PATCH /user/{userId}/change_password)
+	ChangePassword(w http.ResponseWriter, r *http.Request, userId int)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -26,13 +88,31 @@ type Unimplemented struct{}
 
 // login user into account
 // (POST /auth/login)
-func (_ Unimplemented) PostAuthLogin(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) Login(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // register new user
 // (POST /auth/register)
-func (_ Unimplemented) PostAuthRegister(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) Register(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// get user by id
+// (GET /user/{userId})
+func (_ Unimplemented) GetUserById(w http.ResponseWriter, r *http.Request, userId int) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// update user
+// (PATCH /user/{userId})
+func (_ Unimplemented) ChangeUser(w http.ResponseWriter, r *http.Request, userId int) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// change user's password
+// (PATCH /user/{userId}/change_password)
+func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request, userId int) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -45,11 +125,11 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// PostAuthLogin operation middleware
-func (siw *ServerInterfaceWrapper) PostAuthLogin(w http.ResponseWriter, r *http.Request) {
+// Login operation middleware
+func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostAuthLogin(w, r)
+		siw.Handler.Login(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -59,11 +139,86 @@ func (siw *ServerInterfaceWrapper) PostAuthLogin(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
-// PostAuthRegister operation middleware
-func (siw *ServerInterfaceWrapper) PostAuthRegister(w http.ResponseWriter, r *http.Request) {
+// Register operation middleware
+func (siw *ServerInterfaceWrapper) Register(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostAuthRegister(w, r)
+		siw.Handler.Register(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetUserById operation middleware
+func (siw *ServerInterfaceWrapper) GetUserById(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userId" -------------
+	var userId int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUserById(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ChangeUser operation middleware
+func (siw *ServerInterfaceWrapper) ChangeUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userId" -------------
+	var userId int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangeUser(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ChangePassword operation middleware
+func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userId" -------------
+	var userId int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangePassword(w, r, userId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -187,10 +342,19 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/auth/login", wrapper.PostAuthLogin)
+		r.Post(options.BaseURL+"/auth/login", wrapper.Login)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/auth/register", wrapper.PostAuthRegister)
+		r.Post(options.BaseURL+"/auth/register", wrapper.Register)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/user/{userId}", wrapper.GetUserById)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/user/{userId}", wrapper.ChangeUser)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/user/{userId}/change_password", wrapper.ChangePassword)
 	})
 
 	return r

@@ -22,7 +22,9 @@ func main() {
 	var server api.ServerInterface = handlers.RootHandler{}
 
 	r := chi.NewMux()
+
 	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
 	/* swagger-related routes */
 	r.Get("/openapi.yml", func(w http.ResponseWriter, r *http.Request) {
