@@ -6,7 +6,7 @@ generate_sqlc:
 
 generate_api:
 	@echo "generating server from openapi spec"
-	@go tool oapi-codegen -generate 'chi' -package api ./api/openapi.yml > internal/api/server.gen.go
+	@go tool oapi-codegen -generate 'chi,types' -package api ./api/openapi.yml > internal/api/server.gen.go
 
 generate: generate_sqlc generate_api
 	@echo "Generate everything"
