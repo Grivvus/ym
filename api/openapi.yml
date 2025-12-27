@@ -76,6 +76,7 @@ paths:
   /auth/login:
     post:
       summary: "login user into account"
+      operationId: login
       requestBody:
         required: true
         content:
@@ -101,6 +102,7 @@ paths:
   /auth/register:
     post:
       summary: "register new user"
+      operationId: register
       requestBody:
         required: true
         content:
@@ -124,6 +126,7 @@ paths:
   /user/{userId}:
     get:
       summary: get user by id
+      operationId: getUserById
       parameters:
         - in: path
           name: userId
@@ -153,6 +156,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     patch:
       summary: update user
+      operationId: changeUser
       parameters:
         - in: path
           name: userId
@@ -189,6 +193,7 @@ paths:
   /user/{userId}/change_password:
     patch:
       summary: change user's password
+      operationId: changePassword
       parameters:
         - in: path
           name: userId
