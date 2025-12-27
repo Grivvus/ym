@@ -4,7 +4,11 @@ generate_sqlc:
 	@echo "Generate sqlc"
 	@go tool sqlc generate -f ./db/sqlc.yml
 
-generate: generate_sqlc
+generate_api:
+	@echo "generating server from openapi spec"
+	@go tool oapi-codegen -generate 'chi' -package api ./api/openapi.yml > internal/api/server.gen.go
+
+generate: generate_sqlc generate_api
 	@echo "Generate everything"
 
 build: migration_up generate
