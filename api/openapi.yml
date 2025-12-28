@@ -23,7 +23,10 @@ components:
       required:
         - username
         - email
+        - id
       properties:
+        id:
+          type: integer
         username:
           type: string
         email:
@@ -57,10 +60,13 @@ components:
       required:
         - token_type
         - access_token
+        - refresh_token
       properties:
         token_type:
           type: string
         access_token:
+          type: string
+        refresh_token:
           type: string
 
     ErrorResponse:

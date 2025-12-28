@@ -23,8 +23,9 @@ type MessageResponse struct {
 
 // TokenResponse defines model for TokenResponse.
 type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
 }
 
 // UserAuth defines model for UserAuth.
@@ -42,6 +43,7 @@ type UserChangePassword struct {
 // UserReturn defines model for UserReturn.
 type UserReturn struct {
 	Email    *string `json:"email"`
+	Id       int     `json:"id"`
 	Username string  `json:"username"`
 }
 
