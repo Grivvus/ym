@@ -14,10 +14,16 @@ import (
 	"github.com/Grivvus/ym/internal/handlers"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/joho/godotenv"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func main() {
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Can't load .env file")
+	}
 
 	var server api.ServerInterface = handlers.RootHandler{}
 
