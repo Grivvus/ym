@@ -47,8 +47,8 @@ type UserReturn struct {
 
 // UserUpdate defines model for UserUpdate.
 type UserUpdate struct {
-	NewEmail    *string `json:"new_email,omitempty"`
-	NewUsername *string `json:"new_username,omitempty"`
+	NewEmail    string `json:"new_email"`
+	NewUsername string `json:"new_username"`
 }
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.

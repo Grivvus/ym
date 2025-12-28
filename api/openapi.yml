@@ -43,6 +43,9 @@ components:
 
     UserUpdate:
       type: object
+      required:
+        - new_username
+        - new_email
       properties:
         new_username:
           type: string
