@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -11,9 +12,12 @@ import (
 	"time"
 
 	"github.com/Grivvus/ym/internal/api"
+	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/handlers"
+	"github.com/Grivvus/ym/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -22,10 +26,28 @@ func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Can't load .env file")
+		slog.Error("Can't load .env file", "err", err)
+		os.Exit(1)
 	}
 
-	var server api.ServerInterface = handlers.RootHandler{}
+	appHost, ok := os.LookupEnv("APPLICATION_HOST")
+	if !ok {
+		panic("can't lookup variable APPLICATION_HOST")
+	}
+	appPort, ok := os.LookupEnv("APPLICATION_PORT")
+	if !ok {
+		panic("can't lookup variable APPLICATION_PORT")
+	}
+
+	pool, err := pgxpool.New(context.TODO(), formDBConnString())
+	if err != nil {
+		slog.Error("Can't create connection pool to database", "err", err)
+		os.Exit(1)
+	}
+	dbInst := db.New(pool)
+	authService := service.NewAuthService(dbInst)
+	userService := service.NewUserService(dbInst)
+	var server api.ServerInterface = handlers.NewRootHandler(authService, userService)
 
 	r := chi.NewMux()
 
@@ -44,11 +66,11 @@ func main() {
 	h := api.HandlerFromMux(server, r)
 
 	s := &http.Server{
-		Addr:    ":8000",
+		Addr:    fmt.Sprintf("%v:%v", appHost, appPort),
 		Handler: h,
 	}
 
-	slog.Info("starting server on", "port", "8000")
+	slog.Info("starting server on", "port", appPort)
 
 	go func() {
 		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -72,4 +94,28 @@ func main() {
 		log.Println("Server Shutdown:", err)
 	}
 	log.Println("Server exiting")
+}
+
+func formDBConnString() string {
+	pgHost, ok := os.LookupEnv("POSTGRES_HOST")
+	if !ok {
+		panic("can't lookup variable POSTGRES_HOST")
+	}
+	pgPort, ok := os.LookupEnv("POSTGRES_PORT")
+	if !ok {
+		panic("can't lookup variable POSTGRES_PORT")
+	}
+	pgUser, ok := os.LookupEnv("POSTGRES_USER")
+	if !ok {
+		panic("can't lookup variable POSTGRES_USER")
+	}
+	pgPassword, ok := os.LookupEnv("POSTGRES_PASSWORD")
+	if !ok {
+		panic("can't lookup variable POSTGRES_PASSWORD")
+	}
+	pgDBName, ok := os.LookupEnv("POSTGRES_DB")
+	if !ok {
+		panic("can't lookup variable POSTGRES_DB")
+	}
+	return fmt.Sprintf("postgres://%v:%v@%v:%v/%v", pgUser, pgPassword, pgHost, pgPort, pgDBName)
 }

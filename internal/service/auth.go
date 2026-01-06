@@ -2,18 +2,36 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/utils"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var secret = []byte("hackme")
 
+type ErrUserAlreadyExists struct {
+	Username string
+}
+
+func (e ErrUserAlreadyExists) Error() string {
+	return fmt.Sprintf("User '%v' already exists", e.Username)
+}
+
 type AuthService struct {
 	queries *db.Queries
+}
+
+func NewAuthService(q *db.Queries) AuthService {
+	return AuthService{
+		queries: q,
+	}
 }
 
 func (a AuthService) Register(
@@ -26,9 +44,19 @@ func (a AuthService) Register(
 	}
 	createdUser, err := a.queries.CreateUser(ctx, arg)
 	if err != nil {
-		// should check if error because user with this username already exists
-		panic("not implemented")
-		return api.TokenResponse{}, fmt.Errorf("can't create user, got error: '%w'", err)
+		slog.Error("AuthService.Register", "error", err)
+		var retErr error
+		if pgErr, ok := err.(*pgconn.PgError); ok {
+			// duplicate key value violates unique constraint
+			if pgErr.SQLState() == "23505" {
+				retErr = ErrUserAlreadyExists{Username: user.Username}
+			} else {
+				retErr = fmt.Errorf("Unkown db error: %w", err)
+			}
+		} else {
+			retErr = fmt.Errorf("Unkown error: %w", err)
+		}
+		return api.TokenResponse{}, retErr
 	}
 
 	accessToken, refreshToken, err := utils.CreateTokens(int(createdUser.ID), secret)
@@ -45,7 +73,11 @@ func (a AuthService) Login(
 ) (api.TokenResponse, error) {
 	dbuser, err := a.queries.GetUserByUsername(ctx, user.Username)
 	if err != nil {
-		panic("not implemented")
+		slog.Error("AuthService.Login", "error", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.TokenResponse{}, ErrNoSuchUser{identifier: user.Username}
+		}
+		return api.TokenResponse{}, fmt.Errorf("Unkown error: %w", err)
 	}
 
 	if utils.HashPassword(user.Password) != dbuser.Password {

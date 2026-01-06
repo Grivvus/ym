@@ -13,15 +13,21 @@ import (
 )
 
 type ErrNoSuchUser struct {
-	id int
+	identifier any
 }
 
 func (e ErrNoSuchUser) Error() string {
-	return fmt.Sprintf("user with id: '%v' not found", e.id)
+	return fmt.Sprintf("user %v not found", e.identifier)
 }
 
 type UserService struct {
 	queries *db.Queries
+}
+
+func NewUserService(q *db.Queries) UserService {
+	return UserService{
+		queries: q,
+	}
 }
 
 func (u *UserService) GetUserByID(
@@ -33,7 +39,7 @@ func (u *UserService) GetUserByID(
 	if err != nil {
 		slog.Error("GetuserByID", "err", err)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ret, ErrNoSuchUser{id: userID}
+			return ret, ErrNoSuchUser{identifier: userID}
 		}
 		return ret, fmt.Errorf("unkown server error: %w", err)
 	}
@@ -72,7 +78,7 @@ func (u *UserService) ChangeUser(
 	var ret api.UserReturn
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ret, ErrNoSuchUser{id: userID}
+			return ret, ErrNoSuchUser{identifier: userID}
 		}
 		return ret, fmt.Errorf("unkown server error: %w", err)
 	}

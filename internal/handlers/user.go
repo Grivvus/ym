@@ -11,7 +11,7 @@ import (
 )
 
 type UserHandlers struct {
-	userService *service.UserService
+	userService service.UserService
 }
 
 func (u UserHandlers) GetUserById(
