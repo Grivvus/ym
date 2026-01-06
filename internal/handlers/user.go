@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/service"
 )
 
@@ -42,7 +43,29 @@ func (u UserHandlers) GetUserById(
 	}
 }
 
-func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId int) {}
+func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId int) {
+	ctx := context.TODO()
+	var toUpdate api.UserUpdate
+	err := json.NewDecoder(r.Body).Decode(&toUpdate)
+	if err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+	resp, err := u.userService.ChangeUser(ctx, userId, toUpdate)
+	if err != nil {
+		if errors.Is(err, service.ErrNoSuchUser{}) {
+			http.Error(w, "No such user", http.StatusBadRequest)
+		} else {
+			http.Error(w, "", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		slog.Error("Unexpected error", "err", err)
+	}
+}
 
 func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, userId int) {}
 
