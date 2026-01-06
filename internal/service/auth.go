@@ -37,10 +37,12 @@ func NewAuthService(q *db.Queries) AuthService {
 func (a AuthService) Register(
 	ctx context.Context, user api.UserAuth,
 ) (api.TokenResponse, error) {
+	hashed, salt := utils.HashPassword(user.Password)
 	arg := db.CreateUserParams{
 		Username: user.Username,
 		Email:    pgtype.Text{Valid: false},
-		Password: utils.HashPassword(user.Password),
+		Password: hashed,
+		Salt:     salt,
 	}
 	createdUser, err := a.queries.CreateUser(ctx, arg)
 	if err != nil {
@@ -80,7 +82,7 @@ func (a AuthService) Login(
 		return api.TokenResponse{}, fmt.Errorf("Unkown error: %w", err)
 	}
 
-	if utils.HashPassword(user.Password) != dbuser.Password {
+	if !utils.VerifyPassword(user.Password, dbuser.Salt, dbuser.Password) {
 		return api.TokenResponse{}, fmt.Errorf("wrong password")
 	}
 

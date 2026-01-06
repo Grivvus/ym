@@ -21,17 +21,18 @@ func (u UserHandlers) GetUserById(
 	user, err := u.userService.GetUserByID(ctx, userId)
 	if err != nil {
 		if errors.Is(err, service.ErrNoSuchUser{}) {
-			w.WriteHeader(http.StatusBadRequest)
-			return
+			http.Error(w, "Wrong username", http.StatusBadRequest)
+		} else {
+			http.Error(w, "", http.StatusInternalServerError)
 		}
-		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	b, err := json.Marshal(user)
 	if err != nil {
 		slog.Error("Error while marshalling model", "err", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
 

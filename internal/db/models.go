@@ -44,7 +44,8 @@ type User struct {
 	ID        int32
 	Username  string
 	Email     pgtype.Text
-	Password  string
+	Password  []byte
+	Salt      []byte
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }

@@ -17,7 +17,7 @@ UPDATE "user" SET
     email = $3,
     updated_at = now()
 WHERE id = $1
-RETURNING id, username, email, password, created_at, updated_at
+RETURNING id, username, email, password, salt, created_at, updated_at
 `
 
 type UpdateUserParams struct {
@@ -34,6 +34,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.Username,
 		&i.Email,
 		&i.Password,
+		&i.Salt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

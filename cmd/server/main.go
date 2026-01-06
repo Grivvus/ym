@@ -15,6 +15,7 @@ import (
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/handlers"
 	"github.com/Grivvus/ym/internal/service"
+	"github.com/Grivvus/ym/internal/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -30,16 +31,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	appHost, ok := os.LookupEnv("APPLICATION_HOST")
-	if !ok {
-		panic("can't lookup variable APPLICATION_HOST")
+	cfg, err := utils.NewConfig()
+	if err != nil {
+		panic("can't create config " + err.Error())
 	}
-	appPort, ok := os.LookupEnv("APPLICATION_PORT")
-	if !ok {
-		panic("can't lookup variable APPLICATION_PORT")
-	}
-
-	pool, err := pgxpool.New(context.TODO(), formDBConnString())
+	pool, err := pgxpool.New(context.TODO(), formDBConnString(cfg))
 	if err != nil {
 		slog.Error("Can't create connection pool to database", "err", err)
 		os.Exit(1)
@@ -66,11 +62,11 @@ func main() {
 	h := api.HandlerFromMux(server, r)
 
 	s := &http.Server{
-		Addr:    fmt.Sprintf("%v:%v", appHost, appPort),
+		Addr:    fmt.Sprintf("%v:%v", cfg.Host, cfg.Port),
 		Handler: h,
 	}
 
-	slog.Info("starting server on", "port", appPort)
+	slog.Info("starting server on", "port", cfg.Port)
 
 	go func() {
 		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -96,26 +92,10 @@ func main() {
 	log.Println("Server exiting")
 }
 
-func formDBConnString() string {
-	pgHost, ok := os.LookupEnv("POSTGRES_HOST")
-	if !ok {
-		panic("can't lookup variable POSTGRES_HOST")
-	}
-	pgPort, ok := os.LookupEnv("POSTGRES_PORT")
-	if !ok {
-		panic("can't lookup variable POSTGRES_PORT")
-	}
-	pgUser, ok := os.LookupEnv("POSTGRES_USER")
-	if !ok {
-		panic("can't lookup variable POSTGRES_USER")
-	}
-	pgPassword, ok := os.LookupEnv("POSTGRES_PASSWORD")
-	if !ok {
-		panic("can't lookup variable POSTGRES_PASSWORD")
-	}
-	pgDBName, ok := os.LookupEnv("POSTGRES_DB")
-	if !ok {
-		panic("can't lookup variable POSTGRES_DB")
-	}
-	return fmt.Sprintf("postgres://%v:%v@%v:%v/%v", pgUser, pgPassword, pgHost, pgPort, pgDBName)
+func formDBConnString(cfg *utils.Config) string {
+	return fmt.Sprintf(
+		"postgres://%v:%v@%v:%v/%v",
+		cfg.PostgresUser, cfg.PostgresPassword,
+		cfg.PostgresHost, cfg.PostgresPort, cfg.PostgresDB,
+	)
 }

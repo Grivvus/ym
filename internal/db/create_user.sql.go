@@ -12,25 +12,32 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO "user" (username, email, password, created_at, updated_at)
-values ($1, $2, $3, now(), now())
-RETURNING id, username, email, password, created_at, updated_at
+INSERT INTO "user" (username, email, password, salt, created_at, updated_at)
+values ($1, $2, $3, $4, now(), now())
+RETURNING id, username, email, password, salt, created_at, updated_at
 `
 
 type CreateUserParams struct {
 	Username string
 	Email    pgtype.Text
-	Password string
+	Password []byte
+	Salt     []byte
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Username, arg.Email, arg.Password)
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Username,
+		arg.Email,
+		arg.Password,
+		arg.Salt,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
 		&i.Email,
 		&i.Password,
+		&i.Salt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

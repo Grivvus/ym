@@ -10,7 +10,7 @@ import (
 )
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, email, password, created_at, updated_at FROM "user"
+SELECT id, username, email, password, salt, created_at, updated_at FROM "user"
 WHERE username = $1
 `
 
@@ -22,6 +22,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.Username,
 		&i.Email,
 		&i.Password,
+		&i.Salt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

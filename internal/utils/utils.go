@@ -1,14 +1,46 @@
 package utils
 
 import (
+	"crypto/rand"
+	"crypto/subtle"
+	"runtime"
 	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/argon2"
 )
 
-func HashPassword(plain string) string {
-	return plain
+const (
+	saltLength = 16
+	keyLength  = 32
+	iterations = 3
+	memory     = 64 << 10 // ~64MB
+)
+
+var threads = uint8(runtime.NumCPU())
+
+func generateSalt(length int) []byte {
+	salt := make([]byte, length)
+	_, err := rand.Read(salt)
+	if err != nil {
+		panic("never")
+	}
+
+	return salt
+}
+
+func HashPassword(password string) (hashed []byte, salt []byte) {
+	salt = generateSalt(saltLength)
+
+	hashed = argon2.IDKey([]byte(password), salt, iterations, memory, threads, keyLength)
+
+	return hashed, salt
+}
+
+func VerifyPassword(password string, salt []byte, expectedHash []byte) bool {
+	newHash := argon2.IDKey([]byte(password), salt, iterations, memory, threads, keyLength)
+	return subtle.ConstantTimeCompare(newHash, expectedHash) == 1
 }
 
 func CreateTokens(
