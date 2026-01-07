@@ -67,6 +67,25 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 	}
 }
 
-func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, userId int) {}
+func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, userId int) {
+	ctx := context.TODO()
+	var updatePassword api.UserChangePassword
+	err := json.NewDecoder(r.Body).Decode(&updatePassword)
+	if err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+	err = u.userService.ChangePassword(ctx, userId, updatePassword)
+	if err != nil {
+		slog.Error("UserHandler.ChangePassword", "error", err)
+		if errors.Is(err, service.ErrNoSuchUser{}) {
+			http.Error(w, "Old password is wrong", http.StatusBadRequest)
+		} else {
+			http.Error(w, "", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
 
 func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {}

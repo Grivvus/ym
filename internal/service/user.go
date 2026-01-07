@@ -8,6 +8,7 @@ import (
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
+	"github.com/Grivvus/ym/internal/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -56,11 +57,11 @@ func (u *UserService) GetUserByID(
 
 func (u *UserService) ChangeUser(
 	ctx context.Context,
-	userID int,
+	userId int,
 	newUserParams api.UserUpdate,
 ) (api.UserReturn, error) {
 	updateParamsDB := db.UpdateUserParams{
-		ID:       int32(userID),
+		ID:       int32(userId),
 		Username: newUserParams.NewUsername,
 	}
 	if newUserParams.NewEmail != "" {
@@ -78,9 +79,9 @@ func (u *UserService) ChangeUser(
 	var ret api.UserReturn
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ret, ErrNoSuchUser{identifier: userID}
+			return ret, ErrNoSuchUser{identifier: userId}
 		}
-		return ret, fmt.Errorf("unkown server error: %w", err)
+		return ret, fmt.Errorf("unkown db error: %w", err)
 	}
 
 	ret.Username = updatedUser.Username
@@ -91,4 +92,29 @@ func (u *UserService) ChangeUser(
 	}
 
 	return ret, nil
+}
+
+func (u *UserService) ChangePassword(
+	ctx context.Context, userId int, newPasswordParams api.UserChangePassword,
+) error {
+	user, err := u.queries.GetUserByID(ctx, int32(userId))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNoSuchUser{identifier: userId}
+		}
+		return fmt.Errorf("unkown db error: %w", err)
+	}
+	if !utils.VerifyPassword(newPasswordParams.OldPassword, user.Salt, user.Password) {
+		return fmt.Errorf("wrong password")
+	}
+	newHashed, newSalt := utils.HashPassword(newPasswordParams.NewPassword)
+	err = u.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+		ID:       int32(userId),
+		Password: newHashed,
+		Salt:     newSalt,
+	})
+	if err != nil {
+		return fmt.Errorf("unkown db error: %w", err)
+	}
+	return nil
 }
