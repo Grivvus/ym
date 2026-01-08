@@ -1,0 +1,6 @@
+FROM alpine:3.18
+RUN apk add --no-cache curl ca-certificates jq
+RUN wget -qO /usr/local/bin/mc https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x /usr/local/bin/mc
+WORKDIR /workdir
+COPY init-minio.sh /workdir/init-minio.sh
+ENTRYPOINT ["/bin/sh","-c","/workdir/init-minio.sh"]

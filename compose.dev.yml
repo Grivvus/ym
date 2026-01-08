@@ -5,11 +5,13 @@ services:
       db:
         condition: service_healthy
       storage:
-        condition: service_started
+        condition: service_healthy
+      init-minio:
+        condition: service_completed_successfully
     build:
       context: .
-    env_file:
-      - .env
+    volumes:
+      - ./env_files/.env.minio:/.env.minio:rw
     develop:
       watch:
         - action: rebuild
@@ -17,6 +19,7 @@ services:
           include: "*.go"
     ports:
       - "8000:8000"
+    restart: "no"
 
   db:
     image: postgres
@@ -48,7 +51,6 @@ services:
     env_file:
       - .env
 
-
   storage:
     image: minio/minio
     container_name: minio
@@ -62,7 +64,27 @@ services:
     restart: no
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      retries: 12
+      start_period: 5s
+      timeout: 3s
 
+  init-minio:
+    build:
+      context: .
+      dockerfile: Dockerfile.minio.init
+    depends_on:
+      storage:
+        condition: service_healthy
+    volumes:
+      - ./init-minio.sh:/workdir/init-minio.sh:ro
+      - ./env_files:/workdir/env_files
+    environment:
+      MINIO_ROOT_USER: "minio"
+      MINIO_ROOT_PASSWORD: "hackme123"
+    restart: "no"
 
 volumes:
   minio_data:

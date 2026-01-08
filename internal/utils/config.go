@@ -64,14 +64,15 @@ func NewConfig() (*Config, error) {
 	if !ok {
 		return nil, fmt.Errorf("environment variable not found: %v", "S3_PORT")
 	}
-	s3Access := os.Getenv("S3_ACCESS_KEY")
+	minioAccess := os.Getenv("MINIO_ACCESS_KEY")
 	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "S3_ACCESS_KEY")
+		return nil, fmt.Errorf("environment variable not found: %v", "MINIO_ACCESS_KEY")
 	}
-	s3Secret := os.Getenv("S3_SECRET_KEY")
+	minioSecret := os.Getenv("MINIO_SECRET_KEY")
 	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "S3_SECRET_KEY")
+		return nil, fmt.Errorf("environment variable not found: %v", "MINIO_SECRET_KEY")
 	}
+	fmt.Println(minioAccess, minioSecret)
 
 	return &Config{
 		Host:               host,
@@ -84,8 +85,8 @@ func NewConfig() (*Config, error) {
 		PostgresDB:         postgresDB,
 		S3Host:             s3Host,
 		S3Port:             s3Port,
-		S3AccessKey:        s3Access,
-		S3SecretKey:        s3Secret,
+		S3AccessKey:        minioAccess,
+		S3SecretKey:        minioSecret,
 		S3SecureConnection: false,
 	}, nil
 }

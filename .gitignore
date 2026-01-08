@@ -8,6 +8,7 @@ venv/
 .venv/
 .vscode/
 .env
+env_files/
 .coverage
 .python-version
 

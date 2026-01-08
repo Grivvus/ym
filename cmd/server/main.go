@@ -26,7 +26,7 @@ import (
 
 func main() {
 
-	err := godotenv.Load()
+	err := godotenv.Load(".env.minio", ".env")
 	if err != nil {
 		slog.Error("Can't load .env file", "err", err)
 		os.Exit(1)
