@@ -8,6 +8,7 @@ import (
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
+	"github.com/Grivvus/ym/internal/storage"
 	"github.com/Grivvus/ym/internal/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -23,9 +24,10 @@ func (e ErrNoSuchUser) Error() string {
 
 type UserService struct {
 	queries *db.Queries
+	st      storage.Storage
 }
 
-func NewUserService(q *db.Queries) UserService {
+func NewUserService(q *db.Queries, st storage.Storage) UserService {
 	return UserService{
 		queries: q,
 	}

@@ -16,10 +16,11 @@ type Config struct {
 	PostgresPassword string
 	PostgresDB       string
 
-	S3Host         string
-	S3Port         string
-	S3RootUser     string
-	S3RootPassword string
+	S3Host             string
+	S3Port             string
+	S3AccessKey        string
+	S3SecretKey        string
+	S3SecureConnection bool
 }
 
 func NewConfig() (*Config, error) {
@@ -29,52 +30,62 @@ func NewConfig() (*Config, error) {
 	}
 	port, ok := os.LookupEnv("APPLICATION_PORT")
 	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "APPLICATION_HOST")
+		return nil, fmt.Errorf("environment variable not found: %v", "APPLICATION_PORT")
 	}
 	jwtsecret, ok := os.LookupEnv("JWT_SECRET")
 	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "APPLICATION_HOST")
+		return nil, fmt.Errorf("environment variable not found: %v", "JWT_SECRET")
 	}
 	postgresUser, ok := os.LookupEnv("POSTGRES_USER")
 	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "APPLICATION_HOST")
+		return nil, fmt.Errorf("environment variable not found: %v", "POSTGRES_USER")
 	}
 	postgresHost, ok := os.LookupEnv("POSTGRES_HOST")
 	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "APPLICATION_HOST")
+		return nil, fmt.Errorf("environment variable not found: %v", "POSTGRES_HOST")
 	}
 	postgresPort, ok := os.LookupEnv("POSTGRES_PORT")
 	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "APPLICATION_HOST")
+		return nil, fmt.Errorf("environment variable not found: %v", "POSTGRES_PORT")
 	}
 	postgresPassword, ok := os.LookupEnv("POSTGRES_PASSWORD")
 	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "APPLICATION_HOST")
+		return nil, fmt.Errorf("environment variable not found: %v", "POSTGRES_PASSWORD")
 	}
 	postgresDB, ok := os.LookupEnv("POSTGRES_DB")
 	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "APPLICATION_HOST")
+		return nil, fmt.Errorf("environment variable not found: %v", "POSTGRES_DB")
 	}
 	s3Host, ok := os.LookupEnv("S3_HOST")
 	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "APPLICATION_HOST")
+		return nil, fmt.Errorf("environment variable not found: %v", "S3_HOST")
 	}
 	s3Port := os.Getenv("S3_PORT")
-	s3RootUser := os.Getenv("S3_ROOT_USER")
-	s3RootPassword := os.Getenv("S3_ROOT_PASSWORD")
+	if !ok {
+		return nil, fmt.Errorf("environment variable not found: %v", "S3_PORT")
+	}
+	s3Access := os.Getenv("S3_ACCESS_KEY")
+	if !ok {
+		return nil, fmt.Errorf("environment variable not found: %v", "S3_ACCESS_KEY")
+	}
+	s3Secret := os.Getenv("S3_SECRET_KEY")
+	if !ok {
+		return nil, fmt.Errorf("environment variable not found: %v", "S3_SECRET_KEY")
+	}
 
 	return &Config{
-		Host:             host,
-		Port:             port,
-		JWTSecret:        jwtsecret,
-		PostgresUser:     postgresUser,
-		PostgresHost:     postgresHost,
-		PostgresPort:     postgresPort,
-		PostgresPassword: postgresPassword,
-		PostgresDB:       postgresDB,
-		S3Host:           s3Host,
-		S3Port:           s3Port,
-		S3RootUser:       s3RootUser,
-		S3RootPassword:   s3RootPassword,
+		Host:               host,
+		Port:               port,
+		JWTSecret:          jwtsecret,
+		PostgresUser:       postgresUser,
+		PostgresHost:       postgresHost,
+		PostgresPort:       postgresPort,
+		PostgresPassword:   postgresPassword,
+		PostgresDB:         postgresDB,
+		S3Host:             s3Host,
+		S3Port:             s3Port,
+		S3AccessKey:        s3Access,
+		S3SecretKey:        s3Secret,
+		S3SecureConnection: false,
 	}, nil
 }

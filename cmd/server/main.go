@@ -15,6 +15,7 @@ import (
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/handlers"
 	"github.com/Grivvus/ym/internal/service"
+	"github.com/Grivvus/ym/internal/storage"
 	"github.com/Grivvus/ym/internal/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -35,14 +36,23 @@ func main() {
 	if err != nil {
 		panic("can't create config " + err.Error())
 	}
-	pool, err := pgxpool.New(context.TODO(), formDBConnString(cfg))
+	pool, err := pgxpool.New(context.TODO(), formDBConnString(*cfg))
 	if err != nil {
-		slog.Error("Can't create connection pool to database", "err", err)
+		slog.Error("Can't create connection pool to a database", "err", err)
 		os.Exit(1)
 	}
+	slog.Info("connection pool to the database was created")
+
+	storageClient, err := storage.New(*cfg)
+	if err != nil {
+		slog.Error("Can't create connection to a storage", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("connection to the storage was created")
+
 	dbInst := db.New(pool)
 	authService := service.NewAuthService(dbInst)
-	userService := service.NewUserService(dbInst)
+	userService := service.NewUserService(dbInst, storageClient)
 	var server api.ServerInterface = handlers.NewRootHandler(authService, userService)
 
 	r := chi.NewMux()
@@ -66,7 +76,7 @@ func main() {
 		Handler: h,
 	}
 
-	slog.Info("starting server on", "port", cfg.Port)
+	slog.Info("server was started on", "port", cfg.Port)
 
 	go func() {
 		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -92,7 +102,7 @@ func main() {
 	log.Println("Server exiting")
 }
 
-func formDBConnString(cfg *utils.Config) string {
+func formDBConnString(cfg utils.Config) string {
 	return fmt.Sprintf(
 		"postgres://%v:%v@%v:%v/%v",
 		cfg.PostgresUser, cfg.PostgresPassword,

@@ -2,7 +2,13 @@ package storage
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
+
+	"github.com/Grivvus/ym/internal/utils"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // The type represents an implementation-independent representation of object storage.
@@ -15,4 +21,27 @@ type Storage interface {
 
 	PutCover(ctx context.Context, coverID string, r io.Reader) error
 	GetCover(ctx context.Context, coverID string) ([]byte, error)
+}
+
+func New(cfg utils.Config) (Storage, error) {
+	if cfg.S3Host == "" {
+		return nil, errors.New("can't create storage, S3_HOST env variable is not set")
+	}
+	s3URL := cfg.S3Host + ":" + cfg.S3Port
+	minioClient, err := minio.New(
+		s3URL,
+		&minio.Options{
+			Creds:  credentials.NewStaticV4(cfg.S3AccessKey, cfg.S3SecretKey, ""),
+			Secure: false,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("can't create connection to minio: %w", err)
+	}
+	storage := minioStorage{client: minioClient}
+	err = storage.createBucketsIfNotExists(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("can't init storage: %w", err)
+	}
+	return storage, nil
 }
