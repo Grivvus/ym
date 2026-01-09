@@ -1,5 +1,0 @@
-.python-version
-.mypy_cache
-app/.mypy_cache
-.ruff_cache
-.venv/

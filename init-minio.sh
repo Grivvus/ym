@@ -22,15 +22,12 @@ until mc --quiet alias set "$MC_ALIAS" "$MC_ENDPOINT" "$ROOT_USER" "$ROOT_PASS" 
   sleep 1
 done
 
-# create app user if missing
 if ! mc admin user info "$MC_ALIAS" "$APP_USER" >/dev/null 2>&1; then
   mc admin user add "$MC_ALIAS" "$APP_USER" "temporary-password-$(date +%s)"
 fi
 
-# granting access to read/write operations
 mc admin policy attach "$MC_ALIAS" readwrite --user="$APP_USER"
 
-# create service account and capture output
 SA_JSON=$(mc admin user svcacct add "$MC_ALIAS" "$APP_USER" --name "$SERVICE_NAME" --json 2>&1) || {
   echo "Failed to create service account: $SA_JSON"
   exit 2
