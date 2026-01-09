@@ -2,7 +2,7 @@
 set -eu
 
 WORKDIR="/workdir"
-ENV_DIR="$WORKDIR/env_files"
+ENV_DIR="$WORKDIR"
 ENV_FILE="$ENV_DIR/.env.minio"
 
 MC_ALIAS="myminio"
@@ -10,8 +10,8 @@ MC_ENDPOINT="http://storage:9000"
 APP_USER="goclient"
 SERVICE_NAME="app-service"
 
-ROOT_USER="${MINIO_ROOT_USER:-minio}"
-ROOT_PASS="${MINIO_ROOT_PASSWORD:-hackme123}"
+ROOT_USER="${MINIO_ROOT_USER}"
+ROOT_PASS="${MINIO_ROOT_PASSWORD}"
 
 mkdir -p "$ENV_DIR"
 
