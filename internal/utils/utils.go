@@ -3,6 +3,10 @@ package utils
 import (
 	"crypto/rand"
 	"crypto/subtle"
+	"fmt"
+	"io"
+	"log/slog"
+	"os"
 	"runtime"
 	"strconv"
 	"time"
@@ -73,4 +77,26 @@ func CreateTokens(
 	}
 
 	return access, refresh, nil
+}
+
+func SaveAsFile(f io.Reader, fname string) (err error) {
+	content, err := io.ReadAll(f)
+	if err != nil {
+		return fmt.Errorf("read error: %w", err)
+	}
+	fd, err := os.Create(fname)
+	if err != nil {
+		return fmt.Errorf("can't create file: %w", err)
+	}
+	defer func() {
+		err := fd.Close()
+		if err != nil {
+			slog.Error("can't close resource", "err", err)
+		}
+	}()
+	_, err = fd.Write(content)
+	if err != nil {
+		return fmt.Errorf("can't write to file: %w", err)
+	}
+	return nil
 }
