@@ -1,0 +1,209 @@
+/album/create:
+  post:
+    summary: creates new album
+    operationId: createAlbum
+    requestBody:
+      content:
+        multipart/form-data:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/AlbumCreateRequest'
+    responses:
+      '201':
+        description: album was created
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/AlbumCreateResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/album/{albumId}:
+  get:
+    summary: get info about the album
+    operationId: getAlbum
+    parameters:
+      - in: path
+        name: albumId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: album data was successfully fetched
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/AlbumInfoResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no album found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+  delete:
+    summary: deletes album by id
+    operationId: deleteAlbum
+    parameters:
+      - in: path
+        name: albumId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: album was successfully deleted
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/AlbumDeleteResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no album found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/album/{albumId}/cover:
+  post:
+    description: uploads a new cover for the album
+    operationId: uploadAlbumCover
+    parameters:
+      - in: path
+        name: albumId
+        schema:
+          type: integer
+        required: true
+    requestBody:
+      content:
+        image/*:
+          schema:
+            type: string
+            format: binary
+    responses:
+      '201':
+        description: cover of the album was successfully uploaded
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/AlbumCoverResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no album was found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+  delete:
+    description: deletes the album's cover, if there's none no-op
+    operationId: deleteAlbumCover
+    parameters:
+      - in: path
+        name: albumId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: cover of the album was successfully deleted
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/AlbumCoverResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no album was found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+  get:
+    description: fetching cover of the album
+    operationId: getAlbumCover
+    parameters:
+      - in: path
+        name: albumId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: cover of the album was successfully fetched
+        content:
+          image/webp:
+            schema:
+              type: string
+              format: binary
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no album was found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

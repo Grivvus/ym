@@ -3,640 +3,89 @@ info:
   title: ym music service
   version: "0.1.0"
 
+paths:
+  /auth/login:
+    $ref: './paths/user.yml#/auth/login'
+  /auth/register:
+    $ref: './paths/user.yml#/auth/register'
+  /user/{userId}:
+    $ref: './paths/user.yml#/user/{userId}'
+  /user/{userId}/change_password:
+    $ref: './paths/user.yml#/user/{userId}/change_password'
+  /track/upload:
+    $ref: './paths/track.yml#/track/upload'
+  /track/{trackId}:
+    $ref: './paths/track.yml#/track/{trackId}'
+  /artist/create:
+    $ref: './paths/artist.yml#/artist/create'
+  /artist/{artistId}:
+    $ref: './paths/artist.yml#/artist/{artistId}'
+  /artist/{artistId}/image:
+    $ref: './paths/artist.yml#/artist/{artistId}/image'
+  /playlist/create:
+    $ref: './paths/playlist.yml#/playlist/create'
+  /playlist/{playlistId}:
+    $ref: './paths/playlist.yml#/playlist/{playlistId}'
+  /playlist/{playlistId}/cover:
+    $ref: './paths/playlist.yml#/playlist/{playlistId}/cover'
+  /album/create:
+    $ref: './paths/album.yml#/album/create'
+  /album/{albumId}:
+    $ref: './paths/album.yml#/album/{albumId}'
+  /album/{albumId}/cover:
+    $ref: './paths/album.yml#/album/{albumId}/cover'
+
 components:
   schemas:
     UserAuth:
-      type: object
-      required:
-        - username
-        - password
-      properties:
-        username:
-          type: string
-        password:
-          type: string
-          format: password
-
+      $ref: './schemas/user.yml#/UserAuth'
     UserReturn:
-      type: object
-      required:
-        - username
-        - email
-        - id
-      properties:
-        id:
-          type: integer
-        username:
-          type: string
-        email:
-          type: string
-          nullable: true
-
+      $ref: './schemas/user.yml#/UserReturn'
     UserChangePassword:
-      type: object
-      required:
-        - old_password
-        - new_password
-      properties:
-        old_password:
-          type: string
-        new_password:
-          type: string
-
+      $ref: './schemas/user.yml#/UserChangePassword'
     UserUpdate:
-      type: object
-      required:
-        - new_username
-        - new_email
-      properties:
-        new_username:
-          type: string
-        new_email:
-          type: string
-
+      $ref: './schemas/user.yml#/UserUpdate'
     TokenResponse:
-      type: object
-      required:
-        - token_type
-        - access_token
-        - refresh_token
-      properties:
-        token_type:
-          type: string
-        access_token:
-          type: string
-        refresh_token:
-          type: string
-
+      $ref: './schemas/user.yml#/TokenResponse'
     ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-
+      $ref: './schemas/common.yml#/ErrorResponse'
     MessageResponse:
-      type: object
-      properties:
-        msg:
-          type: string
-
+      $ref: './schemas/common.yml#/MessageResponse'
     LoginErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-
+      $ref: './schemas/common.yml#/LoginErrorResponse'
     TrackUploadSuccessResponse:
-      type: object
-      properties:
-        trackId:
-          type: integer
-
+      $ref: './schemas/track.yml#/TrackUploadSuccessResponse'
     TrackUploadRequest:
-      type: object
-      properties:
-        name:
-          type: string
-        albumId:
-          type: integer
-        artistId:
-          type: integer
-        file:
-          type: string
-          format: binary
+      $ref: './schemas/track.yml#/TrackUploadRequest'
     TrackMetadata:
-      type: object
-      properties:
-        trackId:
-          type: integer
-        name:
-          type: string
-        artistId:
-          type: integer
-        coverUrl:
-          type: string
-        trackFastPreset:
-          type: string
-        trackStandardPreset:
-          type: string
-        trackHighPreset:
-          type: string
-
-paths:
-  /auth/login:
-    post:
-      summary: "login user into account"
-      operationId: login
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserAuth'
-      responses:
-        '200':
-          description: User was logged in
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenResponse'
-        '401':
-          description: Error on invalid user credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginErrorResponse'
-
-  /auth/register:
-    post:
-      summary: "register new user"
-      operationId: register
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserAuth'
-      responses:
-        '201':
-          description: New user account was created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenResponse'
-        '400':
-          description: Error if user already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /user/{userId}:
-    get:
-      summary: get user by id
-      operationId: getUserById
-      parameters:
-        - in: path
-          name: userId
-          schema:
-            type: integer
-          required: true
-          description: user id, represented as int
-      responses:
-        '200':
-          description: Successfully fetching user data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserReturn'
-        '401':
-          description: Unauthorized access, if something goes wrong with tokens
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: User with this id not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    patch:
-      summary: update user
-      operationId: changeUser
-      parameters:
-        - in: path
-          name: userId
-          schema:
-            type: integer
-          required: true
-          description: user id, represented as int
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserUpdate'
-      responses:
-        '200':
-          description: User was successfully updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /user/{userId}/change_password:
-    patch:
-      summary: change user's password
-      operationId: changePassword
-      parameters:
-        - in: path
-          name: userId
-          schema:
-            type: integer
-          required: true
-          description: user id, represented as int
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserChangePassword'
-      responses:
-        '200':
-          description: User's password was successfully updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '400':
-          description: Invalid old password
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /track/upload:
-    post:
-      summary: uploads new track, make all transcoding stuff, stores it
-      operationId: uploadTrack
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TrackUploadRequest'
-        encoding:
-          file:
-            contentType: audio/*
-      responses:
-        '200':
-          description: Successfully uploaded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TrackUploadSuccessResponse'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '415':
-          description: Unsupported media type, uploading file is not an audio
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Can't successfully upload a track
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /track/{trackId}:
-    delete:
-      summary: delete track
-      operationId: deleteTrack
-      parameters:
-        - in: path
-          name: trackId
-          schema:
-            type: integer
-          required: true
-          description: track id, represented as int
-      responses:
-        '200':
-          description: Track was successfully deleted
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: No such Track
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    # patch:
-    #   summary: update track metadata
-    #   operationId: updateTrack
-    #   parameters:
-    #     - in: path
-    #       name: trackId
-    #       schema:
-    #         type: integer
-    #       required: true
-    #       description: track id, represented as int
-    #   requestBody:
-    #     ...
-    #   responses:
-    #     '200':
-    #       description: track metadata was successfully updated
-    #     '401':
-    #       description: Unauthorized
-    #     '404':
-    #       description: no such track
-    #     '500':
-    #       description: internal server error
-    get:
-      summary: getting track metadata
-      operationId: getTrackMeta
-      parameters:
-        - in: path
-          name: trackId
-          schema:
-            type: integer
-          required: true
-          description: track id, represented as int
-      responses:
-        '200':
-          description: track meta was successfully fetched
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TrackMetadata'
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: no track found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /artist/create:
-    post:
-      summary: creates new artist
-      operationId: createArtist
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                artistName:
-                  type: string
-      responses:
-        '201':
-          description: artist was created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  artistId:
-                    type: integer
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /artist/{artistId}:
-    get:
-      summary: get info about artist
-      operationId: getArtist
-      parameters:
-        - in: path
-          name: artistId
-          schema:
-            type: integer
-          required: true
-      responses:
-        '200':
-          description: playlist was successfully deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  artistId:
-                    type: integer
-                  artistName:
-                    type: string
-                  aristCoverUrl:
-                    type: string
-                  aristAlbums:
-                    type: array
-                    items:
-                      type: integer
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: no track found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      summary: deletes artist by id
-      operationId: deleteArtist
-      parameters:
-        - in: path
-          name: artistId
-          schema:
-            type: integer
-          required: true
-      responses:
-        '200':
-          description: artist was successfully deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  artistId:
-                    type: integer
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: no track found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /playlist/create:
-    post:
-      summary: creates new playlist
-      operationId: createPlaylist
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                ownerId:
-                  type: integer
-                playlistName:
-                  type: string
-                playlistCover:
-                  type: string
-                  format: binary
-      responses:
-        '201':
-          description: playlist was created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  playlistId:
-                    type: integer
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /playlist/{playlistId}:
-    get:
-      summary: get info about playlist
-      operationId: getPlaylist
-      parameters:
-        - in: path
-          name: playlistId
-          schema:
-            type: integer
-          required: true
-      responses:
-        '200':
-          description: playlist data was successfully fetched
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  playlistId:
-                    type: integer
-                  playlistName:
-                    type: string
-                  coverUrl:
-                    type: string
-                  tracks:
-                    type: array
-                    items:
-                      type: integer
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: no track found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      summary: deletes playlist by id
-      operationId: deletePlaylist
-      parameters:
-        - in: path
-          name: playlistId
-          schema:
-            type: integer
-          required: true
-      responses:
-        '200':
-          description: playlist was successfully deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  playlistId:
-                    type: integer
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: no track found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+      $ref: './schemas/track.yml#/TrackMetadata'
+    ArtistCreateRequest:
+      $ref: './schemas/artist.yml#/ArtistCreateRequest'
+    ArtistCreateResponse:
+      $ref: './schemas/artist.yml#/ArtistCreateResponse'
+    ArtistInfoResponse:
+      $ref: './schemas/artist.yml#/ArtistInfoResponse'
+    ArtistDeleteResponse:
+      $ref: './schemas/artist.yml#/ArtistDeleteResponse'
+    ArtistImageResponse:
+      $ref: './schemas/artist.yml#/ArtistImageResponse'
+    PlaylistCreateRequest:
+      $ref: './schemas/playlist.yml#/PlaylistCreateRequest'
+    PlaylistCreateResponse:
+      $ref: './schemas/playlist.yml#/PlaylistCreateResponse'
+    PlaylistInfoResponse:
+      $ref: './schemas/playlist.yml#/PlaylistInfoResponse'
+    PlaylistDeleteResponse:
+      $ref: './schemas/playlist.yml#/PlaylistDeleteResponse'
+    PlaylistCoverResponse:
+      $ref: './schemas/playlist.yml#/PlaylistCoverResponse'
+    AlbumCreateRequest:
+      $ref: './schemas/album.yml#/AlbumCreateRequest'
+    AlbumCreateResponse:
+      $ref: './schemas/album.yml#/AlbumCreateResponse'
+    AlbumInfoResponse:
+      $ref: './schemas/album.yml#/AlbumInfoResponse'
+    AlbumDeleteResponse:
+      $ref: './schemas/album.yml#/AlbumDeleteResponse'
+    AlbumCoverResponse:
+      $ref: './schemas/album.yml#/AlbumCoverResponse'

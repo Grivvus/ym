@@ -1,0 +1,209 @@
+/playlist/create:
+  post:
+    summary: creates new playlist
+    operationId: createPlaylist
+    requestBody:
+      content:
+        multipart/form-data:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/PlaylistCreateRequest'
+    responses:
+      '201':
+        description: playlist was created
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/PlaylistCreateResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/playlist/{playlistId}:
+  get:
+    summary: get info about playlist
+    operationId: getPlaylist
+    parameters:
+      - in: path
+        name: playlistId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: playlist data was successfully fetched
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/PlaylistInfoResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no playlist found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+  delete:
+    summary: deletes playlist by id
+    operationId: deletePlaylist
+    parameters:
+      - in: path
+        name: playlistId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: playlist was successfully deleted
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/PlaylistDeleteResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no playlist found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/playlist/{playlistId}/cover:
+  post:
+    description: uploads a new cover for the playlist
+    operationId: uploadPlaylistCover
+    parameters:
+      - in: path
+        name: playlistId
+        schema:
+          type: integer
+        required: true
+    requestBody:
+      content:
+        image/*:
+          schema:
+            type: string
+            format: binary
+    responses:
+      '201':
+        description: cover of the playlist was successfully uploaded
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/PlaylistCoverResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no playlist was found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+  delete:
+    description: deletes the playlist's cover, if there's none no-op
+    operationId: deletePlaylistCover
+    parameters:
+      - in: path
+        name: playlistId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: cover of the playlist was successfully deleted
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/PlaylistCoverResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no playlist was found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+  get:
+    description: fetching cover of the playlist
+    operationId: getPlaylistCover
+    parameters:
+      - in: path
+        name: playlistId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: cover of the playlist was successfully fetched
+        content:
+          image/webp:
+            schema:
+              type: string
+              format: binary
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no playlist was found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

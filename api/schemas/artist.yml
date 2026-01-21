@@ -1,0 +1,37 @@
+ArtistCreateRequest:
+  type: object
+  properties:
+    artistName:
+      type: string
+
+ArtistCreateResponse:
+  type: object
+  properties:
+    artistId:
+      type: integer
+
+ArtistInfoResponse:
+  type: object
+  properties:
+    artistId:
+      type: integer
+    artistName:
+      type: string
+    artistCoverUrl:
+      type: string
+    artistAlbums:
+      type: array
+      items:
+        type: integer
+
+ArtistDeleteResponse:
+  type: object
+  properties:
+    artistId:
+      type: integer
+
+ArtistImageResponse:
+  type: object
+  properties:
+    artistId:
+      type: integer

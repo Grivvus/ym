@@ -1,0 +1,17 @@
+ErrorResponse:
+  type: object
+  properties:
+    error:
+      type: string
+
+MessageResponse:
+  type: object
+  properties:
+    msg:
+      type: string
+
+LoginErrorResponse:
+  type: object
+  properties:
+    error:
+      type: string

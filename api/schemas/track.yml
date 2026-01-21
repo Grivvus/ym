@@ -1,0 +1,36 @@
+TrackUploadSuccessResponse:
+  type: object
+  properties:
+    trackId:
+      type: integer
+
+TrackUploadRequest:
+  type: object
+  properties:
+    name:
+      type: string
+    albumId:
+      type: integer
+    artistId:
+      type: integer
+    file:
+      type: string
+      format: binary
+
+TrackMetadata:
+  type: object
+  properties:
+    trackId:
+      type: integer
+    name:
+      type: string
+    artistId:
+      type: integer
+    coverUrl:
+      type: string
+    trackFastPreset:
+      type: string
+    trackStandardPreset:
+      type: string
+    trackHighPreset:
+      type: string

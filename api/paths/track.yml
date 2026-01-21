@@ -1,0 +1,105 @@
+/track/upload:
+  post:
+    summary: uploads new track, make all transcoding stuff, stores it
+    operationId: uploadTrack
+    requestBody:
+      content:
+        multipart/form-data:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/TrackUploadRequest'
+      encoding:
+        file:
+          contentType: audio/*
+    responses:
+      '200':
+        description: Track uploaded and processed successfully
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/TrackUploadSuccessResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '415':
+        description: Unsupported media type, uploading file is not an audio
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: Can't successfully upload a track
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/track/{trackId}:
+  delete:
+    summary: delete track
+    operationId: deleteTrack
+    parameters:
+      - in: path
+        name: trackId
+        schema:
+          type: integer
+        required: true
+        description: track id, represented as int
+    responses:
+      '200':
+        description: Track was successfully deleted
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: No such Track
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+  get:
+    summary: getting track metadata
+    operationId: getTrackMeta
+    parameters:
+      - in: path
+        name: trackId
+        schema:
+          type: integer
+        required: true
+        description: track id, represented as int
+    responses:
+      '200':
+        description: track meta was successfully fetched
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/TrackMetadata'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no track found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

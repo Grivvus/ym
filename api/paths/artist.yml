@@ -1,0 +1,209 @@
+/artist/create:
+  post:
+    summary: creates new artist
+    operationId: createArtist
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ArtistCreateRequest'
+    responses:
+      '201':
+        description: artist was created
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ArtistCreateResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/artist/{artistId}:
+  get:
+    summary: get info about artist
+    operationId: getArtist
+    parameters:
+      - in: path
+        name: artistId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: artist info was successfully fetched
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ArtistInfoResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no artist was found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+  delete:
+    summary: deletes artist by id
+    operationId: deleteArtist
+    parameters:
+      - in: path
+        name: artistId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: artist was successfully deleted
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ArtistDeleteResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no artist was found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/artist/{artistId}/image:
+  post:
+    description: uploads a new image of an artist
+    operationId: uploadArtistImage
+    parameters:
+      - in: path
+        name: artistId
+        schema:
+          type: integer
+        required: true
+    requestBody:
+      content:
+        image/*:
+          schema:
+            type: string
+            format: binary
+    responses:
+      '201':
+        description: image of an artist was successfully uploaded
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ArtistImageResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no artist was found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+  delete:
+    description: deletes an image of an artist, if there's none no-op
+    operationId: deleteArtistImage
+    parameters:
+      - in: path
+        name: artistId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: image of an artist was successfully deleted
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ArtistImageResponse'
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no artist was found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+  get:
+    description: fetching image of an artist
+    operationId: getArtistImage
+    parameters:
+      - in: path
+        name: artistId
+        schema:
+          type: integer
+        required: true
+    responses:
+      '200':
+        description: image of an artist was successfully fetched
+        content:
+          image/webp:
+            schema:
+              type: string
+              format: binary
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: no artist was found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

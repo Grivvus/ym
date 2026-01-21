@@ -1,0 +1,150 @@
+/auth/login:
+  post:
+    summary: "login user into account"
+    operationId: login
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/UserAuth'
+    responses:
+      '200':
+        description: User was logged in
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/TokenResponse'
+      '401':
+        description: Error on invalid user credentials
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/LoginErrorResponse'
+
+/auth/register:
+  post:
+    summary: "register new user"
+    operationId: register
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/UserAuth'
+    responses:
+      '201':
+        description: New user account was created
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/TokenResponse'
+      '400':
+        description: Error if user already exists
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/user/{userId}:
+  get:
+    summary: get user by id
+    operationId: getUserById
+    parameters:
+      - in: path
+        name: userId
+        schema:
+          type: integer
+        required: true
+        description: user id, represented as int
+    responses:
+      '200':
+        description: User data fetched successfully
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/UserReturn'
+      '401':
+        description: Unauthorized access, if something goes wrong with tokens
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '404':
+        description: User with this id not found
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+  patch:
+    summary: update user
+    operationId: changeUser
+    parameters:
+      - in: path
+        name: userId
+        schema:
+          type: integer
+        required: true
+        description: user id, represented as int
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/UserUpdate'
+    responses:
+      '200':
+        description: User was successfully updated
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/MessageResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '400':
+        description: Invalid request data
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/user/{userId}/change_password:
+  patch:
+    summary: change user's password
+    operationId: changePassword
+    parameters:
+      - in: path
+        name: userId
+        schema:
+          type: integer
+        required: true
+        description: user id, represented as int
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/UserChangePassword'
+    responses:
+      '200':
+        description: User's password was successfully updated
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/MessageResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '400':
+        description: Invalid old password
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

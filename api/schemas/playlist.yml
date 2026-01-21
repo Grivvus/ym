@@ -1,0 +1,42 @@
+PlaylistCreateRequest:
+  type: object
+  properties:
+    ownerId:
+      type: integer
+    playlistName:
+      type: string
+    playlistCover:
+      type: string
+      format: binary
+
+PlaylistCreateResponse:
+  type: object
+  properties:
+    playlistId:
+      type: integer
+
+PlaylistInfoResponse:
+  type: object
+  properties:
+    playlistId:
+      type: integer
+    playlistName:
+      type: string
+    coverUrl:
+      type: string
+    tracks:
+      type: array
+      items:
+        type: integer
+
+PlaylistDeleteResponse:
+  type: object
+  properties:
+    playlistId:
+      type: integer
+
+PlaylistCoverResponse:
+  type: object
+  properties:
+    playlistId:
+      type: integer
