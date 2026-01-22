@@ -3,89 +3,950 @@ info:
   title: ym music service
   version: "0.1.0"
 
-paths:
-  /auth/login:
-    $ref: './paths/user.yml#/auth/login'
-  /auth/register:
-    $ref: './paths/user.yml#/auth/register'
-  /user/{userId}:
-    $ref: './paths/user.yml#/user/{userId}'
-  /user/{userId}/change_password:
-    $ref: './paths/user.yml#/user/{userId}/change_password'
-  /track/upload:
-    $ref: './paths/track.yml#/track/upload'
-  /track/{trackId}:
-    $ref: './paths/track.yml#/track/{trackId}'
-  /artist/create:
-    $ref: './paths/artist.yml#/artist/create'
-  /artist/{artistId}:
-    $ref: './paths/artist.yml#/artist/{artistId}'
-  /artist/{artistId}/image:
-    $ref: './paths/artist.yml#/artist/{artistId}/image'
-  /playlist/create:
-    $ref: './paths/playlist.yml#/playlist/create'
-  /playlist/{playlistId}:
-    $ref: './paths/playlist.yml#/playlist/{playlistId}'
-  /playlist/{playlistId}/cover:
-    $ref: './paths/playlist.yml#/playlist/{playlistId}/cover'
-  /album/create:
-    $ref: './paths/album.yml#/album/create'
-  /album/{albumId}:
-    $ref: './paths/album.yml#/album/{albumId}'
-  /album/{albumId}/cover:
-    $ref: './paths/album.yml#/album/{albumId}/cover'
-
 components:
   schemas:
     UserAuth:
-      $ref: './schemas/user.yml#/UserAuth'
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+
     UserReturn:
-      $ref: './schemas/user.yml#/UserReturn'
+      type: object
+      required:
+        - username
+        - email
+        - id
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          nullable: true
+
     UserChangePassword:
-      $ref: './schemas/user.yml#/UserChangePassword'
+      type: object
+      required:
+        - old_password
+        - new_password
+      properties:
+        old_password:
+          type: string
+        new_password:
+          type: string
+
     UserUpdate:
-      $ref: './schemas/user.yml#/UserUpdate'
+      type: object
+      required:
+        - new_username
+        - new_email
+      properties:
+        new_username:
+          type: string
+        new_email:
+          type: string
+
     TokenResponse:
-      $ref: './schemas/user.yml#/TokenResponse'
+      type: object
+      required:
+        - token_type
+        - access_token
+        - refresh_token
+      properties:
+        token_type:
+          type: string
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+
     ErrorResponse:
-      $ref: './schemas/common.yml#/ErrorResponse'
+      type: object
+      properties:
+        error:
+          type: string
+
     MessageResponse:
-      $ref: './schemas/common.yml#/MessageResponse'
+      type: object
+      properties:
+        msg:
+          type: string
+
     LoginErrorResponse:
-      $ref: './schemas/common.yml#/LoginErrorResponse'
+      type: object
+      properties:
+        error:
+          type: string
+
     TrackUploadSuccessResponse:
-      $ref: './schemas/track.yml#/TrackUploadSuccessResponse'
+      type: object
+      properties:
+        trackId:
+          type: integer
+
     TrackUploadRequest:
-      $ref: './schemas/track.yml#/TrackUploadRequest'
+      type: object
+      properties:
+        name:
+          type: string
+        albumId:
+          type: integer
+        artistId:
+          type: integer
+        file:
+          type: string
+          format: binary
+
     TrackMetadata:
-      $ref: './schemas/track.yml#/TrackMetadata'
+      type: object
+      properties:
+        trackId:
+          type: integer
+        name:
+          type: string
+        artistId:
+          type: integer
+        coverUrl:
+          type: string
+        trackFastPreset:
+          type: string
+        trackStandardPreset:
+          type: string
+        trackHighPreset:
+          type: string
+
     ArtistCreateRequest:
-      $ref: './schemas/artist.yml#/ArtistCreateRequest'
+      type: object
+      properties:
+        artistName:
+          type: string
+
     ArtistCreateResponse:
-      $ref: './schemas/artist.yml#/ArtistCreateResponse'
+      type: object
+      properties:
+        artistId:
+          type: integer
+
     ArtistInfoResponse:
-      $ref: './schemas/artist.yml#/ArtistInfoResponse'
+      type: object
+      properties:
+        artistId:
+          type: integer
+        artistName:
+          type: string
+        artistCoverUrl:
+          type: string
+        artistAlbums:
+          type: array
+          items:
+            type: integer
+
     ArtistDeleteResponse:
-      $ref: './schemas/artist.yml#/ArtistDeleteResponse'
+      type: object
+      properties:
+        artistId:
+          type: integer
+
     ArtistImageResponse:
-      $ref: './schemas/artist.yml#/ArtistImageResponse'
+      type: object
+      properties:
+        artistId:
+          type: integer
+
     PlaylistCreateRequest:
-      $ref: './schemas/playlist.yml#/PlaylistCreateRequest'
+      type: object
+      properties:
+        ownerId:
+          type: integer
+        playlistName:
+          type: string
+        playlistCover:
+          type: string
+          format: binary
+
     PlaylistCreateResponse:
-      $ref: './schemas/playlist.yml#/PlaylistCreateResponse'
+      type: object
+      properties:
+        playlistId:
+          type: integer
+
     PlaylistInfoResponse:
-      $ref: './schemas/playlist.yml#/PlaylistInfoResponse'
+      type: object
+      properties:
+        playlistId:
+          type: integer
+        playlistName:
+          type: string
+        coverUrl:
+          type: string
+        tracks:
+          type: array
+          items:
+            type: integer
+
     PlaylistDeleteResponse:
-      $ref: './schemas/playlist.yml#/PlaylistDeleteResponse'
+      type: object
+      properties:
+        playlistId:
+          type: integer
+
     PlaylistCoverResponse:
-      $ref: './schemas/playlist.yml#/PlaylistCoverResponse'
+      type: object
+      properties:
+        playlistId:
+          type: integer
+
     AlbumCreateRequest:
-      $ref: './schemas/album.yml#/AlbumCreateRequest'
+      type: object
+      properties:
+        ownerId:
+          type: integer
+        albumName:
+          type: string
+        albumCover:
+          type: string
+          format: binary
+
     AlbumCreateResponse:
-      $ref: './schemas/album.yml#/AlbumCreateResponse'
+      type: object
+      properties:
+        albumId:
+          type: integer
+
     AlbumInfoResponse:
-      $ref: './schemas/album.yml#/AlbumInfoResponse'
+      type: object
+      properties:
+        albumId:
+          type: integer
+        albumName:
+          type: string
+        coverUrl:
+          type: string
+        tracks:
+          type: array
+          items:
+            type: integer
+
     AlbumDeleteResponse:
-      $ref: './schemas/album.yml#/AlbumDeleteResponse'
+      type: object
+      properties:
+        albumId:
+          type: integer
+
     AlbumCoverResponse:
-      $ref: './schemas/album.yml#/AlbumCoverResponse'
+      type: object
+      properties:
+        albumId:
+          type: integer
+
+paths:
+  /auth/login:
+    post:
+      summary: "login user into account"
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserAuth'
+      responses:
+        '200':
+          description: User was logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Error on invalid user credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginErrorResponse'
+
+  /auth/register:
+    post:
+      summary: "register new user"
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserAuth'
+      responses:
+        '201':
+          description: New user account was created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Error if user already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /user/{userId}:
+    get:
+      summary: get user by id
+      operationId: getUserById
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: integer
+          required: true
+          description: user id, represented as int
+      responses:
+        '200':
+          description: User data fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserReturn'
+        '401':
+          description: Unauthorized access, if something goes wrong with tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User with this id not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      summary: update user
+      operationId: changeUser
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: integer
+          required: true
+          description: user id, represented as int
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: User was successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /user/{userId}/change_password:
+    patch:
+      summary: change user's password
+      operationId: changePassword
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: integer
+          required: true
+          description: user id, represented as int
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserChangePassword'
+      responses:
+        '200':
+          description: User's password was successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid old password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /track/upload:
+    post:
+      summary: uploads new track, make all transcoding stuff, stores it
+      operationId: uploadTrack
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrackUploadRequest'
+        encoding:
+          file:
+            contentType: audio/*
+      responses:
+        '200':
+          description: Track uploaded and processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackUploadSuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported media type, uploading file is not an audio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Can't successfully upload a track
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /track/{trackId}:
+    delete:
+      summary: delete track
+      operationId: deleteTrack
+      parameters:
+        - in: path
+          name: trackId
+          schema:
+            type: integer
+          required: true
+          description: track id, represented as int
+      responses:
+        '200':
+          description: Track was successfully deleted
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No such Track
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: getting track metadata
+      operationId: getTrackMeta
+      parameters:
+        - in: path
+          name: trackId
+          schema:
+            type: integer
+          required: true
+          description: track id, represented as int
+      responses:
+        '200':
+          description: track meta was successfully fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackMetadata'
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: no track found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /artist/create:
+    post:
+      summary: creates new artist
+      operationId: createArtist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArtistCreateRequest'
+      responses:
+        '201':
+          description: artist was created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistCreateResponse'
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /artist/{artistId}:
+    get:
+      summary: get info about artist
+      operationId: getArtist
+      parameters:
+        - in: path
+          name: artistId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: artist info was successfully fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistInfoResponse'
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: no artist was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: deletes artist by id
+      operationId: deleteArtist
+      parameters:
+        - in: path
+          name: artistId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: artist was successfully deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistDeleteResponse'
+        '401':
+          description: unauthorized
+        '404':
+          description: no artist was found
+        '500':
+          description: internal server error
+
+  /artist/{artistId}/image:
+    post:
+      description: uploads a new image of an artist
+      operationId: uploadArtistImage
+      parameters:
+        - in: path
+          name: artistId
+          schema:
+            type: integer
+          required: true
+      requestBody:
+        content:
+          image/*:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '201':
+          description: image of an artist was successfully uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistImageResponse'
+        '401':
+          description: unauthorized
+        '404':
+          description: no artist was found
+        '500':
+          description: internal server error
+    delete:
+      description: deletes an image of an artist, if there's none no-op
+      operationId: deleteArtistImage
+      parameters:
+        - in: path
+          name: artistId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: image of an artist was successfully deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistImageResponse'
+        '401':
+          description: unauthorized
+        '404':
+          description: no artist was found
+        '500':
+          description: internal server error
+    get:
+      description: fetching image of an artist
+      operationId: getArtistImage
+      parameters:
+        - in: path
+          name: artistId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: image of an artist was successfully fetched
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: unauthorized
+        '404':
+          description: no artist was found
+        '500':
+          description: internal server error
+
+  /playlist/create:
+    post:
+      summary: creates new playlist
+      operationId: createPlaylist
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlaylistCreateRequest'
+      responses:
+        '201':
+          description: playlist was created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaylistCreateResponse'
+        '401':
+          description: unauthorized
+        '500':
+          description: internal server error
+
+  /playlist/{playlistId}:
+    get:
+      summary: get info about playlist
+      operationId: getPlaylist
+      parameters:
+        - in: path
+          name: playlistId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: playlist data was successfully fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaylistInfoResponse'
+        '401':
+          description: unauthorized
+        '404':
+          description: no playlist found
+        '500':
+          description: internal server error
+    delete:
+      summary: deletes playlist by id
+      operationId: deletePlaylist
+      parameters:
+        - in: path
+          name: playlistId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: playlist was successfully deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaylistDeleteResponse'
+        '401':
+          description: unauthorized
+        '404':
+          description: no playlist found
+        '500':
+          description: internal server error
+
+  /playlist/{playlistId}/cover:
+    post:
+      description: uploads a new cover for the playlist
+      operationId: uploadPlaylistCover
+      parameters:
+        - in: path
+          name: playlistId
+          schema:
+            type: integer
+          required: true
+      requestBody:
+        content:
+          image/*:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '201':
+          description: cover of the playlist was successfully uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaylistCoverResponse'
+        '401':
+          description: unauthorized
+        '404':
+          description: no playlist was found
+        '500':
+          description: internal server error
+    delete:
+      description: deletes the playlist's cover, if there's none no-op
+      operationId: deletePlaylistCover
+      parameters:
+        - in: path
+          name: playlistId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: cover of the playlist was successfully deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaylistCoverResponse'
+        '401':
+          description: unauthorized
+        '404':
+          description: no playlist was found
+        '500':
+          description: internal server error
+    get:
+      description: fetching cover of the playlist
+      operationId: getPlaylistCover
+      parameters:
+        - in: path
+          name: playlistId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: cover of the playlist was successfully fetched
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: unauthorized
+        '404':
+          description: no playlist was found
+        '500':
+          description: internal server error
+
+  /album/create:
+    post:
+      summary: creates new album
+      operationId: createAlbum
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AlbumCreateRequest'
+      responses:
+        '201':
+          description: album was created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumCreateResponse'
+        '401':
+          description: unauthorized
+        '500':
+          description: internal server error
+
+  /album/{albumId}:
+    get:
+      summary: get info about the album
+      operationId: getAlbum
+      parameters:
+        - in: path
+          name: albumId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: album data was successfully fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumInfoResponse'
+        '401':
+          description: unauthorized
+        '404':
+          description: no album found
+        '500':
+          description: internal server error
+    delete:
+      summary: deletes album by id
+      operationId: deleteAlbum
+      parameters:
+        - in: path
+          name: albumId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: album was successfully deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumDeleteResponse'
+        '401':
+          description: unauthorized
+        '404':
+          description: no album found
+        '500':
+          description: internal server error
+
+  /album/{albumId}/cover:
+    post:
+      description: uploads a new cover for the album
+      operationId: uploadAlbumCover
+      parameters:
+        - in: path
+          name: albumId
+          schema:
+            type: integer
+          required: true
+      requestBody:
+        content:
+          image/*:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '201':
+          description: cover of the album was successfully uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumCoverResponse'
+        '401':
+          description: unauthorized
+        '404':
+          description: no album was found
+        '500':
+          description: internal server error
+    delete:
+      description: deletes the album's cover, if there's none no-op
+      operationId: deleteAlbumCover
+      parameters:
+        - in: path
+          name: albumId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: cover of the album was successfully deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumCoverResponse'
+        '401':
+          description: unauthorized
+        '404':
+          description: no album was found
+        '500':
+          description: internal server error
+    get:
+      description: fetching cover of the album
+      operationId: getAlbumCover
+      parameters:
+        - in: path
+          name: albumId
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: cover of the album was successfully fetched
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: unauthorized
+        '404':
+          description: no album was found
+        '500':
+          description: internal server error
