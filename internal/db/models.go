@@ -26,13 +26,15 @@ type Playlist struct {
 }
 
 type Track struct {
-	ID               int32
-	Name             string
-	Duration         int32
-	IsUploadedByUser bool
-	Url              string
-	ArtistID         int32
-	AlbumID          int32
+	ID       int32
+	Name     string
+	Duration int32
+	ArtistID int32
+}
+
+type TrackAlbum struct {
+	TrackID int32
+	AlbumID int32
 }
 
 type TrackPlaylist struct {

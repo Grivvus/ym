@@ -6,7 +6,7 @@ CREATE TABLE track (
     duration INTEGER NOT NULL,
     url TEXT UNIQUE,
     artist_id INTEGER NOT NULL,
-    FOREIGN KEY (artist_id) REFERENCES artist (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artist (id) ON DELETE CASCADE
 );
 -- +goose StatementEnd
 
