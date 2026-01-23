@@ -25,7 +25,6 @@ import (
 )
 
 func main() {
-
 	err := godotenv.Load(".env.minio", ".env")
 	if err != nil {
 		slog.Error("Can't load .env file", "err", err)
@@ -51,9 +50,18 @@ func main() {
 	slog.Info("connection to the storage was created")
 
 	dbInst := db.New(pool)
+
 	authService := service.NewAuthService(dbInst)
 	userService := service.NewUserService(dbInst, storageClient)
-	var server api.ServerInterface = handlers.NewRootHandler(authService, userService)
+	albumService := service.NewAlbumService(dbInst, storageClient)
+	playlistService := service.NewPlaylistService(dbInst, storageClient)
+	trackService := service.NewTrackService(dbInst, storageClient)
+	artistService := service.NewArtistService(dbInst, storageClient)
+
+	var server api.ServerInterface = handlers.NewRootHandler(
+		authService, userService, albumService, artistService,
+		trackService, playlistService,
+	)
 
 	r := chi.NewMux()
 
