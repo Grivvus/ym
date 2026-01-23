@@ -1,7 +1,7 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    queries: "queries/"
+    queries: ["queries/", "queries/artist/", "queries/playlist/", "queries/album/", "queries/track/"]
     schema: "schemas/"
     gen:
       go:

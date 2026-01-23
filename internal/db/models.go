@@ -28,7 +28,7 @@ type Playlist struct {
 type Track struct {
 	ID       int32
 	Name     string
-	Duration int32
+	Duration pgtype.Int4
 	ArtistID int32
 }
 
