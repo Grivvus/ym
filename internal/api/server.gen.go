@@ -44,17 +44,17 @@ type AlbumInfoResponse struct {
 
 // ArtistCreateRequest defines model for ArtistCreateRequest.
 type ArtistCreateRequest struct {
-	ArtistName *string `json:"artistName,omitempty"`
+	ArtistName string `json:"artistName"`
 }
 
 // ArtistCreateResponse defines model for ArtistCreateResponse.
 type ArtistCreateResponse struct {
-	ArtistId *int `json:"artistId,omitempty"`
+	ArtistId int `json:"artistId"`
 }
 
 // ArtistDeleteResponse defines model for ArtistDeleteResponse.
 type ArtistDeleteResponse struct {
-	ArtistId *int `json:"artistId,omitempty"`
+	ArtistId int `json:"artistId"`
 }
 
 // ArtistImageResponse defines model for ArtistImageResponse.
@@ -64,10 +64,10 @@ type ArtistImageResponse struct {
 
 // ArtistInfoResponse defines model for ArtistInfoResponse.
 type ArtistInfoResponse struct {
-	ArtistAlbums   *[]int  `json:"artistAlbums,omitempty"`
+	ArtistAlbums   []int   `json:"artistAlbums"`
 	ArtistCoverUrl *string `json:"artistCoverUrl,omitempty"`
-	ArtistId       *int    `json:"artistId,omitempty"`
-	ArtistName     *string `json:"artistName,omitempty"`
+	ArtistId       int     `json:"artistId"`
+	ArtistName     string  `json:"artistName"`
 }
 
 // ErrorResponse defines model for ErrorResponse.

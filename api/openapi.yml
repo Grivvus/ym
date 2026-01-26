@@ -125,18 +125,26 @@ components:
 
     ArtistCreateRequest:
       type: object
+      required:
+        - artistName
       properties:
         artistName:
           type: string
 
     ArtistCreateResponse:
       type: object
+      required:
+        - artistId
       properties:
         artistId:
           type: integer
 
     ArtistInfoResponse:
       type: object
+      required:
+        - artistId
+        - artistName
+        - artistAlbums
       properties:
         artistId:
           type: integer
@@ -151,6 +159,8 @@ components:
 
     ArtistDeleteResponse:
       type: object
+      required:
+        - artistId
       properties:
         artistId:
           type: integer

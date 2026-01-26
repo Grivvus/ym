@@ -41,37 +41,17 @@ func (q *Queries) GetAlbum(ctx context.Context) ([]GetAlbumRow, error) {
 	return items, nil
 }
 
-const getArtist = `-- name: GetArtist :many
-SELECT "artist".id, "artist".name, "album".id
-    from "artist" INNER JOIN "album"
-    ON "artist".id = "album".artist_id
+const getArtist = `-- name: GetArtist :one
+SELECT "artist".id, "artist".name
+    from "artist" 
 where "artist".id = $1
 `
 
-type GetArtistRow struct {
-	ID   int32
-	Name string
-	ID_2 int32
-}
-
-func (q *Queries) GetArtist(ctx context.Context, id int32) ([]GetArtistRow, error) {
-	rows, err := q.db.Query(ctx, getArtist, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetArtistRow
-	for rows.Next() {
-		var i GetArtistRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.ID_2); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetArtist(ctx context.Context, id int32) (Artist, error) {
+	row := q.db.QueryRow(ctx, getArtist, id)
+	var i Artist
+	err := row.Scan(&i.ID, &i.Name)
+	return i, err
 }
 
 const getPlaylist = `-- name: GetPlaylist :many

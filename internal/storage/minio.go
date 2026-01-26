@@ -25,16 +25,30 @@ func (m minioStorage) GetTrack(
 	return m.get(ctx, "tracks", trackID, minio.GetObjectOptions{})
 }
 
-func (m minioStorage) PutCover(
-	ctx context.Context, coverID string, r io.Reader,
+func (m minioStorage) RemoveTrack(ctx context.Context, trackID string) error {
+	panic("not implemented")
+}
+
+func (m minioStorage) PutImage(
+	ctx context.Context, id string, r io.Reader,
 ) error {
 	panic("not implemented")
 }
 
-func (m minioStorage) GetCover(
-	ctx context.Context, coverID string,
+func (m minioStorage) GetImage(
+	ctx context.Context, id string,
 ) ([]byte, error) {
-	return m.get(ctx, "covers", coverID, minio.GetObjectOptions{})
+	return m.get(ctx, "images", id, minio.GetObjectOptions{})
+}
+
+func (m minioStorage) ImageExist(ctx context.Context, id string) bool {
+	_, err := m.get(ctx, "images", id, minio.GetObjectOptions{})
+	return err != nil
+}
+
+func (m minioStorage) RemoveImage(ctx context.Context, id string) error {
+	err := m.client.RemoveObject(ctx, "images", id, minio.RemoveObjectOptions{})
+	return err
 }
 
 func (m minioStorage) get(
@@ -51,7 +65,7 @@ func (m minioStorage) get(
 func (m minioStorage) createBucketsIfNotExists(ctx context.Context) error {
 	// this could be a concurrent checks
 	// will see on a benchmarks if it's needed
-	for _, bucketName := range []string{"covers", "tracks"} {
+	for _, bucketName := range []string{"images", "tracks"} {
 		found, err := m.client.BucketExists(ctx, bucketName)
 		if err != nil {
 			return err

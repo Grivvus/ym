@@ -18,9 +18,12 @@ type Storage interface {
 	PutTrack(ctx context.Context, trackID string, r io.Reader) error
 	// may return some type, that represents more info about object and implements io.Reader
 	GetTrack(ctx context.Context, trackID string) ([]byte, error)
+	RemoveTrack(ctx context.Context, trackID string) error
 
-	PutCover(ctx context.Context, coverID string, r io.Reader) error
-	GetCover(ctx context.Context, coverID string) ([]byte, error)
+	PutImage(ctx context.Context, imageID string, r io.Reader) error
+	GetImage(ctx context.Context, imageID string) ([]byte, error)
+	RemoveImage(ctx context.Context, imageID string) error
+	ImageExist(ctx context.Context, imageID string) bool
 }
 
 func New(cfg utils.Config) (Storage, error) {
