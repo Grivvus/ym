@@ -70,30 +70,35 @@ components:
 
     ErrorResponse:
       type: object
+      required:
+        - error
       properties:
         error:
           type: string
 
     MessageResponse:
       type: object
+      required:
+        - msg
       properties:
         msg:
           type: string
 
-    LoginErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-
     TrackUploadSuccessResponse:
       type: object
+      required:
+        - trackId
       properties:
         trackId:
           type: integer
 
     TrackUploadRequest:
       type: object
+      required:
+        - name
+        - albumId
+        - artistId
+        - file
       properties:
         name:
           type: string
@@ -107,6 +112,13 @@ components:
 
     TrackMetadata:
       type: object
+      required:
+        - trackId
+        - name
+        - artistId
+        - trackFastPreset
+        - trackStandardPreset
+        - trackHighPreset
       properties:
         trackId:
           type: integer
@@ -130,6 +142,9 @@ components:
       properties:
         artistName:
           type: string
+        artistImage:
+          type: string
+          format: binary
 
     ArtistCreateResponse:
       type: object
@@ -167,12 +182,17 @@ components:
 
     ArtistImageResponse:
       type: object
+      required:
+        - artistId
       properties:
         artistId:
           type: integer
 
     PlaylistCreateRequest:
       type: object
+      required:
+        - ownderId
+        - playlistName
       properties:
         ownerId:
           type: integer
@@ -184,12 +204,18 @@ components:
 
     PlaylistCreateResponse:
       type: object
+      required:
+        - playlistId
       properties:
         playlistId:
           type: integer
 
     PlaylistInfoResponse:
       type: object
+      required:
+        - playlistId
+        - playlistName
+        - tracks
       properties:
         playlistId:
           type: integer
@@ -204,18 +230,25 @@ components:
 
     PlaylistDeleteResponse:
       type: object
+      required:
+        - playlistId
       properties:
         playlistId:
           type: integer
 
     PlaylistCoverResponse:
       type: object
+      required:
+        - playlistId
       properties:
         playlistId:
           type: integer
 
     AlbumCreateRequest:
       type: object
+      required:
+        - ownerId
+        - albumName
       properties:
         ownerId:
           type: integer
@@ -227,12 +260,18 @@ components:
 
     AlbumCreateResponse:
       type: object
+      required:
+        - albumId
       properties:
         albumId:
           type: integer
 
     AlbumInfoResponse:
       type: object
+      required:
+        - albumId
+        - albumName
+        - tracks
       properties:
         albumId:
           type: integer
@@ -247,12 +286,16 @@ components:
 
     AlbumDeleteResponse:
       type: object
+      required:
+        - albumId
       properties:
         albumId:
           type: integer
 
     AlbumCoverResponse:
       type: object
+      required:
+        - albumId
       properties:
         albumId:
           type: integer
@@ -280,7 +323,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
 
   /auth/register:
     post:
