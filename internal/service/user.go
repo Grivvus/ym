@@ -14,14 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type ErrNoSuchUser struct {
-	identifier any
-}
-
-func (e ErrNoSuchUser) Error() string {
-	return fmt.Sprintf("user %v not found", e.identifier)
-}
-
 type UserService struct {
 	queries *db.Queries
 	st      storage.Storage
@@ -42,7 +34,7 @@ func (u *UserService) GetUserByID(
 	if err != nil {
 		slog.Error("GetuserByID", "err", err)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ret, ErrNoSuchUser{identifier: userID}
+			return ret, NewErrNotFound("user", userID)
 		}
 		return ret, fmt.Errorf("unkown server error: %w", err)
 	}
@@ -81,7 +73,7 @@ func (u *UserService) ChangeUser(
 	var ret api.UserReturn
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ret, ErrNoSuchUser{identifier: userId}
+			return ret, NewErrNotFound("user", userId)
 		}
 		return ret, fmt.Errorf("unkown db error: %w", err)
 	}
@@ -102,7 +94,7 @@ func (u *UserService) ChangePassword(
 	user, err := u.queries.GetUserByID(ctx, int32(userId))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNoSuchUser{identifier: userId}
+			return NewErrNotFound("user", userId)
 		}
 		return fmt.Errorf("unkown db error: %w", err)
 	}

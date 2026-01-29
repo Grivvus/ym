@@ -21,7 +21,7 @@ func (u UserHandlers) GetUserById(
 	ctx := context.TODO()
 	user, err := u.userService.GetUserByID(ctx, userId)
 	if err != nil {
-		if errors.Is(err, service.ErrNoSuchUser{}) {
+		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "Wrong username", http.StatusBadRequest)
 		} else {
 			http.Error(w, "", http.StatusInternalServerError)
@@ -53,7 +53,7 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 	}
 	resp, err := u.userService.ChangeUser(ctx, userId, toUpdate)
 	if err != nil {
-		if errors.Is(err, service.ErrNoSuchUser{}) {
+		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "No such user", http.StatusBadRequest)
 		} else {
 			http.Error(w, "", http.StatusInternalServerError)
@@ -78,7 +78,7 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 	err = u.userService.ChangePassword(ctx, userId, updatePassword)
 	if err != nil {
 		slog.Error("UserHandler.ChangePassword", "error", err)
-		if errors.Is(err, service.ErrNoSuchUser{}) {
+		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "Old password is wrong", http.StatusBadRequest)
 		} else {
 			http.Error(w, "", http.StatusInternalServerError)

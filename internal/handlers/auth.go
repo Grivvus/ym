@@ -29,7 +29,7 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err.Error() == "wrong password" {
 			http.Error(w, "Invalid password", http.StatusBadRequest)
-		} else if errors.Is(err, service.ErrNoSuchUser{}) {
+		} else if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "Invalid username", http.StatusBadRequest)
 		} else {
 			http.Error(w, "", http.StatusInternalServerError)

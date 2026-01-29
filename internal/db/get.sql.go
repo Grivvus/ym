@@ -13,6 +13,7 @@ const getAlbum = `-- name: GetAlbum :many
 SELECT "album".id, "album".name, "track_album".track_id
     from "album" inner join "track_album"
     ON "album".id = "track_album".album_id
+WHERE "album".id = $1
 `
 
 type GetAlbumRow struct {
@@ -21,8 +22,8 @@ type GetAlbumRow struct {
 	TrackID int32
 }
 
-func (q *Queries) GetAlbum(ctx context.Context) ([]GetAlbumRow, error) {
-	rows, err := q.db.Query(ctx, getAlbum)
+func (q *Queries) GetAlbum(ctx context.Context, id int32) ([]GetAlbumRow, error) {
+	rows, err := q.db.Query(ctx, getAlbum, id)
 	if err != nil {
 		return nil, err
 	}

@@ -11,14 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type ErrNoSuchArtist struct {
-	identifier any
-}
-
-func (e ErrNoSuchArtist) Error() string {
-	return fmt.Sprintf("No such artist: %v", e.identifier)
-}
-
 type ArtistService struct {
 	queries *db.Queries
 	st      storage.Storage
@@ -45,7 +37,7 @@ func (s *ArtistService) Get(ctx context.Context, id int) (api.ArtistInfoResponse
 			artist, err := s.queries.GetArtist(ctx, int32(id))
 			if err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
-					return ret, ErrNoSuchArtist{identifier: id}
+					return ret, NewErrNotFound("artist", id)
 				}
 				return ret, fmt.Errorf("unkown server error: %w", err)
 			}
@@ -87,7 +79,7 @@ func (s *ArtistService) Delete(ctx context.Context, id int) (api.ArtistDeleteRes
 	artist, err := s.queries.GetArtist(ctx, int32(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ret, ErrNoSuchArtist{identifier: id}
+			return ret, NewErrNotFound("artist", id)
 		}
 		return ret, fmt.Errorf("unkown server error: %w", err)
 	}
@@ -109,6 +101,9 @@ func (s *ArtistService) Create(
 	artist, err := s.queries.CreateArtist(ctx, artistInfo.ArtistName)
 	if err != nil {
 		return ret, fmt.Errorf("unkown server error: %w", err)
+	}
+	if artistInfo.ArtistImage != nil {
+		// upload artist's image
 	}
 	ret.ArtistId = int(artist.ID)
 	return ret, nil
