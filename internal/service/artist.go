@@ -61,7 +61,7 @@ func (s *ArtistService) Get(ctx context.Context, id int) (api.ArtistInfoResponse
 	ret.ArtistId = artistID
 	ret.ArtistName = artistName
 
-	artistImageID := getArtistImageID(artistID, artistName)
+	artistImageID := ImageID("artist", artistID, artistName)
 	if s.st.ImageExist(ctx, artistImageID) {
 		url := fmt.Sprintf("http://my_url/?type=image,id=%v", artistImageID)
 		ret.ArtistCoverUrl = &url
@@ -78,12 +78,14 @@ func (s *ArtistService) Delete(ctx context.Context, id int) (api.ArtistDeleteRes
 	ret := api.ArtistDeleteResponse{ArtistId: id}
 	artist, err := s.queries.GetArtist(ctx, int32(id))
 	if err != nil {
+		// delete artist's, that doesn't exist is noop
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ret, NewErrNotFound("artist", id)
+			return ret, nil
 		}
 		return ret, fmt.Errorf("unkown server error: %w", err)
 	}
-	err = s.st.RemoveImage(ctx, getArtistImageID(int(artist.ID), artist.Name))
+	/* could i make this 2 ops transactional? */
+	err = s.st.RemoveImage(ctx, ImageID("artist", int(artist.ID), artist.Name))
 	if err != nil {
 		return ret, fmt.Errorf("can't delete artist image: %w", err)
 	}
@@ -107,8 +109,4 @@ func (s *ArtistService) Create(
 	}
 	ret.ArtistId = int(artist.ID)
 	return ret, nil
-}
-
-func getArtistImageID(artistID int, artistName string) string {
-	return fmt.Sprintf("%v_%v", artistID, artistName)
 }

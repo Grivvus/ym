@@ -47,7 +47,7 @@ func (s *AlbumService) Get(
 	ctx context.Context, albumID int,
 ) (api.AlbumInfoResponse, error) {
 	var ret api.AlbumInfoResponse
-	albumTracks, err := s.queries.GetAlbum(ctx, int32(albumID))
+	albumTracks, err := s.queries.GetAlbumWithTracks(ctx, int32(albumID))
 	if err != nil {
 		// no tracks in album, but album exists
 		// could be valid state
@@ -66,11 +66,20 @@ func (s *AlbumService) Get(
 func (s *AlbumService) Delete(
 	ctx context.Context, albumID int,
 ) (api.AlbumDeleteResponse, error) {
-	var ret api.AlbumDeleteResponse
-	err := s.queries.DeleteAlbum(ctx, int32(albumID))
+	var ret = api.AlbumDeleteResponse{AlbumId: albumID}
+	album, err := s.queries.GetAlbum(ctx, int32(albumID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ret, nil
+		}
+	}
+	err = s.st.RemoveImage(ctx, ImageID("album", int(album.ID), album.Name))
+	if err != nil {
+		return ret, fmt.Errorf("Can't delete image: %w", err)
+	}
+	err = s.queries.DeleteAlbum(ctx, int32(albumID))
 	if err != nil {
 		return ret, err
 	}
-	ret.AlbumId = albumID
 	return ret, nil
 }

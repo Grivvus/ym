@@ -43,11 +43,7 @@ func (h ArtistHandlers) DeleteArtist(w http.ResponseWriter, r *http.Request, art
 	ctx := context.TODO()
 	response, err := h.artistService.Delete(ctx, artistId)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, "Artist with this id is not found", http.StatusNotFound)
-		} else {
-			http.Error(w, fmt.Sprintf("can't delete artist: %v", err.Error()), http.StatusInternalServerError)
-		}
+		http.Error(w, fmt.Sprintf("can't delete artist: %v", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
