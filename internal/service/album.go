@@ -8,6 +8,7 @@ import (
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
+	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -36,7 +37,20 @@ func (s *AlbumService) Create(
 		return ret, fmt.Errorf("unkown server error: %w", err)
 	}
 	if albumInfo.AlbumCover != nil {
-		// upload album cover
+		rc, err := albumInfo.AlbumCover.Reader()
+		if err != nil {
+			// assertion
+			panic(err)
+		}
+		defer func() { _ = rc.Close() }()
+		r, err := transcoder.FromBase64(rc)
+		if err != nil {
+			return ret, err
+		}
+		err = s.st.PutImage(ctx, ImageID("artist", int(albumRet.ID), albumRet.Name), r)
+		if err != nil {
+			return ret, err
+		}
 	}
 	return api.AlbumCreateResponse{
 		AlbumId: int(albumRet.ID),

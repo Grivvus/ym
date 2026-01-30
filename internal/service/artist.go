@@ -8,6 +8,7 @@ import (
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
+	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -104,9 +105,27 @@ func (s *ArtistService) Create(
 	if err != nil {
 		return ret, fmt.Errorf("unkown server error: %w", err)
 	}
-	if artistInfo.ArtistImage != nil {
-		// upload artist's image
-	}
+
 	ret.ArtistId = int(artist.ID)
+
+	if artistInfo.ArtistImage != nil {
+		rc, err := artistInfo.ArtistImage.Reader()
+		if err != nil {
+			// assertion
+			panic(err)
+		}
+		defer func() { _ = rc.Close() }()
+		r, err := transcoder.FromBase64(rc)
+		if err != nil {
+			// partial success
+			// artist is created, but image wasn't uploaded
+			return ret, err
+		}
+		err = s.st.PutImage(ctx, ImageID("artist", int(artist.ID), artist.Name), r)
+		if err != nil {
+			// partial success
+			return ret, err
+		}
+	}
 	return ret, nil
 }
