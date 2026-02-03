@@ -167,6 +167,11 @@ type UserUpdate struct {
 	NewUsername string `json:"new_username"`
 }
 
+// UploadUserAvatarJSONBody defines parameters for UploadUserAvatar.
+type UploadUserAvatarJSONBody struct {
+	File openapi_types.File `json:"file"`
+}
+
 // CreateAlbumMultipartRequestBody defines body for CreateAlbum for multipart/form-data ContentType.
 type CreateAlbumMultipartRequestBody = AlbumCreateRequest
 
@@ -187,6 +192,9 @@ type UploadTrackMultipartRequestBody = TrackUploadRequest
 
 // ChangeUserJSONRequestBody defines body for ChangeUser for application/json ContentType.
 type ChangeUserJSONRequestBody = UserUpdate
+
+// UploadUserAvatarJSONRequestBody defines body for UploadUserAvatar for application/json ContentType.
+type UploadUserAvatarJSONRequestBody UploadUserAvatarJSONBody
 
 // ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
 type ChangePasswordJSONRequestBody = UserChangePassword
@@ -268,6 +276,12 @@ type ServerInterface interface {
 	// update user
 	// (PATCH /user/{userId})
 	ChangeUser(w http.ResponseWriter, r *http.Request, userId int)
+	// delete current avatar
+	// (DELETE /user/{userId}/avatar)
+	DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int)
+	// upload new user's avatar to server
+	// (POST /user/{userId}/avatar)
+	UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int)
 	// change user's password
 	// (PATCH /user/{userId}/change_password)
 	ChangePassword(w http.ResponseWriter, r *http.Request, userId int)
@@ -415,6 +429,18 @@ func (_ Unimplemented) GetUserById(w http.ResponseWriter, r *http.Request, userI
 // update user
 // (PATCH /user/{userId})
 func (_ Unimplemented) ChangeUser(w http.ResponseWriter, r *http.Request, userId int) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// delete current avatar
+// (DELETE /user/{userId}/avatar)
+func (_ Unimplemented) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// upload new user's avatar to server
+// (POST /user/{userId}/avatar)
+func (_ Unimplemented) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -992,6 +1018,56 @@ func (siw *ServerInterfaceWrapper) ChangeUser(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
+// DeleteUserAvatar operation middleware
+func (siw *ServerInterfaceWrapper) DeleteUserAvatar(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userId" -------------
+	var userId int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteUserAvatar(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UploadUserAvatar operation middleware
+func (siw *ServerInterfaceWrapper) UploadUserAvatar(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userId" -------------
+	var userId int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UploadUserAvatar(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ChangePassword operation middleware
 func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
@@ -1204,6 +1280,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/user/{userId}", wrapper.ChangeUser)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/user/{userId}/avatar", wrapper.DeleteUserAvatar)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/user/{userId}/avatar", wrapper.UploadUserAvatar)
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/user/{userId}/change_password", wrapper.ChangePassword)

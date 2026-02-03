@@ -77,7 +77,7 @@ func (a AuthService) Login(
 	if err != nil {
 		slog.Error("AuthService.Login", "error", err)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return api.TokenResponse{}, ErrNoSuchUser{identifier: user.Username}
+			return api.TokenResponse{}, NewErrNotFound("user", user.Username)
 		}
 		return api.TokenResponse{}, fmt.Errorf("Unkown error: %w", err)
 	}

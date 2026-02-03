@@ -112,3 +112,31 @@ func (u *UserService) ChangePassword(
 	}
 	return nil
 }
+
+func (u *UserService) UploadAvatar(
+	ctx context.Context, userId int, avatar api.UploadUserAvatarJSONBody,
+) error {
+	reader, err := avatar.File.Reader()
+	if err != nil {
+		return fmt.Errorf("can't get reader from avatar's file: %w", err)
+	}
+	defer func() { _ = reader.Close() }()
+	err = u.st.PutImage(ctx, ImageID("user", userId, ""), reader)
+	if err != nil {
+		return fmt.Errorf("can't upload avatar: %w", err)
+	}
+	return nil
+}
+
+func (u *UserService) DeleteAvatar(
+	ctx context.Context, userId int,
+) error {
+	err := u.st.RemoveImage(ctx, ImageID("user", userId, ""))
+	if err != nil {
+		// no switch on error, if i want to distinguish errors
+		// i should create my own on a storage level, so they
+		// will be indepentent from a concrete storage (i.e. minio, fs)
+		return fmt.Errorf("storage error: %w", err)
+	}
+	return nil
+}
