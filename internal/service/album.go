@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
@@ -96,4 +97,62 @@ func (s *AlbumService) Delete(
 		return ret, err
 	}
 	return ret, nil
+}
+
+func (s *AlbumService) DeleteCover(
+	ctx context.Context, albumID int,
+) error {
+	album, err := s.queries.GetAlbum(ctx, int32(albumID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return fmt.Errorf("can't delete image, cause: %w", err)
+	}
+	err = s.st.RemoveImage(ctx, ImageID("album", albumID, album.Name))
+	if err != nil {
+		return fmt.Errorf("can't delete image, cause: %w", err)
+	}
+	return nil
+}
+
+func (s *AlbumService) UploadCover(
+	ctx context.Context, albumID int, cover io.Reader,
+) error {
+	album, err := s.queries.GetAlbum(ctx, int32(albumID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		} else {
+			return fmt.Errorf("can't upload image, cause: %w", err)
+		}
+	}
+	rcTranscoded, err := transcoder.FromBase64(cover)
+	if err != nil {
+		return fmt.Errorf("can't upload image, cause: %w", err)
+	}
+	defer func() { _ = rcTranscoded.Close() }()
+
+	err = s.st.PutImage(ctx, ImageID("album", int(album.ID), album.Name), rcTranscoded)
+	if err != nil {
+		return fmt.Errorf("can't upload image, cause: %w", err)
+	}
+	return nil
+}
+
+func (s *AlbumService) GetCover(
+	ctx context.Context, albumID int,
+) ([]byte, error) {
+	album, err := s.queries.GetAlbum(ctx, int32(albumID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, NewErrNotFound("album", albumID)
+		}
+		return nil, fmt.Errorf("unkown server error: %w", err)
+	}
+	bimage, err := s.st.GetImage(ctx, ImageID("album", int(album.ID), album.Name))
+	if err != nil {
+		return nil, fmt.Errorf("unkown server error: %w", err)
+	}
+	return bimage, nil
 }

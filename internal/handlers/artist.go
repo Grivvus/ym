@@ -110,8 +110,5 @@ func (h ArtistHandlers) GetArtistImage(w http.ResponseWriter, r *http.Request, a
 		}
 		return
 	}
-	_, err = w.Write(bimage)
-	if err != nil {
-		slog.Error("ArtistHandlers.GetArtistImage, error on writing response:", "err", err)
-	}
+	_, _ = w.Write(bimage)
 }
