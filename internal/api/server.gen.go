@@ -88,7 +88,7 @@ type PlaylistCoverResponse struct {
 
 // PlaylistCreateRequest defines model for PlaylistCreateRequest.
 type PlaylistCreateRequest struct {
-	OwnerId       *int                `json:"ownerId,omitempty"`
+	OwnerId       int                 `json:"ownerId"`
 	PlaylistCover *openapi_types.File `json:"playlistCover,omitempty"`
 	PlaylistName  string              `json:"playlistName"`
 }

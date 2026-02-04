@@ -41,3 +41,36 @@ func (q *Queries) GetAlbumWithTracks(ctx context.Context, id int32) ([]GetAlbumW
 	}
 	return items, nil
 }
+
+const getPlaylistWithTracks = `-- name: GetPlaylistWithTracks :many
+SELECT "playlist".id, "playlist".name, "track_playlist".track_id
+    from "playlist" inner join "track_playlist"
+    ON "playlist".id = "track_playlist".playlist_id
+    WHERE "playlist".id = $1
+`
+
+type GetPlaylistWithTracksRow struct {
+	ID      int32
+	Name    string
+	TrackID int32
+}
+
+func (q *Queries) GetPlaylistWithTracks(ctx context.Context, id int32) ([]GetPlaylistWithTracksRow, error) {
+	rows, err := q.db.Query(ctx, getPlaylistWithTracks, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPlaylistWithTracksRow
+	for rows.Next() {
+		var i GetPlaylistWithTracksRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.TrackID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

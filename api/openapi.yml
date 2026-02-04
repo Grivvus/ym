@@ -191,7 +191,7 @@ components:
     PlaylistCreateRequest:
       type: object
       required:
-        - ownderId
+        - ownerId
         - playlistName
       properties:
         ownerId:

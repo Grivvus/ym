@@ -1,4 +1,4 @@
--- name: GetPlaylist :many
-SELECT "playlist".id, "playlist".name, "track_playlist".track_id
-    from "playlist" inner join "track_playlist"
-    ON "playlist".id = "track_playlist".playlist_id;
+-- name: GetPlaylist :one
+SELECT "playlist".id as id, "playlist".name as name
+    FROM "playlist"
+WHERE "playlist".id = $1;

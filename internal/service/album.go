@@ -68,6 +68,8 @@ func (s *AlbumService) Get(
 		// could be valid state
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("album", albumID)
+		} else {
+			return ret, fmt.Errorf("unkown server error: %w", err)
 		}
 	}
 	ret.AlbumId = albumID

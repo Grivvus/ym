@@ -40,36 +40,22 @@ func (q *Queries) GetArtist(ctx context.Context, id int32) (Artist, error) {
 	return i, err
 }
 
-const getPlaylist = `-- name: GetPlaylist :many
-SELECT "playlist".id, "playlist".name, "track_playlist".track_id
-    from "playlist" inner join "track_playlist"
-    ON "playlist".id = "track_playlist".playlist_id
+const getPlaylist = `-- name: GetPlaylist :one
+SELECT "playlist".id as id, "playlist".name as name
+    FROM "playlist"
+WHERE "playlist".id = $1
 `
 
 type GetPlaylistRow struct {
-	ID      int32
-	Name    string
-	TrackID int32
+	ID   int32
+	Name string
 }
 
-func (q *Queries) GetPlaylist(ctx context.Context) ([]GetPlaylistRow, error) {
-	rows, err := q.db.Query(ctx, getPlaylist)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetPlaylistRow
-	for rows.Next() {
-		var i GetPlaylistRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.TrackID); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetPlaylist(ctx context.Context, id int32) (GetPlaylistRow, error) {
+	row := q.db.QueryRow(ctx, getPlaylist, id)
+	var i GetPlaylistRow
+	err := row.Scan(&i.ID, &i.Name)
+	return i, err
 }
 
 const getTrack = `-- name: GetTrack :one
