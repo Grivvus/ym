@@ -90,12 +90,7 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 
 func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
 	ctx := context.TODO()
-	var avatar api.UploadUserAvatarJSONBody
-	err := json.NewDecoder(r.Body).Decode(&avatar)
-	if err != nil {
-		http.Error(w, "Invalid body", http.StatusBadRequest)
-	}
-	err = u.userService.UploadAvatar(ctx, userId, avatar)
+	err := u.userService.UploadAvatar(ctx, userId, r.Body)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "no such user", http.StatusNotFound)

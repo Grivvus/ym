@@ -428,15 +428,10 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          image/webp:
             schema:
-              type: object
-              required:
-                - file
-              properties:
-                file:
-                  type: string
-                  format: binary
+              type: string
+              format: binary
       responses:
         '201':
           description: avatar was successfully uploaded

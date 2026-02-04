@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 
 	"github.com/Grivvus/ym/internal/api"
@@ -115,15 +116,9 @@ func (u *UserService) ChangePassword(
 }
 
 func (u *UserService) UploadAvatar(
-	ctx context.Context, userId int, avatar api.UploadUserAvatarJSONBody,
+	ctx context.Context, userId int, avatar io.Reader,
 ) error {
-	rc, err := avatar.File.Reader()
-	if err != nil {
-		return fmt.Errorf("can't get reader from avatar's file: %w", err)
-	}
-	defer func() { _ = rc.Close() }()
-
-	rcTranscoded, err := transcoder.FromBase64(rc)
+	rcTranscoded, err := transcoder.FromBase64(avatar)
 	if err != nil {
 		return fmt.Errorf("can't transcode image: %w", err)
 	}

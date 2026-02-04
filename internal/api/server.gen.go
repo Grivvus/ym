@@ -167,11 +167,6 @@ type UserUpdate struct {
 	NewUsername string `json:"new_username"`
 }
 
-// UploadUserAvatarJSONBody defines parameters for UploadUserAvatar.
-type UploadUserAvatarJSONBody struct {
-	File openapi_types.File `json:"file"`
-}
-
 // CreateAlbumMultipartRequestBody defines body for CreateAlbum for multipart/form-data ContentType.
 type CreateAlbumMultipartRequestBody = AlbumCreateRequest
 
@@ -192,9 +187,6 @@ type UploadTrackMultipartRequestBody = TrackUploadRequest
 
 // ChangeUserJSONRequestBody defines body for ChangeUser for application/json ContentType.
 type ChangeUserJSONRequestBody = UserUpdate
-
-// UploadUserAvatarJSONRequestBody defines body for UploadUserAvatar for application/json ContentType.
-type UploadUserAvatarJSONRequestBody UploadUserAvatarJSONBody
 
 // ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
 type ChangePasswordJSONRequestBody = UserChangePassword
