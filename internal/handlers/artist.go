@@ -60,7 +60,7 @@ func (h ArtistHandlers) GetArtist(w http.ResponseWriter, r *http.Request, artist
 		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "Artist with this id is not found", http.StatusNotFound)
 		} else {
-			http.Error(w, fmt.Sprintf("can't delete artist: %v", err.Error()), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("can't get artist: %v", err.Error()), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -72,13 +72,46 @@ func (h ArtistHandlers) GetArtist(w http.ResponseWriter, r *http.Request, artist
 }
 
 func (h ArtistHandlers) DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistId int) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-func (h ArtistHandlers) GetArtistImage(w http.ResponseWriter, r *http.Request, artistId int) {
-	w.WriteHeader(http.StatusNotImplemented)
+	ctx := context.TODO()
+	err := h.artistService.DeleteImage(ctx, artistId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(api.ArtistImageResponse{ArtistId: artistId})
+	if err != nil {
+		slog.Error("ArtistHandlers.DeleteArtistImage, can't encode response", "err", err)
+	}
 }
 
 func (h ArtistHandlers) UploadArtistImage(w http.ResponseWriter, r *http.Request, artistId int) {
-	w.WriteHeader(http.StatusNotImplemented)
+	ctx := context.TODO()
+	err := h.artistService.UploadImage(ctx, artistId, r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(api.ArtistImageResponse{ArtistId: artistId})
+	if err != nil {
+		slog.Error("ArtistHandlers.UploadArtistImage, can't encode response", "err", err)
+	}
+}
+
+func (h ArtistHandlers) GetArtistImage(w http.ResponseWriter, r *http.Request, artistId int) {
+	ctx := context.TODO()
+	bimage, err := h.artistService.GetImage(ctx, artistId)
+	if err != nil {
+		if errors.Is(err, service.ErrNotFound{}) {
+			http.Error(w, "can't find artist with this id", http.StatusNotFound)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+	_, err = w.Write(bimage)
+	if err != nil {
+		slog.Error("ArtistHandlers.GetArtistImage, error on writing response:", "err", err)
+	}
 }

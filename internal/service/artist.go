@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
@@ -115,17 +116,69 @@ func (s *ArtistService) Create(
 			panic(err)
 		}
 		defer func() { _ = rc.Close() }()
-		r, err := transcoder.FromBase64(rc)
+
+		err = s.UploadImage(ctx, ret.ArtistId, rc)
 		if err != nil {
-			// partial success
-			// artist is created, but image wasn't uploaded
-			return ret, err
-		}
-		err = s.st.PutImage(ctx, ImageID("artist", int(artist.ID), artist.Name), r)
-		if err != nil {
-			// partial success
 			return ret, err
 		}
 	}
 	return ret, nil
+}
+
+func (s *ArtistService) UploadImage(
+	ctx context.Context, artistID int, file io.Reader,
+) error {
+	artist, err := s.queries.GetArtist(ctx, int32(artistID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		} else {
+			return fmt.Errorf("can't upload image, cause: %w", err)
+		}
+	}
+	rcTranscoded, err := transcoder.FromBase64(file)
+	if err != nil {
+		return fmt.Errorf("can't upload image, cause: %w", err)
+	}
+	defer func() { _ = rcTranscoded.Close() }()
+
+	err = s.st.PutImage(ctx, ImageID("artist", int(artist.ID), artist.Name), rcTranscoded)
+	if err != nil {
+		return fmt.Errorf("can't upload image, cause: %w", err)
+	}
+	return nil
+}
+
+func (s *ArtistService) DeleteImage(
+	ctx context.Context, artistID int,
+) error {
+	artist, err := s.queries.GetArtist(ctx, int32(artistID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return fmt.Errorf("can't delete image, cause: %w", err)
+	}
+	err = s.st.RemoveImage(ctx, ImageID("artist", artistID, artist.Name))
+	if err != nil {
+		return fmt.Errorf("can't delete image, cause: %w", err)
+	}
+	return nil
+}
+
+func (s *ArtistService) GetImage(
+	ctx context.Context, artistID int,
+) ([]byte, error) {
+	artist, err := s.queries.GetArtist(ctx, int32(artistID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, NewErrNotFound("artist", artistID)
+		}
+		return nil, fmt.Errorf("unkown server error: %w", err)
+	}
+	bimage, err := s.st.GetImage(ctx, ImageID("artist", int(artist.ID), artist.Name))
+	if err != nil {
+		return nil, fmt.Errorf("unkown server error: %w", err)
+	}
+	return bimage, nil
 }

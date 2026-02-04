@@ -12,7 +12,7 @@ import (
 	"github.com/kolesa-team/go-webp/webp"
 )
 
-func FromBase64(r io.Reader) (io.Reader, error) {
+func FromBase64(r io.Reader) (io.ReadCloser, error) {
 	decoded := base64.NewDecoder(base64.StdEncoding, r)
 	img, _, err := image.Decode(decoded)
 	if err != nil {

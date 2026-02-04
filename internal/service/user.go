@@ -9,6 +9,7 @@ import (
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
+	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/Grivvus/ym/internal/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -116,12 +117,19 @@ func (u *UserService) ChangePassword(
 func (u *UserService) UploadAvatar(
 	ctx context.Context, userId int, avatar api.UploadUserAvatarJSONBody,
 ) error {
-	reader, err := avatar.File.Reader()
+	rc, err := avatar.File.Reader()
 	if err != nil {
 		return fmt.Errorf("can't get reader from avatar's file: %w", err)
 	}
-	defer func() { _ = reader.Close() }()
-	err = u.st.PutImage(ctx, ImageID("user", userId, ""), reader)
+	defer func() { _ = rc.Close() }()
+
+	rcTranscoded, err := transcoder.FromBase64(rc)
+	if err != nil {
+		return fmt.Errorf("can't transcode image: %w", err)
+	}
+	defer func() { _ = rcTranscoded.Close() }()
+
+	err = u.st.PutImage(ctx, ImageID("user", userId, ""), rcTranscoded)
 	if err != nil {
 		return fmt.Errorf("can't upload avatar: %w", err)
 	}
