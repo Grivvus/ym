@@ -35,7 +35,7 @@ func main() {
 	if err != nil {
 		panic("can't create config " + err.Error())
 	}
-	pool, err := pgxpool.New(context.TODO(), formDBConnString(*cfg))
+	pool, err := pgxpool.New(context.TODO(), cfg.DBConnString())
 	if err != nil {
 		slog.Error("Can't create connection pool to a database", "err", err)
 		os.Exit(1)
@@ -108,12 +108,4 @@ func main() {
 		log.Println("Server Shutdown:", err)
 	}
 	log.Println("Server exiting")
-}
-
-func formDBConnString(cfg utils.Config) string {
-	return fmt.Sprintf(
-		"postgres://%v:%v@%v:%v/%v",
-		cfg.PostgresUser, cfg.PostgresPassword,
-		cfg.PostgresHost, cfg.PostgresPort, cfg.PostgresDB,
-	)
 }

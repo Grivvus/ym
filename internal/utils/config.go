@@ -90,3 +90,11 @@ func NewConfig() (*Config, error) {
 		S3SecureConnection: false,
 	}, nil
 }
+
+func (cfg *Config) DBConnString() string {
+	return fmt.Sprintf(
+		"postgres://%v:%v@%v:%v/%v",
+		cfg.PostgresUser, cfg.PostgresPassword,
+		cfg.PostgresHost, cfg.PostgresPort, cfg.PostgresDB,
+	)
+}
