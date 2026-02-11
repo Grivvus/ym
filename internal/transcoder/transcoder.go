@@ -28,8 +28,9 @@ func (p Preset) String() string {
 		return "high"
 	case PresetLossless:
 		return "lossless"
+	default:
+		return "unkown preset"
 	}
-	panic("unreachable")
 }
 
 const TimeoutPerPreset = 5 * time.Second

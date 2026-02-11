@@ -119,6 +119,7 @@ components:
         - trackFastPreset
         - trackStandardPreset
         - trackHighPreset
+        - trackLosslessPreset
       properties:
         trackId:
           type: integer
@@ -133,6 +134,8 @@ components:
         trackStandardPreset:
           type: string
         trackHighPreset:
+          type: string
+        trackLosslessPreset:
           type: string
 
     ArtistCreateRequest:

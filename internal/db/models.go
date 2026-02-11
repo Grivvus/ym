@@ -26,10 +26,14 @@ type Playlist struct {
 }
 
 type Track struct {
-	ID       int32
-	Name     string
-	Duration pgtype.Int4
-	ArtistID int32
+	ID                  int32
+	Name                string
+	Duration            pgtype.Int4
+	FastPresetFname     pgtype.Text
+	StandardPresetFname pgtype.Text
+	HighPresetFname     pgtype.Text
+	LosslessPresetFname pgtype.Text
+	ArtistID            int32
 }
 
 type TrackAlbum struct {

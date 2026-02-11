@@ -126,6 +126,7 @@ type TrackMetadata struct {
 	TrackFastPreset     string  `json:"trackFastPreset"`
 	TrackHighPreset     string  `json:"trackHighPreset"`
 	TrackId             int     `json:"trackId"`
+	TrackLosslessPreset string  `json:"trackLosslessPreset"`
 	TrackStandardPreset string  `json:"trackStandardPreset"`
 }
 

@@ -59,7 +59,7 @@ func (q *Queries) GetPlaylist(ctx context.Context, id int32) (GetPlaylistRow, er
 }
 
 const getTrack = `-- name: GetTrack :one
-SELECT id, name, duration, artist_id FROM "track"
+SELECT id, name, duration, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, artist_id FROM "track"
     WHERE id = $1
 `
 
@@ -70,6 +70,10 @@ func (q *Queries) GetTrack(ctx context.Context, id int32) (Track, error) {
 		&i.ID,
 		&i.Name,
 		&i.Duration,
+		&i.FastPresetFname,
+		&i.StandardPresetFname,
+		&i.HighPresetFname,
+		&i.LosslessPresetFname,
 		&i.ArtistID,
 	)
 	return i, err
