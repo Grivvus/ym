@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 
@@ -11,8 +13,16 @@ import (
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/Grivvus/ym/internal/utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+var ErrPresetCantBeSelected error = errors.New("Preset can't be selected for this track")
+
+type StreamMeta struct {
+	ContentLength uint
+	ContentType   string
+}
 
 type TrackService struct {
 	queries *db.Queries
@@ -150,6 +160,114 @@ func (s *TrackService) GetMeta(
 		TrackHighPreset:     trackInfo.HighPresetFname.String,
 		TrackLosslessPreset: trackInfo.LosslessPresetFname.String,
 	}, nil
+}
+
+func (s *TrackService) GetStreamMeta(
+	ctx context.Context, trackId int, trackQuality string,
+) (StreamMeta, error) {
+	preset, err := transcoder.PresetFromString(trackQuality)
+	if err != nil {
+		return StreamMeta{}, fmt.Errorf("Invalid name of trackQuality: %v", trackQuality)
+	}
+	fullTrackName := transcoder.TranscodedName(s.tmpFileName(trackId), preset)
+	clen, ctype, err := s.st.GetTrackInfo(ctx, fullTrackName)
+	if err != nil {
+		return StreamMeta{}, fmt.Errorf("can't fetch track info: %w", err)
+	}
+	return StreamMeta{
+		ContentLength: clen,
+		ContentType:   ctype,
+	}, nil
+}
+
+func (s *TrackService) GetStream(
+	ctx context.Context, trackID int, trackQuality string,
+) (io.ReadCloser, error) {
+	preset, err := transcoder.PresetFromString(trackQuality)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid name of trackQuality: %v", trackQuality)
+	}
+	track, trackExist, err := s.trackExists(ctx, trackID)
+	if err != nil {
+		return nil, err
+	}
+	if !trackExist {
+		return nil, fmt.Errorf("track doesn't exist")
+	}
+	preset, err = s.findClosestExistingPreset(track, preset)
+	if err != nil {
+		return nil, err
+	}
+
+	fullTrackName := transcoder.TranscodedName(s.tmpFileName(trackID), preset)
+	return s.st.GetTrack(ctx, fullTrackName)
+}
+
+func (s *TrackService) trackExists(
+	ctx context.Context, trackID int,
+) (db.Track, bool, error) {
+	track, err := s.queries.GetTrack(ctx, int32(trackID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return track, false, nil
+		} else {
+			return track, false, fmt.Errorf("unexpected db error: %w", err)
+		}
+	}
+	return track, true, nil
+}
+
+func (s *TrackService) findClosestExistingPreset(
+	track db.Track, chosenPreset transcoder.Preset,
+) (transcoder.Preset, error) {
+	switch chosenPreset {
+	// if we're looking for Lossless:
+	// find exact lossless
+	case transcoder.PresetLossless:
+		if track.LosslessPresetFname.Valid {
+			return transcoder.PresetLossless, nil
+		} else {
+			return transcoder.Preset(0), ErrPresetCantBeSelected
+		}
+		// if we're looking for high
+		// searching H->S->F
+	case transcoder.PresetHigh:
+		if track.HighPresetFname.Valid {
+			return transcoder.PresetHigh, nil
+		} else if track.StandardPresetFname.Valid {
+			return transcoder.PresetStandard, nil
+		} else if track.FastPresetFname.Valid {
+			return transcoder.PresetFast, nil
+		} else {
+			return transcoder.Preset(0), ErrPresetCantBeSelected
+		}
+		// if we're looking for standard
+		// searching S->F->H
+	case transcoder.PresetStandard:
+		if track.StandardPresetFname.Valid {
+			return transcoder.PresetStandard, nil
+		} else if track.FastPresetFname.Valid {
+			return transcoder.PresetFast, nil
+		} else if track.HighPresetFname.Valid {
+			return transcoder.PresetHigh, nil
+		} else {
+			return transcoder.Preset(0), ErrPresetCantBeSelected
+		}
+		// if we're looking for fast
+		// searching F->S->H
+	case transcoder.PresetFast:
+		if track.FastPresetFname.Valid {
+			return transcoder.PresetFast, nil
+		} else if track.StandardPresetFname.Valid {
+			return transcoder.PresetStandard, nil
+		} else if track.HighPresetFname.Valid {
+			return transcoder.PresetHigh, nil
+		} else {
+			return transcoder.Preset(0), ErrPresetCantBeSelected
+		}
+	default:
+		return transcoder.Preset(0), ErrPresetCantBeSelected
+	}
 }
 
 func (s *TrackService) tmpFileName(trackID int) string {

@@ -168,6 +168,16 @@ type UserUpdate struct {
 	NewUsername string `json:"new_username"`
 }
 
+// StreamTrackParams defines parameters for StreamTrack.
+type StreamTrackParams struct {
+	Quality *string `form:"quality,omitempty" json:"quality,omitempty"`
+}
+
+// StreamTrackHeadParams defines parameters for StreamTrackHead.
+type StreamTrackHeadParams struct {
+	Quality *string `form:"quality,omitempty" json:"quality,omitempty"`
+}
+
 // CreateAlbumMultipartRequestBody defines body for CreateAlbum for multipart/form-data ContentType.
 type CreateAlbumMultipartRequestBody = AlbumCreateRequest
 
@@ -257,6 +267,12 @@ type ServerInterface interface {
 	// uploads new track, make all transcoding stuff, stores it
 	// (POST /track/upload)
 	UploadTrack(w http.ResponseWriter, r *http.Request)
+	// getting track stream
+	// (GET /track/{id}/stream)
+	StreamTrack(w http.ResponseWriter, r *http.Request, id int, params StreamTrackParams)
+	// getting track metadata, needed for streaming
+	// (HEAD /track/{id}/stream)
+	StreamTrackHead(w http.ResponseWriter, r *http.Request, id int, params StreamTrackHeadParams)
 	// delete track
 	// (DELETE /track/{trackId})
 	DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int)
@@ -398,6 +414,18 @@ func (_ Unimplemented) UploadPlaylistCover(w http.ResponseWriter, r *http.Reques
 // uploads new track, make all transcoding stuff, stores it
 // (POST /track/upload)
 func (_ Unimplemented) UploadTrack(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// getting track stream
+// (GET /track/{id}/stream)
+func (_ Unimplemented) StreamTrack(w http.ResponseWriter, r *http.Request, id int, params StreamTrackParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// getting track metadata, needed for streaming
+// (HEAD /track/{id}/stream)
+func (_ Unimplemented) StreamTrackHead(w http.ResponseWriter, r *http.Request, id int, params StreamTrackHeadParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -911,6 +939,78 @@ func (siw *ServerInterfaceWrapper) UploadTrack(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// StreamTrack operation middleware
+func (siw *ServerInterfaceWrapper) StreamTrack(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params StreamTrackParams
+
+	// ------------- Optional query parameter "quality" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "quality", r.URL.Query(), &params.Quality)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quality", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StreamTrack(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// StreamTrackHead operation middleware
+func (siw *ServerInterfaceWrapper) StreamTrackHead(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params StreamTrackHeadParams
+
+	// ------------- Optional query parameter "quality" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "quality", r.URL.Query(), &params.Quality)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quality", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StreamTrackHead(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // DeleteTrack operation middleware
 func (siw *ServerInterfaceWrapper) DeleteTrack(w http.ResponseWriter, r *http.Request) {
 
@@ -1261,6 +1361,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/track/upload", wrapper.UploadTrack)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/track/{id}/stream", wrapper.StreamTrack)
+	})
+	r.Group(func(r chi.Router) {
+		r.Head(options.BaseURL+"/track/{id}/stream", wrapper.StreamTrackHead)
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/track/{trackId}", wrapper.DeleteTrack)

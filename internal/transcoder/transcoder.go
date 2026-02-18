@@ -18,6 +18,21 @@ const (
 	PresetLossless
 )
 
+func PresetFromString(s string) (Preset, error) {
+	switch s {
+	case "fast":
+		return PresetFast, nil
+	case "standard":
+		return PresetStandard, nil
+	case "high":
+		return PresetHigh, nil
+	case "lossless":
+		return PresetLossless, nil
+	default:
+		return Preset(0), fmt.Errorf("This preset didn't match to any of existing one")
+	}
+}
+
 func (p Preset) String() string {
 	switch p {
 	case PresetFast:
@@ -46,7 +61,7 @@ func Transcode(ctx context.Context, fname string) (map[Preset]string, error) {
 	presets := []Preset{PresetFast, PresetStandard, PresetHigh, PresetLossless}
 	transcodedFiles := make(map[Preset]string, 4)
 	for _, p := range presets {
-		newName := transcodedName(fname, p)
+		newName := TranscodedName(fname, p)
 		allArgs := []string{"-y", "-i", fname}
 		allArgs = append(allArgs, presetArgs[p]...)
 		allArgs = append(allArgs, newName)
@@ -81,7 +96,7 @@ func TranscodeConcurrent(ctx context.Context, fname string) (map[Preset]string, 
 	for _, p := range presets {
 		currentPreset := p
 		go func() {
-			newName := transcodedName(fname, currentPreset)
+			newName := TranscodedName(fname, currentPreset)
 			allArgs := []string{"-y", "-i", fname}
 			allArgs = append(allArgs, presetArgs[currentPreset]...)
 			allArgs = append(allArgs, newName)
@@ -103,7 +118,7 @@ func TranscodeConcurrent(ctx context.Context, fname string) (map[Preset]string, 
 	for {
 		select {
 		case p := <-c:
-			transcodedFiles[p] = transcodedName(fname, p)
+			transcodedFiles[p] = TranscodedName(fname, p)
 			done++
 			if done == len(presets) {
 				return transcodedFiles, nil
@@ -114,8 +129,9 @@ func TranscodeConcurrent(ctx context.Context, fname string) (map[Preset]string, 
 	}
 }
 
-func transcodedName(fname string, preset Preset) string {
+func TranscodedName(fname string, preset Preset) string {
 	var b strings.Builder
+	// skip .extension part if exist
 	if !strings.Contains(fname, ".") {
 		b.WriteString(fname)
 	} else {

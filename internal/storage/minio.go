@@ -19,9 +19,19 @@ func (m minioStorage) PutTrack(
 	panic("not implemented")
 }
 
+func (m minioStorage) GetTrackInfo(
+	ctx context.Context, trackID string,
+) (uint, string, error) {
+	info, err := m.client.StatObject(ctx, "tracks", trackID, minio.StatObjectOptions{})
+	if err != nil {
+		return 0, "", err
+	}
+	return uint(info.Size), info.ContentType, nil
+}
+
 func (m minioStorage) GetTrack(
 	ctx context.Context, trackID string,
-) ([]byte, error) {
+) (io.ReadSeekCloser, error) {
 	return m.get(ctx, "tracks", trackID, minio.GetObjectOptions{})
 }
 
@@ -38,7 +48,12 @@ func (m minioStorage) PutImage(
 func (m minioStorage) GetImage(
 	ctx context.Context, id string,
 ) ([]byte, error) {
-	return m.get(ctx, "images", id, minio.GetObjectOptions{})
+	rsc, err := m.get(ctx, "images", id, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rsc.Close() }()
+	return io.ReadAll(rsc)
 }
 
 func (m minioStorage) ImageExist(ctx context.Context, id string) bool {
@@ -53,13 +68,8 @@ func (m minioStorage) RemoveImage(ctx context.Context, id string) error {
 
 func (m minioStorage) get(
 	ctx context.Context, bucketName, objectID string, opts minio.GetObjectOptions,
-) ([]byte, error) {
-	obj, err := m.client.GetObject(ctx, bucketName, objectID, opts)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = obj.Close() }()
-	return io.ReadAll(obj)
+) (io.ReadSeekCloser, error) {
+	return m.client.GetObject(ctx, bucketName, objectID, opts)
 }
 
 func (m minioStorage) createBucketsIfNotExists(ctx context.Context) error {

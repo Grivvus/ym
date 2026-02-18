@@ -644,6 +644,92 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /track/{id}/stream:
+    head:
+      summary: getting track metadata, needed for streaming
+      operationId: streamTrackHead
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+        - in: query
+          name: quality
+          schema:
+            type: string
+          required: false
+      responses: 
+        '200':
+          description: "metadata was fetched"
+        '401':
+          description: "unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "no track found"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: getting track stream
+      operationId: streamTrack
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+        - in: query
+          name: quality
+          schema:
+            type: string
+          required: false
+      responses:
+        '200':
+          description: "start streaming"
+          schema:
+            type: string
+            content: audio/*
+        '206':
+          description: "partial"
+          schema:
+            type: string
+            content: audio/*
+        '416':
+          description: "invalid range"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: "unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "no track found"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /artist/create:
     post:
