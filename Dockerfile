@@ -6,13 +6,15 @@ RUN apt-get update && apt-get install libwebp-dev -y
 COPY go.mod go.sum ./
 RUN go mod download
 
+COPY api/openapi.yml /app/api/openapi.yml
+
 COPY . .
 
 RUN GOOS=linux go build -o server ./cmd/server/
 
 FROM debian:latest
 
-RUN apt-get update && apt-get install libwebp-dev -y
+RUN apt-get update && apt-get install ffmpeg libwebp-dev -y
 
 COPY --from=builder /app/server /usr/bin/server
 COPY --from=builder /app/api/openapi.yml /api/openapi.yml
