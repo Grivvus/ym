@@ -35,7 +35,7 @@ func main() {
 	if err != nil {
 		panic("can't create config " + err.Error())
 	}
-	pool, err := pgxpool.New(context.TODO(), cfg.DBConnString())
+	pool, err := pgxpool.New(context.Background(), cfg.DBConnString())
 	if err != nil {
 		slog.Error("Can't create connection pool to a database", "err", err)
 		os.Exit(1)

@@ -18,15 +18,22 @@ type ArtistHandlers struct {
 
 func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
 	ctx := context.TODO()
-	var artist api.ArtistCreateRequest
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&artist)
+	_, fileHeader, err := r.FormFile("artistImage")
 	if err != nil {
-		http.Error(w, "failed to decode json body", http.StatusBadRequest)
+		http.Error(w, "can't access multipart file: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	artistName := r.FormValue("artistName")
+	if artistName == "" {
+		http.Error(
+			w,
+			"can't find artistName in multipart-form or the name is empty",
+			http.StatusBadRequest,
+		)
 		return
 	}
 
-	artistResponse, err := h.artistService.Create(ctx, artist)
+	artistResponse, err := h.artistService.Create(ctx, artistName, fileHeader)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("can't create new artist: %v", err.Error()), http.StatusInternalServerError)
 		return

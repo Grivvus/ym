@@ -37,25 +37,24 @@ func (s *AlbumService) Create(
 	if err != nil {
 		return ret, fmt.Errorf("unkown server error: %w", err)
 	}
-	if albumInfo.AlbumCover != nil {
-		rc, err := albumInfo.AlbumCover.Reader()
-		if err != nil {
-			// assertion
-			panic(err)
-		}
-		defer func() { _ = rc.Close() }()
-		r, err := transcoder.FromBase64(rc)
-		if err != nil {
-			return ret, err
-		}
-		err = s.st.PutImage(ctx, ImageID("artist", int(albumRet.ID), albumRet.Name), r)
-		if err != nil {
-			return ret, err
-		}
+	ret.AlbumId = int(albumRet.ID)
+	if albumInfo.AlbumCover == nil {
+		return ret, nil
 	}
-	return api.AlbumCreateResponse{
-		AlbumId: int(albumRet.ID),
-	}, nil
+
+	rc, err := albumInfo.AlbumCover.Reader()
+	if err != nil {
+		panic(err)
+	}
+	defer rc.Close()
+	err = s.UploadCover(ctx, int(albumRet.ID), rc)
+	if err != nil {
+		go func() {
+			_ = s.queries.DeleteAlbum(ctx, int32(ret.AlbumId))
+		}()
+		return ret, fmt.Errorf("error while uploading album cover: %w", err)
+	}
+	return ret, nil
 }
 
 func (s *AlbumService) Get(
@@ -129,7 +128,7 @@ func (s *AlbumService) UploadCover(
 			return fmt.Errorf("can't upload image, cause: %w", err)
 		}
 	}
-	rcTranscoded, err := transcoder.FromBase64(cover)
+	rcTranscoded, err := transcoder.ToWebp(cover)
 	if err != nil {
 		return fmt.Errorf("can't upload image, cause: %w", err)
 	}

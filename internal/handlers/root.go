@@ -18,6 +18,7 @@ func NewRootHandler(
 ) RootHandler {
 	return RootHandler{
 		AuthHandlers:     AuthHandlers{auth},
+		ArtistHandlers:   ArtistHandlers{artist},
 		UserHandlers:     UserHandlers{user},
 		AlbumHandlers:    AlbumHandlers{album},
 		TrackHandlers:    TrackHandlers{track},

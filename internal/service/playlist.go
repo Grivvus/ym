@@ -81,7 +81,7 @@ func (s *PlaylistService) UploadCover(
 			return fmt.Errorf("can't upload image, cause: %w", err)
 		}
 	}
-	rcTranscoded, err := transcoder.FromBase64(cover)
+	rcTranscoded, err := transcoder.ToWebp(cover)
 	if err != nil {
 		return fmt.Errorf("can't upload image, cause: %w", err)
 	}

@@ -181,8 +181,8 @@ type StreamTrackHeadParams struct {
 // CreateAlbumMultipartRequestBody defines body for CreateAlbum for multipart/form-data ContentType.
 type CreateAlbumMultipartRequestBody = AlbumCreateRequest
 
-// CreateArtistJSONRequestBody defines body for CreateArtist for application/json ContentType.
-type CreateArtistJSONRequestBody = ArtistCreateRequest
+// CreateArtistMultipartRequestBody defines body for CreateArtist for multipart/form-data ContentType.
+type CreateArtistMultipartRequestBody = ArtistCreateRequest
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = UserAuth

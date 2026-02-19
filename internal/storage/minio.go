@@ -16,7 +16,7 @@ type minioStorage struct {
 func (m minioStorage) PutTrack(
 	ctx context.Context, trackID string, r io.Reader,
 ) error {
-	panic("not implemented")
+	return m.put(ctx, "tracks", trackID, r, minio.PutObjectOptions{})
 }
 
 func (m minioStorage) GetTrackInfo(
@@ -36,13 +36,13 @@ func (m minioStorage) GetTrack(
 }
 
 func (m minioStorage) RemoveTrack(ctx context.Context, trackID string) error {
-	panic("not implemented")
+	return m.remove(ctx, "tracks", trackID, minio.RemoveObjectOptions{})
 }
 
 func (m minioStorage) PutImage(
 	ctx context.Context, id string, r io.Reader,
 ) error {
-	panic("not implemented")
+	return m.put(ctx, "images", id, r, minio.PutObjectOptions{})
 }
 
 func (m minioStorage) GetImage(
@@ -62,14 +62,30 @@ func (m minioStorage) ImageExist(ctx context.Context, id string) bool {
 }
 
 func (m minioStorage) RemoveImage(ctx context.Context, id string) error {
-	err := m.client.RemoveObject(ctx, "images", id, minio.RemoveObjectOptions{})
-	return err
+	return m.remove(ctx, "images", id, minio.RemoveObjectOptions{})
 }
 
 func (m minioStorage) get(
 	ctx context.Context, bucketName, objectID string, opts minio.GetObjectOptions,
 ) (io.ReadSeekCloser, error) {
 	return m.client.GetObject(ctx, bucketName, objectID, opts)
+}
+
+func (m minioStorage) put(
+	ctx context.Context, bucketName, objectID string,
+	r io.Reader, opts minio.PutObjectOptions,
+) error {
+	uinfo, err := m.client.PutObject(ctx, bucketName, objectID, r, -1, opts)
+	_ = uinfo
+	return err
+}
+
+func (m minioStorage) remove(
+	ctx context.Context,
+	bucketName, id string,
+	opts minio.RemoveObjectOptions,
+) error {
+	return m.client.RemoveObject(ctx, bucketName, id, opts)
 }
 
 func (m minioStorage) createBucketsIfNotExists(ctx context.Context) error {

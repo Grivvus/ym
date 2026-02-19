@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
@@ -99,28 +100,33 @@ func (s *ArtistService) Delete(ctx context.Context, id int) (api.ArtistDeleteRes
 }
 
 func (s *ArtistService) Create(
-	ctx context.Context, artistInfo api.ArtistCreateRequest,
+	ctx context.Context, artistName string,
+	artistImage *multipart.FileHeader,
 ) (api.ArtistCreateResponse, error) {
 	var ret api.ArtistCreateResponse
-	artist, err := s.queries.CreateArtist(ctx, artistInfo.ArtistName)
+	artist, err := s.queries.CreateArtist(ctx, artistName)
 	if err != nil {
 		return ret, fmt.Errorf("unkown server error: %w", err)
 	}
 
 	ret.ArtistId = int(artist.ID)
+	if artistImage == nil {
+		return ret, nil
+	}
 
-	if artistInfo.ArtistImage != nil {
-		rc, err := artistInfo.ArtistImage.Reader()
-		if err != nil {
-			// assertion
-			panic(err)
-		}
-		defer func() { _ = rc.Close() }()
+	rc, err := artistImage.Open()
+	if err != nil {
+		// assertion
+		panic(err)
+	}
+	defer func() { _ = rc.Close() }()
 
-		err = s.UploadImage(ctx, ret.ArtistId, rc)
-		if err != nil {
-			return ret, err
-		}
+	err = s.UploadImage(ctx, ret.ArtistId, rc)
+	if err != nil {
+		go func() {
+			_ = s.queries.DeleteArtist(ctx, int32(ret.ArtistId))
+		}()
+		return ret, err
 	}
 	return ret, nil
 }
@@ -136,7 +142,7 @@ func (s *ArtistService) UploadImage(
 			return fmt.Errorf("can't upload image, cause: %w", err)
 		}
 	}
-	rcTranscoded, err := transcoder.FromBase64(file)
+	rcTranscoded, err := transcoder.ToWebp(file)
 	if err != nil {
 		return fmt.Errorf("can't upload image, cause: %w", err)
 	}

@@ -118,7 +118,7 @@ func (u *UserService) ChangePassword(
 func (u *UserService) UploadAvatar(
 	ctx context.Context, userId int, avatar io.Reader,
 ) error {
-	rcTranscoded, err := transcoder.FromBase64(avatar)
+	rcTranscoded, err := transcoder.ToWebp(avatar)
 	if err != nil {
 		return fmt.Errorf("can't transcode image: %w", err)
 	}
