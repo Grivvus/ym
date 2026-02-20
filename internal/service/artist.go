@@ -35,20 +35,18 @@ func (s *ArtistService) Get(ctx context.Context, id int) (api.ArtistInfoResponse
 	)
 
 	artistWithAlbums, err := s.queries.GetArtistWithAlbums(ctx, int32(id))
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			artist, err := s.queries.GetArtist(ctx, int32(id))
-			if err != nil {
-				if errors.Is(err, pgx.ErrNoRows) {
-					return ret, NewErrNotFound("artist", id)
-				}
-				return ret, fmt.Errorf("unkown server error: %w", err)
+	if len(artistWithAlbums) == 0 || errors.Is(err, pgx.ErrNoRows) {
+		artist, err := s.queries.GetArtist(ctx, int32(id))
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ret, NewErrNotFound("artist", id)
 			}
-			artistID = int(artist.ID)
-			artistName = artist.Name
-		} else {
 			return ret, fmt.Errorf("unkown server error: %w", err)
 		}
+		artistID = int(artist.ID)
+		artistName = artist.Name
+	} else if err != nil {
+		return ret, fmt.Errorf("unkown server error: %w", err)
 	}
 
 	albums := make([]int, len(artistWithAlbums))
@@ -161,7 +159,7 @@ func (s *ArtistService) DeleteImage(
 	artist, err := s.queries.GetArtist(ctx, int32(artistID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
+			return NewErrNotFound("artist", artistID)
 		}
 		return fmt.Errorf("can't delete image, cause: %w", err)
 	}
@@ -184,6 +182,9 @@ func (s *ArtistService) GetImage(
 	}
 	bimage, err := s.st.GetImage(ctx, ImageID("artist", int(artist.ID), artist.Name))
 	if err != nil {
+		if err.Error() == "The specified key does not exist." {
+			return nil, NewErrNotFound("artistImage", artistID)
+		}
 		return nil, fmt.Errorf("unkown server error: %w", err)
 	}
 	return bimage, nil

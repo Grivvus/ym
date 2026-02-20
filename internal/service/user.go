@@ -24,6 +24,7 @@ type UserService struct {
 func NewUserService(q *db.Queries, st storage.Storage) UserService {
 	return UserService{
 		queries: q,
+		st:      st,
 	}
 }
 
