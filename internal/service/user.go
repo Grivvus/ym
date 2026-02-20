@@ -53,11 +53,11 @@ func (u *UserService) GetUserByID(
 
 func (u *UserService) ChangeUser(
 	ctx context.Context,
-	userId int,
+	userID int,
 	newUserParams api.UserUpdate,
 ) (api.UserReturn, error) {
 	updateParamsDB := db.UpdateUserParams{
-		ID:       int32(userId),
+		ID:       int32(userID),
 		Username: newUserParams.NewUsername,
 	}
 	if newUserParams.NewEmail != "" {
@@ -75,7 +75,7 @@ func (u *UserService) ChangeUser(
 	var ret api.UserReturn
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ret, NewErrNotFound("user", userId)
+			return ret, NewErrNotFound("user", userID)
 		}
 		return ret, fmt.Errorf("unkown db error: %w", err)
 	}
@@ -91,12 +91,12 @@ func (u *UserService) ChangeUser(
 }
 
 func (u *UserService) ChangePassword(
-	ctx context.Context, userId int, newPasswordParams api.UserChangePassword,
+	ctx context.Context, userID int, newPasswordParams api.UserChangePassword,
 ) error {
-	user, err := u.queries.GetUserByID(ctx, int32(userId))
+	user, err := u.queries.GetUserByID(ctx, int32(userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return NewErrNotFound("user", userId)
+			return NewErrNotFound("user", userID)
 		}
 		return fmt.Errorf("unkown db error: %w", err)
 	}
@@ -105,7 +105,7 @@ func (u *UserService) ChangePassword(
 	}
 	newHashed, newSalt := utils.HashPassword(newPasswordParams.NewPassword)
 	err = u.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
-		ID:       int32(userId),
+		ID:       int32(userID),
 		Password: newHashed,
 		Salt:     newSalt,
 	})
@@ -116,7 +116,7 @@ func (u *UserService) ChangePassword(
 }
 
 func (u *UserService) UploadAvatar(
-	ctx context.Context, userId int, avatar io.Reader,
+	ctx context.Context, userID int, avatar io.Reader,
 ) error {
 	rcTranscoded, err := transcoder.ToWebp(avatar)
 	if err != nil {
@@ -124,7 +124,7 @@ func (u *UserService) UploadAvatar(
 	}
 	defer func() { _ = rcTranscoded.Close() }()
 
-	err = u.st.PutImage(ctx, ImageID("user", userId, ""), rcTranscoded)
+	err = u.st.PutImage(ctx, ImageID("user", userID, ""), rcTranscoded)
 	if err != nil {
 		return fmt.Errorf("can't upload avatar: %w", err)
 	}
@@ -132,9 +132,9 @@ func (u *UserService) UploadAvatar(
 }
 
 func (u *UserService) DeleteAvatar(
-	ctx context.Context, userId int,
+	ctx context.Context, userID int,
 ) error {
-	err := u.st.RemoveImage(ctx, ImageID("user", userId, ""))
+	err := u.st.RemoveImage(ctx, ImageID("user", userID, ""))
 	if err != nil {
 		// no switch on error, if i want to distinguish errors
 		// i should create my own on a storage level, so they

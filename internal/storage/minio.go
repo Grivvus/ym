@@ -14,15 +14,15 @@ type minioStorage struct {
 }
 
 func (m minioStorage) PutTrack(
-	ctx context.Context, trackID string, r io.Reader,
+	ctx context.Context, id string, r io.Reader,
 ) error {
-	return m.put(ctx, "tracks", trackID, r, minio.PutObjectOptions{})
+	return m.put(ctx, "tracks", id, r, minio.PutObjectOptions{})
 }
 
 func (m minioStorage) GetTrackInfo(
-	ctx context.Context, trackID string,
+	ctx context.Context, id string,
 ) (uint, string, error) {
-	info, err := m.client.StatObject(ctx, "tracks", trackID, minio.StatObjectOptions{})
+	info, err := m.client.StatObject(ctx, "tracks", id, minio.StatObjectOptions{})
 	if err != nil {
 		return 0, "", err
 	}
@@ -30,9 +30,9 @@ func (m minioStorage) GetTrackInfo(
 }
 
 func (m minioStorage) GetTrack(
-	ctx context.Context, trackID string,
+	ctx context.Context, id string,
 ) (io.ReadSeekCloser, error) {
-	return m.get(ctx, "tracks", trackID, minio.GetObjectOptions{})
+	return m.get(ctx, "tracks", id, minio.GetObjectOptions{})
 }
 
 func (m minioStorage) RemoveTrack(ctx context.Context, trackID string) error {

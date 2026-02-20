@@ -14,61 +14,61 @@ import (
 
 // AlbumCoverResponse defines model for AlbumCoverResponse.
 type AlbumCoverResponse struct {
-	AlbumId int `json:"albumId"`
+	AlbumId int `json:"album_id"`
 }
 
 // AlbumCreateRequest defines model for AlbumCreateRequest.
 type AlbumCreateRequest struct {
-	AlbumCover *openapi_types.File `json:"albumCover,omitempty"`
-	AlbumName  string              `json:"albumName"`
-	OwnerId    int                 `json:"ownerId"`
+	AlbumCover *openapi_types.File `json:"album_cover,omitempty"`
+	AlbumName  string              `json:"album_name"`
+	OwnerId    int                 `json:"owner_id"`
 }
 
 // AlbumCreateResponse defines model for AlbumCreateResponse.
 type AlbumCreateResponse struct {
-	AlbumId int `json:"albumId"`
+	AlbumId int `json:"album_id"`
 }
 
 // AlbumDeleteResponse defines model for AlbumDeleteResponse.
 type AlbumDeleteResponse struct {
-	AlbumId int `json:"albumId"`
+	AlbumId int `json:"album_id"`
 }
 
 // AlbumInfoResponse defines model for AlbumInfoResponse.
 type AlbumInfoResponse struct {
-	AlbumId   int     `json:"albumId"`
-	AlbumName string  `json:"albumName"`
-	CoverUrl  *string `json:"coverUrl,omitempty"`
+	AlbumId   int     `json:"album_id"`
+	AlbumName string  `json:"album_name"`
+	CoverUrl  *string `json:"cover_url,omitempty"`
 	Tracks    []int   `json:"tracks"`
 }
 
 // ArtistCreateRequest defines model for ArtistCreateRequest.
 type ArtistCreateRequest struct {
-	ArtistImage *openapi_types.File `json:"artistImage,omitempty"`
-	ArtistName  string              `json:"artistName"`
+	ArtistImage *openapi_types.File `json:"artist_image,omitempty"`
+	ArtistName  string              `json:"artist_name"`
 }
 
 // ArtistCreateResponse defines model for ArtistCreateResponse.
 type ArtistCreateResponse struct {
-	ArtistId int `json:"artistId"`
+	ArtistId int `json:"artist_id"`
 }
 
 // ArtistDeleteResponse defines model for ArtistDeleteResponse.
 type ArtistDeleteResponse struct {
-	ArtistId int `json:"artistId"`
+	ArtistId int `json:"artist_id"`
 }
 
 // ArtistImageResponse defines model for ArtistImageResponse.
 type ArtistImageResponse struct {
-	ArtistId int `json:"artistId"`
+	ArtistId int `json:"artist_id"`
 }
 
 // ArtistInfoResponse defines model for ArtistInfoResponse.
 type ArtistInfoResponse struct {
-	ArtistAlbums   []int   `json:"artistAlbums"`
-	ArtistCoverUrl *string `json:"artistCoverUrl,omitempty"`
-	ArtistId       int     `json:"artistId"`
-	ArtistName     string  `json:"artistName"`
+	ArtistAlbums   []int   `json:"artist_albums"`
+	ArtistCoverUrl *string `json:"artist_cover_url,omitempty"`
+	ArtistId       int     `json:"artist_id"`
+	ArtistName     string  `json:"artist_name"`
 }
 
 // ErrorResponse defines model for ErrorResponse.
@@ -83,31 +83,31 @@ type MessageResponse struct {
 
 // PlaylistCoverResponse defines model for PlaylistCoverResponse.
 type PlaylistCoverResponse struct {
-	PlaylistId int `json:"playlistId"`
+	PlaylistId int `json:"playlist_id"`
 }
 
 // PlaylistCreateRequest defines model for PlaylistCreateRequest.
 type PlaylistCreateRequest struct {
-	OwnerId       int                 `json:"ownerId"`
-	PlaylistCover *openapi_types.File `json:"playlistCover,omitempty"`
-	PlaylistName  string              `json:"playlistName"`
+	OwnerId       int                 `json:"owner_id"`
+	PlaylistCover *openapi_types.File `json:"playlist_cover,omitempty"`
+	PlaylistName  string              `json:"playlist_name"`
 }
 
 // PlaylistCreateResponse defines model for PlaylistCreateResponse.
 type PlaylistCreateResponse struct {
-	PlaylistId int `json:"playlistId"`
+	PlaylistId int `json:"playlist_id"`
 }
 
 // PlaylistDeleteResponse defines model for PlaylistDeleteResponse.
 type PlaylistDeleteResponse struct {
-	PlaylistId int `json:"playlistId"`
+	PlaylistId int `json:"playlist_id"`
 }
 
 // PlaylistInfoResponse defines model for PlaylistInfoResponse.
 type PlaylistInfoResponse struct {
-	CoverUrl     *string `json:"coverUrl,omitempty"`
-	PlaylistId   int     `json:"playlistId"`
-	PlaylistName string  `json:"playlistName"`
+	CoverUrl     *string `json:"cover_url,omitempty"`
+	PlaylistId   int     `json:"playlist_id"`
+	PlaylistName string  `json:"playlist_name"`
 	Tracks       []int   `json:"tracks"`
 }
 
@@ -120,27 +120,27 @@ type TokenResponse struct {
 
 // TrackMetadata defines model for TrackMetadata.
 type TrackMetadata struct {
-	ArtistId            int     `json:"artistId"`
-	CoverUrl            *string `json:"coverUrl,omitempty"`
+	ArtistId            int     `json:"artist_id"`
+	CoverUrl            *string `json:"cover_url,omitempty"`
 	Name                string  `json:"name"`
-	TrackFastPreset     string  `json:"trackFastPreset"`
-	TrackHighPreset     string  `json:"trackHighPreset"`
-	TrackId             int     `json:"trackId"`
-	TrackLosslessPreset string  `json:"trackLosslessPreset"`
-	TrackStandardPreset string  `json:"trackStandardPreset"`
+	TrackFastPreset     *string `json:"track_fast_preset,omitempty"`
+	TrackHighPreset     *string `json:"track_high_preset,omitempty"`
+	TrackId             int     `json:"track_id"`
+	TrackLosslessPreset *string `json:"track_lossless_preset,omitempty"`
+	TrackStandardPreset *string `json:"track_standard_preset,omitempty"`
 }
 
 // TrackUploadRequest defines model for TrackUploadRequest.
 type TrackUploadRequest struct {
-	AlbumId  int                `json:"albumId"`
-	ArtistId int                `json:"artistId"`
+	AlbumId  int                `json:"album_id"`
+	ArtistId int                `json:"artist_id"`
 	File     openapi_types.File `json:"file"`
 	Name     string             `json:"name"`
 }
 
 // TrackUploadSuccessResponse defines model for TrackUploadSuccessResponse.
 type TrackUploadSuccessResponse struct {
-	TrackId int `json:"trackId"`
+	TrackId int `json:"track_id"`
 }
 
 // UserAuth defines model for UserAuth.

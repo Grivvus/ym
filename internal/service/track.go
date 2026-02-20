@@ -119,10 +119,18 @@ func (s *TrackService) DeleteTrack(ctx context.Context, trackID int) error {
 		return fmt.Errorf("can't fetch track metadata: %w", err)
 	}
 	errs := make([]error, 0, 4)
-	errs = append(errs, s.st.RemoveTrack(ctx, metadata.TrackFastPreset))
-	errs = append(errs, s.st.RemoveTrack(ctx, metadata.TrackStandardPreset))
-	errs = append(errs, s.st.RemoveTrack(ctx, metadata.TrackHighPreset))
-	errs = append(errs, s.st.RemoveTrack(ctx, metadata.TrackLosslessPreset))
+	if metadata.TrackFastPreset != nil {
+		errs = append(errs, s.st.RemoveTrack(ctx, *metadata.TrackFastPreset))
+	}
+	if metadata.TrackStandardPreset != nil {
+		errs = append(errs, s.st.RemoveTrack(ctx, *metadata.TrackStandardPreset))
+	}
+	if metadata.TrackHighPreset != nil {
+		errs = append(errs, s.st.RemoveTrack(ctx, *metadata.TrackHighPreset))
+	}
+	if metadata.TrackLosslessPreset != nil {
+		errs = append(errs, s.st.RemoveTrack(ctx, *metadata.TrackLosslessPreset))
+	}
 	for _, err := range errs {
 		if err != nil {
 			return fmt.Errorf("can't remove track file: %w", err)
@@ -143,11 +151,23 @@ func (s *TrackService) GetMeta(
 		return api.TrackMetadata{}, fmt.Errorf("can't fetch info about track: %w", err)
 	}
 
-	if !trackInfo.FastPresetFname.Valid ||
-		!trackInfo.StandardPresetFname.Valid ||
-		!trackInfo.HighPresetFname.Valid ||
-		!trackInfo.LosslessPresetFname.Valid {
-		return api.TrackMetadata{}, fmt.Errorf("can't find existing presets for this track")
+	var (
+		fastPreset     *string
+		standardPreset *string
+		highPreset     *string
+		losslessPreset *string
+	)
+	if trackInfo.FastPresetFname.Valid {
+		fastPreset = &trackInfo.FastPresetFname.String
+	}
+	if trackInfo.StandardPresetFname.Valid {
+		standardPreset = &trackInfo.StandardPresetFname.String
+	}
+	if trackInfo.HighPresetFname.Valid {
+		highPreset = &trackInfo.HighPresetFname.String
+	}
+	if trackInfo.LosslessPresetFname.Valid {
+		losslessPreset = &trackInfo.LosslessPresetFname.String
 	}
 
 	return api.TrackMetadata{
@@ -155,10 +175,10 @@ func (s *TrackService) GetMeta(
 		ArtistId:            int(trackInfo.ArtistID),
 		CoverUrl:            nil,
 		Name:                trackInfo.Name,
-		TrackFastPreset:     trackInfo.FastPresetFname.String,
-		TrackStandardPreset: trackInfo.StandardPresetFname.String,
-		TrackHighPreset:     trackInfo.HighPresetFname.String,
-		TrackLosslessPreset: trackInfo.LosslessPresetFname.String,
+		TrackFastPreset:     fastPreset,
+		TrackStandardPreset: standardPreset,
+		TrackHighPreset:     highPreset,
+		TrackLosslessPreset: losslessPreset,
 	}, nil
 }
 

@@ -87,24 +87,24 @@ components:
     TrackUploadSuccessResponse:
       type: object
       required:
-        - trackId
+        - track_id
       properties:
-        trackId:
+        track_id:
           type: integer
 
     TrackUploadRequest:
       type: object
       required:
         - name
-        - albumId
-        - artistId
+        - album_id
+        - artist_id
         - file
       properties:
         name:
           type: string
-        albumId:
+        album_id:
           type: integer
-        artistId:
+        artist_id:
           type: integer
         file:
           type: string
@@ -113,64 +113,60 @@ components:
     TrackMetadata:
       type: object
       required:
-        - trackId
+        - track_id
         - name
-        - artistId
-        - trackFastPreset
-        - trackStandardPreset
-        - trackHighPreset
-        - trackLosslessPreset
+        - artist_id
       properties:
-        trackId:
+        track_id:
           type: integer
         name:
           type: string
-        artistId:
+        artist_id:
           type: integer
-        coverUrl:
+        cover_url:
           type: string
-        trackFastPreset:
+        track_fast_preset:
           type: string
-        trackStandardPreset:
+        track_standard_preset:
           type: string
-        trackHighPreset:
+        track_high_preset:
           type: string
-        trackLosslessPreset:
+        track_lossless_preset:
           type: string
 
     ArtistCreateRequest:
       type: object
       required:
-        - artistName
+        - artist_name
       properties:
-        artistName:
+        artist_name:
           type: string
-        artistImage:
+        artist_image:
           type: string
           format: binary
 
     ArtistCreateResponse:
       type: object
       required:
-        - artistId
+        - artist_id
       properties:
-        artistId:
+        artist_id:
           type: integer
 
     ArtistInfoResponse:
       type: object
       required:
-        - artistId
-        - artistName
-        - artistAlbums
+        - artist_id
+        - artist_name
+        - artist_albums
       properties:
-        artistId:
+        artist_id:
           type: integer
-        artistName:
+        artist_name:
           type: string
-        artistCoverUrl:
+        artist_cover_url:
           type: string
-        artistAlbums:
+        artist_albums:
           type: array
           items:
             type: integer
@@ -178,53 +174,53 @@ components:
     ArtistDeleteResponse:
       type: object
       required:
-        - artistId
+        - artist_id
       properties:
-        artistId:
+        artist_id:
           type: integer
 
     ArtistImageResponse:
       type: object
       required:
-        - artistId
+        - artist_id
       properties:
-        artistId:
+        artist_id:
           type: integer
 
     PlaylistCreateRequest:
       type: object
       required:
-        - ownerId
-        - playlistName
+        - owner_id
+        - playlist_name
       properties:
-        ownerId:
+        owner_id:
           type: integer
-        playlistName:
+        playlist_name:
           type: string
-        playlistCover:
+        playlist_cover:
           type: string
           format: binary
 
     PlaylistCreateResponse:
       type: object
       required:
-        - playlistId
+        - playlist_id
       properties:
-        playlistId:
+        playlist_id:
           type: integer
 
     PlaylistInfoResponse:
       type: object
       required:
-        - playlistId
-        - playlistName
+        - playlist_id
+        - playlist_name
         - tracks
       properties:
-        playlistId:
+        playlist_id:
           type: integer
-        playlistName:
+        playlist_name:
           type: string
-        coverUrl:
+        cover_url:
           type: string
         tracks:
           type: array
@@ -234,53 +230,53 @@ components:
     PlaylistDeleteResponse:
       type: object
       required:
-        - playlistId
+        - playlist_id
       properties:
-        playlistId:
+        playlist_id:
           type: integer
 
     PlaylistCoverResponse:
       type: object
       required:
-        - playlistId
+        - playlist_id
       properties:
-        playlistId:
+        playlist_id:
           type: integer
 
     AlbumCreateRequest:
       type: object
       required:
-        - ownerId
-        - albumName
+        - owner_id
+        - album_name
       properties:
-        ownerId:
+        owner_id:
           type: integer
-        albumName:
+        album_name:
           type: string
-        albumCover:
+        album_cover:
           type: string
           format: binary
 
     AlbumCreateResponse:
       type: object
       required:
-        - albumId
+        - album_id
       properties:
-        albumId:
+        album_id:
           type: integer
 
     AlbumInfoResponse:
       type: object
       required:
-        - albumId
-        - albumName
+        - album_id
+        - album_name
         - tracks
       properties:
-        albumId:
+        album_id:
           type: integer
-        albumName:
+        album_name:
           type: string
-        coverUrl:
+        cover_url:
           type: string
         tracks:
           type: array
@@ -290,17 +286,17 @@ components:
     AlbumDeleteResponse:
       type: object
       required:
-        - albumId
+        - album_id
       properties:
-        albumId:
+        album_id:
           type: integer
 
     AlbumCoverResponse:
       type: object
       required:
-        - albumId
+        - album_id
       properties:
-        albumId:
+        album_id:
           type: integer
 
 paths:
