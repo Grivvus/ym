@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/service"
@@ -17,13 +18,24 @@ type AlbumHandlers struct {
 
 func (h AlbumHandlers) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 	ctx := context.TODO()
-	var albumData api.AlbumCreateRequest
-	err := json.NewDecoder(r.Body).Decode(&albumData)
-	if err != nil {
-		http.Error(w, "can't decode request body", http.StatusBadRequest)
+	_, fileHeader, _ := r.FormFile("album_cover")
+	artist := r.FormValue("artist_id")
+	name := r.FormValue("album_name")
+	if name == "" || artist == "" {
+		http.Error(w, "Form fields are not set or empty", http.StatusBadRequest)
 		return
 	}
-	albumResponse, err := h.albumService.Create(ctx, albumData)
+	artistID, err := strconv.Atoi(artist)
+	if err != nil {
+		http.Error(w, "artist_id must be int", http.StatusBadRequest)
+		return
+	}
+	var params = service.AlbumCreateParams{
+		ArtistID: artistID,
+		Name:     name,
+	}
+
+	albumResponse, err := h.albumService.Create(ctx, params, fileHeader)
 	if err != nil {
 		http.Error(w, "can't create album, cause: "+err.Error(), http.StatusInternalServerError)
 		return

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
@@ -13,6 +14,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type PlaylistCreateParams struct {
+	OwnerID int
+	Name    string
+}
 
 type PlaylistService struct {
 	queries *db.Queries
@@ -27,16 +33,38 @@ func NewPlaylistService(q *db.Queries, st storage.Storage) PlaylistService {
 }
 
 func (s *PlaylistService) Create(
-	ctx context.Context, playlistInfo api.PlaylistCreateRequest,
+	ctx context.Context, playlistInfo PlaylistCreateParams,
+	coverFileHeader *multipart.FileHeader,
 ) (api.PlaylistCreateResponse, error) {
+	var ret api.PlaylistCreateResponse
 	playlist, err := s.queries.CreatePlaylist(ctx, db.CreatePlaylistParams{
-		Name:    playlistInfo.PlaylistName,
-		OwnerID: pgtype.Int4{Int32: int32(playlistInfo.OwnerId), Valid: true},
+		Name:    playlistInfo.Name,
+		OwnerID: pgtype.Int4{Int32: int32(playlistInfo.OwnerID), Valid: true},
 	})
 	if err != nil {
-		return api.PlaylistCreateResponse{}, fmt.Errorf("can't create playlist: %w", err)
+		return ret, fmt.Errorf("can't create playlist: %w", err)
 	}
-	return api.PlaylistCreateResponse{PlaylistId: int(playlist.ID)}, nil
+	ret.PlaylistId = int(playlist.ID)
+	// no cover was provided
+	if coverFileHeader == nil {
+		return ret, nil
+	}
+
+	f, err := coverFileHeader.Open()
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = f.Close() }()
+
+	err = s.UploadCover(ctx, ret.PlaylistId, f)
+	if err != nil {
+		go func() {
+			_ = s.DeleteCover(ctx, ret.PlaylistId)
+		}()
+		return ret, err
+	}
+
+	return ret, nil
 }
 
 func (s *PlaylistService) Delete(
@@ -121,7 +149,7 @@ func (s *PlaylistService) GetCover(
 		}
 		return nil, fmt.Errorf("unkown server error: %w", err)
 	}
-	bimage, err := s.st.GetImage(ctx, ImageID("album", int(playlist.ID), playlist.Name))
+	bimage, err := s.st.GetImage(ctx, ImageID("playlist", int(playlist.ID), playlist.Name))
 	if err != nil {
 		return nil, fmt.Errorf("unkown server error: %w", err)
 	}

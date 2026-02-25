@@ -21,7 +21,7 @@ type AlbumCoverResponse struct {
 type AlbumCreateRequest struct {
 	AlbumCover *openapi_types.File `json:"album_cover,omitempty"`
 	AlbumName  string              `json:"album_name"`
-	OwnerId    int                 `json:"owner_id"`
+	ArtistId   int                 `json:"artist_id"`
 }
 
 // AlbumCreateResponse defines model for AlbumCreateResponse.
@@ -134,8 +134,8 @@ type TrackMetadata struct {
 type TrackUploadRequest struct {
 	AlbumId  int                `json:"album_id"`
 	ArtistId int                `json:"artist_id"`
-	File     openapi_types.File `json:"file"`
 	Name     string             `json:"name"`
+	Track    openapi_types.File `json:"track"`
 }
 
 // TrackUploadSuccessResponse defines model for TrackUploadSuccessResponse.

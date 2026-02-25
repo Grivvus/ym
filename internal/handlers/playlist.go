@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/service"
@@ -17,13 +18,25 @@ type PlaylistHandlers struct {
 
 func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := context.TODO()
-	var playlistInfo api.PlaylistCreateRequest
-	err := json.NewDecoder(r.Body).Decode(&playlistInfo)
-	if err != nil {
-		http.Error(w, "can't decode request's body: "+err.Error(), http.StatusBadRequest)
+	_, coverFileHeader, _ := r.FormFile("playlist_cover")
+
+	var params service.PlaylistCreateParams
+	owner := r.FormValue("owner_id")
+	playlistName := r.FormValue("playlist_name")
+	if owner == "" || playlistName == "" {
+		http.Error(w, "Form fields are not set or empty", http.StatusBadRequest)
 		return
 	}
-	playlistResponse, err := h.playlistService.Create(ctx, playlistInfo)
+
+	ownerID, err := strconv.Atoi(owner)
+	if err != nil {
+		http.Error(w, "owner_id must be int", http.StatusBadRequest)
+		return
+	}
+	params.Name = playlistName
+	params.OwnerID = ownerID
+
+	playlistResponse, err := h.playlistService.Create(ctx, params, coverFileHeader)
 	if err != nil {
 		http.Error(w, "can't create playlist: "+err.Error(), http.StatusInternalServerError)
 		return

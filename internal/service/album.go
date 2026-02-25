@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
@@ -12,6 +13,11 @@ import (
 	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/jackc/pgx/v5"
 )
+
+type AlbumCreateParams struct {
+	ArtistID int
+	Name     string
+}
 
 type AlbumService struct {
 	queries *db.Queries
@@ -26,27 +32,30 @@ func NewAlbumService(q *db.Queries, st storage.Storage) AlbumService {
 }
 
 func (s *AlbumService) Create(
-	ctx context.Context, albumInfo api.AlbumCreateRequest,
+	ctx context.Context, albumInfo AlbumCreateParams,
+	coverFileHeader *multipart.FileHeader,
 ) (api.AlbumCreateResponse, error) {
 	var ret api.AlbumCreateResponse
 	var album = db.CreateAlbumParams{
-		Name:     albumInfo.AlbumName,
-		ArtistID: int32(albumInfo.OwnerId),
+		Name:     albumInfo.Name,
+		ArtistID: int32(albumInfo.ArtistID),
 	}
 	albumRet, err := s.queries.CreateAlbum(ctx, album)
 	if err != nil {
 		return ret, fmt.Errorf("unkown server error: %w", err)
 	}
 	ret.AlbumId = int(albumRet.ID)
-	if albumInfo.AlbumCover == nil {
+
+	if coverFileHeader == nil {
 		return ret, nil
 	}
 
-	rc, err := albumInfo.AlbumCover.Reader()
+	rc, err := coverFileHeader.Open()
 	if err != nil {
 		panic(err)
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
+
 	err = s.UploadCover(ctx, int(albumRet.ID), rc)
 	if err != nil {
 		go func() {
