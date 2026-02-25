@@ -3,7 +3,7 @@
 CREATE TABLE track (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
-    duration INTEGER NOT NULL,
+    duration INTEGER,
     url TEXT UNIQUE,
     fast_preset_fname TEXT,
     standard_preset_fname TEXT,

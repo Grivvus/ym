@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"os"
 	"strconv"
 
@@ -16,6 +17,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type TrackUploadParams struct {
+	ArtistID int
+	AlbumID  int
+	Name     string
+	Duration *int
+}
 
 var ErrPresetCantBeSelected error = errors.New("Preset can't be selected for this track")
 
@@ -37,13 +45,20 @@ func NewTrackService(q *db.Queries, st storage.Storage) TrackService {
 }
 
 func (s *TrackService) UploadTrack(
-	ctx context.Context, data api.TrackUploadRequest,
+	ctx context.Context, params TrackUploadParams,
+	trackFileHeader *multipart.FileHeader,
 ) (api.TrackUploadSuccessResponse, error) {
 	var ret api.TrackUploadSuccessResponse
+	var duration pgtype.Int4
+	if params.Duration == nil {
+		duration = pgtype.Int4{Valid: false}
+	} else {
+		duration = pgtype.Int4{Valid: true, Int32: int32(*params.Duration)}
+	}
 	track, err := s.queries.CreateTrack(ctx, db.CreateTrackParams{
-		Name:     data.Name,
-		ArtistID: int32(data.ArtistId),
-		Duration: pgtype.Int4{Valid: false},
+		Name:     params.Name,
+		ArtistID: int32(params.ArtistID),
+		Duration: duration,
 	})
 	if err != nil {
 		return ret, fmt.Errorf("can't create new record in db: %w", err)
@@ -53,18 +68,19 @@ func (s *TrackService) UploadTrack(
 
 	err = s.queries.AddTrackToAlbum(ctx, db.AddTrackToAlbumParams{
 		TrackID: track.ID,
-		AlbumID: int32(data.AlbumId),
+		AlbumID: int32(params.AlbumID),
 	})
 	if err != nil {
 		return ret, fmt.Errorf("can't add this track to album: %w", err)
 	}
 
-	r, err := data.File.Reader()
+	rc, err := trackFileHeader.Open()
 	if err != nil {
 		panic(err)
 	}
+	defer func() { _ = rc.Close() }()
 	tmpFname := s.tmpFileName(int(track.ID))
-	err = utils.SaveAsFile(r, tmpFname)
+	err = utils.SaveAsFile(rc, tmpFname)
 	if err != nil {
 		return ret, fmt.Errorf("can't create tmp file: %w", err)
 	}

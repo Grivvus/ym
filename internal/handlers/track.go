@@ -18,13 +18,30 @@ type TrackHandlers struct {
 }
 
 func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
-	var uploadData api.TrackUploadRequest
-	err := json.NewDecoder(r.Body).Decode(&uploadData)
-	if err != nil {
-		http.Error(w, "invalid body", http.StatusBadRequest)
+	_, header, err := r.FormFile("track")
+	if err != nil || header == nil {
+		http.Error(w, "Form must include track file", http.StatusBadRequest)
 		return
 	}
-	resp, err := h.trackService.UploadTrack(context.TODO(), uploadData)
+	name := r.FormValue("name")
+	album := r.FormValue("album_id")
+	artist := r.FormValue("artist_id")
+	if name == "" || album == "" || artist == "" {
+		http.Error(w, "Form fields are not set or empty", http.StatusBadRequest)
+		return
+	}
+	albumID, err1 := strconv.Atoi(album)
+	artistID, err2 := strconv.Atoi(artist)
+	if err1 != nil || err2 != nil {
+		http.Error(w, "album_id and artist_id must be int", http.StatusBadRequest)
+	}
+	var uploadParams = service.TrackUploadParams{
+		ArtistID: artistID,
+		AlbumID:  albumID,
+		Name:     name,
+	}
+
+	resp, err := h.trackService.UploadTrack(context.TODO(), uploadParams, header)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
