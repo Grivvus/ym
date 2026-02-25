@@ -87,15 +87,22 @@ func (s *TrackService) UploadTrack(
 
 	presetsFiles, err := transcoder.TranscodeConcurrent(ctx, tmpFname)
 	if err != nil {
+		go func() {
+			s.queries.DeleteTrack(ctx, int32(ret.TrackId))
+			s.queries.DeleteTrackFromAlbum(ctx, int32(ret.TrackId))
+		}()
 		return ret, fmt.Errorf("error in transcoding process: %w", err)
 	}
 	for _, v := range presetsFiles {
 		f, err := os.Open(v)
-		defer func() { _ = f.Close() }()
-
 		if err != nil {
 			return ret, fmt.Errorf("can't find file with transcoded samples: %w", err)
 		}
+		defer func() {
+			_ = f.Close()
+			os.Remove(v)
+		}()
+
 		err = s.st.PutTrack(ctx, v, f)
 		if err != nil {
 			return ret, fmt.Errorf("can't save transcoded sample: %w", err)

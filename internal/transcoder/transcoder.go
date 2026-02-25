@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -48,7 +50,7 @@ func (p Preset) String() string {
 	}
 }
 
-const TimeoutPerPreset = 5 * time.Second
+const TimeoutPerPreset = 10 * time.Second
 
 var presetArgs = map[Preset][]string{
 	PresetFast:     {"-vn", "-c:a", "libopus", "-b:a", "48k", "-vbr", "on", "-ac", "2", "-ar", "48000", "-f", "opus"},
@@ -65,10 +67,8 @@ func Transcode(ctx context.Context, fname string) (map[Preset]string, error) {
 		allArgs := []string{"-y", "-i", fname}
 		allArgs = append(allArgs, presetArgs[p]...)
 		allArgs = append(allArgs, newName)
-		pctx, cancel := context.WithTimeout(context.Background(), TimeoutPerPreset)
-		defer cancel()
 
-		cmd := exec.CommandContext(pctx, "ffmpeg", allArgs...)
+		cmd := exec.CommandContext(ctx, "ffmpeg", allArgs...)
 		var buf bytes.Buffer
 		cmd.Stderr = &buf
 		cmd.Stdout = &buf
@@ -80,9 +80,6 @@ func Transcode(ctx context.Context, fname string) (map[Preset]string, error) {
 			fmt.Print(buf.String())
 			panic(err)
 		}
-		if pctx.Err() != nil {
-			return nil, pctx.Err()
-		}
 		transcodedFiles[p] = newName
 	}
 	return transcodedFiles, nil
@@ -92,8 +89,11 @@ func TranscodeConcurrent(ctx context.Context, fname string) (map[Preset]string, 
 	presets := []Preset{PresetFast, PresetStandard, PresetHigh, PresetLossless}
 	transcodedFiles := make(map[Preset]string, 4)
 	c := make(chan Preset)
-	pctx, cancel := context.WithTimeout(ctx, TimeoutPerPreset)
+	dctx, cancel := context.WithDeadline(ctx, time.Now().Add(TimeoutPerPreset))
+	pctx, cancelIfErr := context.WithCancelCause(dctx)
 	defer cancel()
+	defer cancelIfErr(nil)
+
 	for _, p := range presets {
 		currentPreset := p
 		go func() {
@@ -101,8 +101,6 @@ func TranscodeConcurrent(ctx context.Context, fname string) (map[Preset]string, 
 			allArgs := []string{"-y", "-i", fname}
 			allArgs = append(allArgs, presetArgs[currentPreset]...)
 			allArgs = append(allArgs, newName)
-			pctx, cancel := context.WithTimeout(context.Background(), TimeoutPerPreset)
-			defer cancel()
 
 			cmd := exec.CommandContext(pctx, "ffmpeg", allArgs...)
 			var buf bytes.Buffer
@@ -111,7 +109,7 @@ func TranscodeConcurrent(ctx context.Context, fname string) (map[Preset]string, 
 
 			if err := cmd.Run(); err != nil {
 				fmt.Println(buf.String())
-				panic(err)
+				cancelIfErr(err)
 			}
 			c <- currentPreset
 		}()
@@ -126,7 +124,24 @@ func TranscodeConcurrent(ctx context.Context, fname string) (map[Preset]string, 
 				return transcodedFiles, nil
 			}
 		case <-pctx.Done():
-			return nil, fmt.Errorf("deadline on operation")
+			err := pctx.Err()
+			go removeTmpFiles(fname)
+			return nil, fmt.Errorf("context was canceled with err: %w", err)
+		}
+	}
+}
+
+func removeTmpFiles(fname string) {
+	err := os.Remove(fname)
+	if err != nil {
+		slog.Error("error on removing tmp", "err", err)
+	}
+	presets := []Preset{PresetFast, PresetStandard, PresetHigh, PresetLossless}
+	for _, p := range presets {
+		tmp := TranscodedName(fname, p)
+		err := os.Remove(tmp)
+		if err != nil {
+			slog.Error("error on removing tmp", "err", err)
 		}
 	}
 }
