@@ -64,6 +64,7 @@ func (a AuthService) Register(
 	accessToken, refreshToken, err := utils.CreateTokens(int(createdUser.ID), secret)
 
 	return api.TokenResponse{
+		UserId:       int(createdUser.ID),
 		RefreshToken: refreshToken,
 		AccessToken:  accessToken,
 		TokenType:    "bearer",
@@ -89,6 +90,7 @@ func (a AuthService) Login(
 	accessToken, refreshToken, err := utils.CreateTokens(int(dbuser.ID), secret)
 
 	return api.TokenResponse{
+		UserId:       int(dbuser.ID),
 		RefreshToken: refreshToken,
 		AccessToken:  accessToken,
 		TokenType:    "bearer",

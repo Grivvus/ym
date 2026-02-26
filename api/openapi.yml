@@ -931,10 +931,13 @@ components:
     TokenResponse:
       type: object
       required:
+        - user_id
         - token_type
         - access_token
         - refresh_token
       properties:
+        user_id:
+          type: integer
         token_type:
           type: string
         access_token:
