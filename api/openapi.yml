@@ -4,6 +4,13 @@ info:
   version: "0.1.0"
 
 paths:
+  /ping:
+    get:
+      summary: "route to test, that server is alive"
+      operationId: ping
+      responses:
+        '200':
+          description: server is alive
   /auth/login:
     post:
       summary: "login user into account"

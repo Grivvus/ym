@@ -247,6 +247,9 @@ type ServerInterface interface {
 	// register new user
 	// (POST /auth/register)
 	Register(w http.ResponseWriter, r *http.Request)
+	// route to test, that server is alive
+	// (GET /ping)
+	Ping(w http.ResponseWriter, r *http.Request)
 	// creates new playlist
 	// (POST /playlist/create)
 	CreatePlaylist(w http.ResponseWriter, r *http.Request)
@@ -376,6 +379,12 @@ func (_ Unimplemented) Login(w http.ResponseWriter, r *http.Request) {
 // register new user
 // (POST /auth/register)
 func (_ Unimplemented) Register(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// route to test, that server is alive
+// (GET /ping)
+func (_ Unimplemented) Ping(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -778,6 +787,20 @@ func (siw *ServerInterfaceWrapper) Register(w http.ResponseWriter, r *http.Reque
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Register(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Ping operation middleware
+func (siw *ServerInterfaceWrapper) Ping(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Ping(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1341,6 +1364,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/auth/register", wrapper.Register)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/ping", wrapper.Ping)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/playlist/create", wrapper.CreatePlaylist)

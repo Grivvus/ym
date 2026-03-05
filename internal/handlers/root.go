@@ -1,6 +1,10 @@
 package handlers
 
-import "github.com/Grivvus/ym/internal/service"
+import (
+	"net/http"
+
+	"github.com/Grivvus/ym/internal/service"
+)
 
 type RootHandler struct {
 	AuthHandlers
@@ -24,4 +28,8 @@ func NewRootHandler(
 		TrackHandlers:    TrackHandlers{track},
 		PlaylistHandlers: PlaylistHandlers{playlist},
 	}
+}
+
+func (h RootHandler) Ping(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
