@@ -255,9 +255,9 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/TrackUploadRequest'
-        encoding:
-          file:
-            contentType: audio/*
+            encoding:
+              track:
+                contentType: audio/*
       responses:
         '200':
           description: Track uploaded and processed successfully
@@ -405,14 +405,18 @@ paths:
       responses:
         '200':
           description: "start streaming"
-          schema:
-            type: string
-            content: audio/*
+          content:
+            audio/*:
+              schema:
+                type: string
+                format: binary
         '206':
           description: "partial"
-          schema:
-            type: string
-            content: audio/*
+          content:
+            audio/*:
+              schema:
+                type: string
+                format: binary
         '416':
           description: "invalid range"
           content:
