@@ -17,6 +17,7 @@ type ArtistHandlers struct {
 }
 
 func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	// if there's no artist_image it's still ok
 	_, fileHeader, _ := r.FormFile("artist_image")
@@ -44,6 +45,7 @@ func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h ArtistHandlers) DeleteArtist(w http.ResponseWriter, r *http.Request, artistID int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	response, err := h.artistService.Delete(ctx, artistID)
 	if err != nil {
@@ -58,6 +60,7 @@ func (h ArtistHandlers) DeleteArtist(w http.ResponseWriter, r *http.Request, art
 }
 
 func (h ArtistHandlers) GetArtist(w http.ResponseWriter, r *http.Request, artistID int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	response, err := h.artistService.Get(ctx, artistID)
 	if err != nil {
@@ -76,6 +79,7 @@ func (h ArtistHandlers) GetArtist(w http.ResponseWriter, r *http.Request, artist
 }
 
 func (h ArtistHandlers) DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistID int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	err := h.artistService.DeleteImage(ctx, artistID)
 	if err != nil {
@@ -94,6 +98,7 @@ func (h ArtistHandlers) DeleteArtistImage(w http.ResponseWriter, r *http.Request
 }
 
 func (h ArtistHandlers) UploadArtistImage(w http.ResponseWriter, r *http.Request, artistID int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	err := h.artistService.UploadImage(ctx, artistID, r.Body)
 	if err != nil {
@@ -108,6 +113,7 @@ func (h ArtistHandlers) UploadArtistImage(w http.ResponseWriter, r *http.Request
 }
 
 func (h ArtistHandlers) GetArtistImage(w http.ResponseWriter, r *http.Request, artistID int) {
+	w.Header().Set("Content-Type", "image/webp")
 	ctx := context.TODO()
 	bimage, err := h.artistService.GetImage(ctx, artistID)
 	if err != nil {

@@ -16,6 +16,7 @@ type AuthHandlers struct {
 }
 
 func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	var user api.UserAuth
 	decoder := json.NewDecoder(r.Body)
@@ -45,6 +46,7 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	var user api.UserAuth
 	decoder := json.NewDecoder(r.Body)

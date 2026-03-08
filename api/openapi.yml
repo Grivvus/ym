@@ -167,12 +167,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: unkown server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
     delete:
       summary: delete current avatar
@@ -198,12 +192,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: user not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: unkown server error
           content:
             application/json:
               schema:
@@ -277,12 +265,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Can't successfully upload a track
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /track/{trackId}:
     delete:
@@ -306,12 +288,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: No such Track
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: server error
           content:
             application/json:
               schema:
@@ -345,12 +321,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+
   /track/{id}/stream:
     head:
       summary: getting track metadata, needed for streaming
@@ -381,13 +352,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: "internal server error"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
     get:
       summary: getting track stream
       operationId: streamTrack
@@ -435,12 +399,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: "internal server error"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /artist/create:
     post:
@@ -460,12 +418,6 @@ paths:
                 $ref: '#/components/schemas/ArtistCreateResponse'
         '401':
           description: unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: internal server error
           content:
             application/json:
               schema:
@@ -500,12 +452,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
     delete:
       summary: deletes artist by id
       operationId: deleteArtist
@@ -526,8 +472,6 @@ paths:
           description: unauthorized
         '404':
           description: no artist was found
-        '500':
-          description: internal server error
 
   /artist/{artistId}/image:
     post:
@@ -556,8 +500,6 @@ paths:
           description: unauthorized
         '404':
           description: no artist was found
-        '500':
-          description: internal server error
     delete:
       description: deletes an image of an artist, if there's none no-op
       operationId: deleteArtistImage
@@ -578,8 +520,6 @@ paths:
           description: unauthorized
         '404':
           description: no artist was found
-        '500':
-          description: internal server error
     get:
       description: fetching image of an artist
       operationId: getArtistImage
@@ -601,8 +541,6 @@ paths:
           description: unauthorized
         '404':
           description: no artist was found
-        '500':
-          description: internal server error
 
   /playlist/create:
     post:
@@ -622,8 +560,6 @@ paths:
                 $ref: '#/components/schemas/PlaylistCreateResponse'
         '401':
           description: unauthorized
-        '500':
-          description: internal server error
 
   /playlist/{playlistId}:
     get:
@@ -646,8 +582,6 @@ paths:
           description: unauthorized
         '404':
           description: no playlist found
-        '500':
-          description: internal server error
     delete:
       summary: deletes playlist by id
       operationId: deletePlaylist
@@ -668,8 +602,6 @@ paths:
           description: unauthorized
         '404':
           description: no playlist found
-        '500':
-          description: internal server error
 
   /playlist/{playlistId}/cover:
     post:
@@ -698,8 +630,6 @@ paths:
           description: unauthorized
         '404':
           description: no playlist was found
-        '500':
-          description: internal server error
     delete:
       description: deletes the playlist's cover, if there's none no-op
       operationId: deletePlaylistCover
@@ -720,8 +650,6 @@ paths:
           description: unauthorized
         '404':
           description: no playlist was found
-        '500':
-          description: internal server error
     get:
       description: fetching cover of the playlist
       operationId: getPlaylistCover
@@ -743,8 +671,6 @@ paths:
           description: unauthorized
         '404':
           description: no playlist was found
-        '500':
-          description: internal server error
 
   /album/create:
     post:
@@ -764,8 +690,6 @@ paths:
                 $ref: '#/components/schemas/AlbumCreateResponse'
         '401':
           description: unauthorized
-        '500':
-          description: internal server error
 
   /album/{albumId}:
     get:
@@ -788,8 +712,6 @@ paths:
           description: unauthorized
         '404':
           description: no album found
-        '500':
-          description: internal server error
     delete:
       summary: deletes album by id
       operationId: deleteAlbum
@@ -810,8 +732,6 @@ paths:
           description: unauthorized
         '404':
           description: no album found
-        '500':
-          description: internal server error
 
   /album/{albumId}/cover:
     post:
@@ -840,8 +760,6 @@ paths:
           description: unauthorized
         '404':
           description: no album was found
-        '500':
-          description: internal server error
     delete:
       description: deletes the album's cover, if there's none no-op
       operationId: deleteAlbumCover
@@ -862,8 +780,6 @@ paths:
           description: unauthorized
         '404':
           description: no album was found
-        '500':
-          description: internal server error
     get:
       description: fetching cover of the album
       operationId: getAlbumCover
@@ -885,8 +801,6 @@ paths:
           description: unauthorized
         '404':
           description: no album was found
-        '500':
-          description: internal server error
 
 components:
   schemas:

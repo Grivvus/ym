@@ -18,6 +18,7 @@ type TrackHandlers struct {
 }
 
 func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	_, header, err := r.FormFile("track")
 	if err != nil || header == nil {
 		http.Error(w, "Form must include track file", http.StatusBadRequest)
@@ -59,10 +60,10 @@ func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, track
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int) {
+	w.Header().Set("Content-Type", "application/json")
 	metadata, err := h.trackService.GetMeta(context.TODO(), trackId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -106,8 +107,6 @@ func (h TrackHandlers) StreamTrack(
 		}
 		return
 	}
-	w.Header().Set("Content-Type", meta.ContentType)
-	w.Header().Set("Content-Length", strconv.Itoa(int(meta.ContentLength)))
 
 	stream, err := h.trackService.GetStream(ctx, trackId, quality)
 	if err != nil {
@@ -120,6 +119,8 @@ func (h TrackHandlers) StreamTrack(
 		slog.Error("Can't write stream to response", "err", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	w.Header().Set("Content-Type", meta.ContentType)
+	w.Header().Set("Content-Length", strconv.Itoa(int(meta.ContentLength)))
 }
 
 func (h TrackHandlers) StreamTrackHead(
@@ -146,5 +147,4 @@ func (h TrackHandlers) StreamTrackHead(
 	}
 	w.Header().Set("Content-Type", meta.ContentType)
 	w.Header().Set("Content-Length", strconv.Itoa(int(meta.ContentLength)))
-	w.WriteHeader(http.StatusOK)
 }

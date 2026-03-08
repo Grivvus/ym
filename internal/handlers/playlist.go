@@ -17,6 +17,7 @@ type PlaylistHandlers struct {
 }
 
 func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	_, coverFileHeader, _ := r.FormFile("playlist_cover")
 
@@ -48,6 +49,7 @@ func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request)
 }
 
 func (h PlaylistHandlers) DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	err := h.playlistService.Delete(ctx, playlistId)
 	if err != nil {
@@ -61,6 +63,7 @@ func (h PlaylistHandlers) DeletePlaylist(w http.ResponseWriter, r *http.Request,
 }
 
 func (h PlaylistHandlers) GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	playlistInfo, err := h.playlistService.Get(ctx, playlistId)
 	if err != nil {
@@ -78,6 +81,7 @@ func (h PlaylistHandlers) GetPlaylist(w http.ResponseWriter, r *http.Request, pl
 }
 
 func (h PlaylistHandlers) DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	err := h.playlistService.Delete(ctx, playlistId)
 	if err != nil {
@@ -88,6 +92,7 @@ func (h PlaylistHandlers) DeletePlaylistCover(w http.ResponseWriter, r *http.Req
 }
 
 func (h PlaylistHandlers) GetPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int) {
+	w.Header().Set("Content-Type", "image/webp")
 	ctx := context.TODO()
 	bimage, err := h.playlistService.GetCover(ctx, playlistId)
 	if err != nil {
@@ -102,6 +107,7 @@ func (h PlaylistHandlers) GetPlaylistCover(w http.ResponseWriter, r *http.Reques
 }
 
 func (h PlaylistHandlers) UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	err := h.playlistService.UploadCover(ctx, playlistId, r.Body)
 	if err != nil {

@@ -17,6 +17,7 @@ type AlbumHandlers struct {
 }
 
 func (h AlbumHandlers) CreateAlbum(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	_, fileHeader, _ := r.FormFile("album_cover")
 	artist := r.FormValue("artist_id")
@@ -48,6 +49,7 @@ func (h AlbumHandlers) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h AlbumHandlers) GetAlbum(w http.ResponseWriter, r *http.Request, albumId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	albumResp, err := h.albumService.Get(ctx, albumId)
 	if err != nil {
@@ -65,6 +67,7 @@ func (h AlbumHandlers) GetAlbum(w http.ResponseWriter, r *http.Request, albumId 
 }
 
 func (h AlbumHandlers) DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	albumResp, err := h.albumService.Delete(ctx, albumId)
 	if err != nil {
@@ -78,6 +81,7 @@ func (h AlbumHandlers) DeleteAlbum(w http.ResponseWriter, r *http.Request, album
 }
 
 func (h AlbumHandlers) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	err := h.albumService.DeleteCover(ctx, albumId)
 	if err != nil {
@@ -88,6 +92,7 @@ func (h AlbumHandlers) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, 
 }
 
 func (h AlbumHandlers) GetAlbumCover(w http.ResponseWriter, r *http.Request, albumId int) {
+	w.Header().Set("Content-Type", "image/webp")
 	ctx := context.TODO()
 	bimage, err := h.albumService.GetCover(ctx, albumId)
 	if err != nil {
@@ -104,6 +109,7 @@ func (h AlbumHandlers) GetAlbumCover(w http.ResponseWriter, r *http.Request, alb
 }
 
 func (h AlbumHandlers) UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	err := h.albumService.UploadCover(ctx, albumId, r.Body)
 	if err != nil {

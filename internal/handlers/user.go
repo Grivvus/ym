@@ -18,6 +18,7 @@ type UserHandlers struct {
 func (u UserHandlers) GetUserById(
 	w http.ResponseWriter, r *http.Request, userId int,
 ) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	user, err := u.userService.GetUserByID(ctx, userId)
 	if err != nil {
@@ -44,6 +45,7 @@ func (u UserHandlers) GetUserById(
 }
 
 func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	var toUpdate api.UserUpdate
 	err := json.NewDecoder(r.Body).Decode(&toUpdate)
@@ -68,6 +70,7 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 }
 
 func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, userId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	var updatePassword api.UserChangePassword
 	err := json.NewDecoder(r.Body).Decode(&updatePassword)
@@ -89,6 +92,7 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 }
 
 func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	err := u.userService.UploadAvatar(ctx, userId, r.Body)
 	if err != nil {
@@ -107,6 +111,7 @@ func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, u
 }
 
 func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
+	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()
 	err := u.userService.DeleteAvatar(ctx, userId)
 	if err != nil {
