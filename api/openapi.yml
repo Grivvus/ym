@@ -126,6 +126,35 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /user/{userId}/avatar:
+    get:
+      summary: get uploaded avatar
+      operationId: getUserAvatar
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: integer
+          required: true
+    responses:
+      '200':
+        description: avatar was found
+        content:
+          image/webp:
+            schema:
+              type: string
+              format: binary
+      '401':
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorResponse'
+      '404':
+        description: avatar wasn't found
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorResponse'
     post:
       summary: upload new user's avatar to server
       operationId: uploadUserAvatar

@@ -132,6 +132,21 @@ func (u *UserService) UploadAvatar(
 	return nil
 }
 
+func (u *UserService) GetAvatar(ctx context.Context, userID int) ([]byte, error) {
+	user, err := u.queries.GetUserByID(ctx, int32(userID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, NewErrNotFound("user", userID)
+		}
+		return nil, fmt.Errorf("unkown server error: %w", err)
+	}
+	bimage, err := u.st.GetImage(ctx, ImageID("user", int(user.ID), ""))
+	if err != nil {
+		return nil, fmt.Errorf("unkown server error: %w", err)
+	}
+	return bimage, nil
+}
+
 func (u *UserService) DeleteAvatar(
 	ctx context.Context, userID int,
 ) error {

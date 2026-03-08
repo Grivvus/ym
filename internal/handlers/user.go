@@ -110,6 +110,23 @@ func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, u
 	}
 }
 
+func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
+	w.Header().Set("Content-Type", "image/webp")
+	img, err := u.userService.GetAvatar(r.Context(), userId)
+	if err != nil {
+		if _, t := errors.AsType[service.ErrNotFound](err); t {
+			http.Error(w, "user not found or no avatar", http.StatusNotFound)
+		} else {
+			http.Error(w, "unkown server error", http.StatusInternalServerError)
+		}
+		return
+	}
+	_, err = w.Write(img)
+	if err != nil {
+		slog.Error("can't send response")
+	}
+}
+
 func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
 	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()

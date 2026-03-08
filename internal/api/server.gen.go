@@ -292,6 +292,9 @@ type ServerInterface interface {
 	// delete current avatar
 	// (DELETE /user/{userId}/avatar)
 	DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int)
+	// get uploaded avatar
+	// (GET /user/{userId}/avatar)
+	GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int)
 	// upload new user's avatar to server
 	// (POST /user/{userId}/avatar)
 	UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int)
@@ -466,6 +469,12 @@ func (_ Unimplemented) ChangeUser(w http.ResponseWriter, r *http.Request, userId
 // delete current avatar
 // (DELETE /user/{userId}/avatar)
 func (_ Unimplemented) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// get uploaded avatar
+// (GET /user/{userId}/avatar)
+func (_ Unimplemented) GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1160,6 +1169,31 @@ func (siw *ServerInterfaceWrapper) DeleteUserAvatar(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// GetUserAvatar operation middleware
+func (siw *ServerInterfaceWrapper) GetUserAvatar(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userId" -------------
+	var userId int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUserAvatar(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // UploadUserAvatar operation middleware
 func (siw *ServerInterfaceWrapper) UploadUserAvatar(w http.ResponseWriter, r *http.Request) {
 
@@ -1409,6 +1443,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/user/{userId}/avatar", wrapper.DeleteUserAvatar)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/user/{userId}/avatar", wrapper.GetUserAvatar)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/user/{userId}/avatar", wrapper.UploadUserAvatar)
