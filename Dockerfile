@@ -12,7 +12,7 @@ COPY . .
 
 RUN GOOS=linux go build -o server ./cmd/server/
 
-FROM debian:latest
+FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install ffmpeg libwebp-dev -y
 
