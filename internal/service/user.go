@@ -43,6 +43,7 @@ func (u *UserService) GetUserByID(
 	}
 
 	ret.Username = user.Username
+	ret.Id = int(user.ID)
 	if user.Email.Valid {
 		ret.Email = &user.Email.String
 	} else {
@@ -82,6 +83,7 @@ func (u *UserService) ChangeUser(
 	}
 
 	ret.Username = updatedUser.Username
+	ret.Id = int(updatedUser.ID)
 	if updatedUser.Email.Valid {
 		ret.Email = &updatedUser.Email.String
 	} else {

@@ -31,16 +31,9 @@ func (u UserHandlers) GetUserById(
 	}
 
 	w.WriteHeader(http.StatusOK)
-	b, err := json.Marshal(user)
+	err = json.NewEncoder(w).Encode(user)
 	if err != nil {
-		slog.Error("Error while marshalling model", "err", err)
-		http.Error(w, "", http.StatusInternalServerError)
-		return
-	}
-
-	_, err = w.Write(b)
-	if err != nil {
-		slog.Error("Unexpected error", "err", err)
+		slog.Error("can't encode response", "err", err)
 	}
 }
 
