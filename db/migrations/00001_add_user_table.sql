@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE "user" (
     id SERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
+    username TEXT NOT NULL UNIQUE,
     email VARCHAR(318) UNIQUE,
     password bytea NOT NULL,
     salt bytea NOT NULL,
