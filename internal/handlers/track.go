@@ -80,6 +80,7 @@ func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request, params 
 	tracks, err := h.trackService.GetUserTracks(r.Context(), params.XUserId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	err = json.NewEncoder(w).Encode(tracks)
 	if err != nil {

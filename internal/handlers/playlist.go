@@ -85,10 +85,24 @@ func (h PlaylistHandlers) GetPlaylists(w http.ResponseWriter, r *http.Request, p
 	playlists, err := h.playlistService.GetUserPlaylists(r.Context(), params.XUserId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	err = json.NewEncoder(w).Encode(playlists)
 	if err != nil {
 		slog.Error("can't encode response", "err", err)
+	}
+}
+func (h PlaylistHandlers) AddTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistID int) {
+	var body api.AddTrackToPlaylistJSONBody
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = h.playlistService.AddTrack(r.Context(), playlistID, body.TrackId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 

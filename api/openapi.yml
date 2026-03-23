@@ -624,6 +624,28 @@ paths:
                   $ref: '#/components/schemas/PlaylistInfoResponse'
 
   /playlist/{playlistId}:
+    post:
+      summary: add track to playlist
+      operationId: addTrackToPlaylist
+      parameters:
+        - in: path
+          name: playlistId
+          schema: 
+            type: integer
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - track_id
+              properties:
+                track_id:
+                  type: integer
+      responses:
+        '200':
+          description: track was successfully added to playlist
     get:
       summary: get info about playlist
       operationId: getPlaylist

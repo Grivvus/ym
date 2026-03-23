@@ -67,6 +67,14 @@ func (s *PlaylistService) Create(
 	return ret, nil
 }
 
+func (s *PlaylistService) AddTrack(ctx context.Context, playlistID, trackID int) error {
+	err := s.queries.AddTrackToPlaylist(ctx, db.AddTrackToPlaylistParams{
+		TrackID:    int32(trackID),
+		PlaylistID: int32(playlistID),
+	})
+	return err
+}
+
 func (s *PlaylistService) Delete(
 	ctx context.Context, playlistID int,
 ) error {
