@@ -308,7 +308,7 @@ paths:
               schema:
                 type: array
                 items:
-                  ref: '#/components/schemas/TrackMetadata'
+                  $ref: '#/components/schemas/TrackMetadata'
   /track/{trackId}:
     delete:
       summary: delete track
