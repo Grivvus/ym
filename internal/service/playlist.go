@@ -98,6 +98,22 @@ func (s *PlaylistService) Get(
 	return ret, nil
 }
 
+func (s *PlaylistService) GetUserPlaylists(ctx context.Context, userID int64) ([]api.PlaylistInfoResponse, error) {
+	playlists, err := s.queries.GetUserPlaylists(ctx, pgtype.Int4{Int32: int32(userID), Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("unkown server error: %w", err)
+	}
+	ret := make([]api.PlaylistInfoResponse, len(playlists))
+	for i, playlist := range playlists {
+		ret[i] = api.PlaylistInfoResponse{
+			PlaylistId:   int(playlist.ID),
+			PlaylistName: playlist.Name,
+			Tracks:       []int{0},
+		}
+	}
+	return ret, nil
+}
+
 func (s *PlaylistService) UploadCover(
 	ctx context.Context, playlistID int, cover io.Reader,
 ) error {

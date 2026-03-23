@@ -169,6 +169,16 @@ type UserUpdate struct {
 	NewUsername string `json:"new_username"`
 }
 
+// GetPlaylistsParams defines parameters for GetPlaylists.
+type GetPlaylistsParams struct {
+	XUserId int64 `json:"X-User-Id"`
+}
+
+// GetTracksParams defines parameters for GetTracks.
+type GetTracksParams struct {
+	XUserId int64 `json:"X-User-Id"`
+}
+
 // StreamTrackParams defines parameters for StreamTrack.
 type StreamTrackParams struct {
 	Quality *string `form:"quality,omitempty" json:"quality,omitempty"`
@@ -250,8 +260,11 @@ type ServerInterface interface {
 	// route to test, that server is alive
 	// (GET /ping)
 	Ping(w http.ResponseWriter, r *http.Request)
+	// get all user's playlist
+	// (GET /playlist)
+	GetPlaylists(w http.ResponseWriter, r *http.Request, params GetPlaylistsParams)
 	// creates new playlist
-	// (POST /playlist/create)
+	// (POST /playlist)
 	CreatePlaylist(w http.ResponseWriter, r *http.Request)
 	// deletes playlist by id
 	// (DELETE /playlist/{playlistId})
@@ -268,8 +281,11 @@ type ServerInterface interface {
 
 	// (POST /playlist/{playlistId}/cover)
 	UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int)
+	// get all uploaded tracks meta
+	// (GET /track)
+	GetTracks(w http.ResponseWriter, r *http.Request, params GetTracksParams)
 	// uploads new track, make all transcoding stuff, stores it
-	// (POST /track/upload)
+	// (POST /track)
 	UploadTrack(w http.ResponseWriter, r *http.Request)
 	// getting track stream
 	// (GET /track/{id}/stream)
@@ -391,8 +407,14 @@ func (_ Unimplemented) Ping(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// get all user's playlist
+// (GET /playlist)
+func (_ Unimplemented) GetPlaylists(w http.ResponseWriter, r *http.Request, params GetPlaylistsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // creates new playlist
-// (POST /playlist/create)
+// (POST /playlist)
 func (_ Unimplemented) CreatePlaylist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -424,8 +446,14 @@ func (_ Unimplemented) UploadPlaylistCover(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// get all uploaded tracks meta
+// (GET /track)
+func (_ Unimplemented) GetTracks(w http.ResponseWriter, r *http.Request, params GetTracksParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // uploads new track, make all transcoding stuff, stores it
-// (POST /track/upload)
+// (POST /track)
 func (_ Unimplemented) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -819,6 +847,50 @@ func (siw *ServerInterfaceWrapper) Ping(w http.ResponseWriter, r *http.Request) 
 	handler.ServeHTTP(w, r)
 }
 
+// GetPlaylists operation middleware
+func (siw *ServerInterfaceWrapper) GetPlaylists(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPlaylistsParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId int64
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPlaylists(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreatePlaylist operation middleware
 func (siw *ServerInterfaceWrapper) CreatePlaylist(w http.ResponseWriter, r *http.Request) {
 
@@ -949,6 +1021,50 @@ func (siw *ServerInterfaceWrapper) UploadPlaylistCover(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UploadPlaylistCover(w, r, playlistId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetTracks operation middleware
+func (siw *ServerInterfaceWrapper) GetTracks(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTracksParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId int64
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetTracks(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1403,7 +1519,10 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/ping", wrapper.Ping)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/playlist/create", wrapper.CreatePlaylist)
+		r.Get(options.BaseURL+"/playlist", wrapper.GetPlaylists)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/playlist", wrapper.CreatePlaylist)
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/playlist/{playlistId}", wrapper.DeletePlaylist)
@@ -1421,7 +1540,10 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/playlist/{playlistId}/cover", wrapper.UploadPlaylistCover)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/track/upload", wrapper.UploadTrack)
+		r.Get(options.BaseURL+"/track", wrapper.GetTracks)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/track", wrapper.UploadTrack)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/track/{id}/stream", wrapper.StreamTrack)

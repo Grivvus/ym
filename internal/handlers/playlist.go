@@ -80,6 +80,18 @@ func (h PlaylistHandlers) GetPlaylist(w http.ResponseWriter, r *http.Request, pl
 	}
 }
 
+func (h PlaylistHandlers) GetPlaylists(w http.ResponseWriter, r *http.Request, params api.GetPlaylistsParams) {
+	w.Header().Set("Content-Type", "application/json")
+	playlists, err := h.playlistService.GetUserPlaylists(r.Context(), params.XUserId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	err = json.NewEncoder(w).Encode(playlists)
+	if err != nil {
+		slog.Error("can't encode response", "err", err)
+	}
+}
+
 func (h PlaylistHandlers) DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int) {
 	w.Header().Set("Content-Type", "application/json")
 	ctx := context.TODO()

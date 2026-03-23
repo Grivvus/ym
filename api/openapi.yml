@@ -259,7 +259,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /track/upload:
+  /track:
     post:
       summary: uploads new track, make all transcoding stuff, stores it
       operationId: uploadTrack
@@ -290,7 +290,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
+    get:
+      summary: get all uploaded tracks meta
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+            format: int64
+      operationId: getTracks
+      responses:
+        '200':
+          description: tracks was successfully fetched
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  ref: '#/components/schemas/TrackMetadata'
   /track/{trackId}:
     delete:
       summary: delete track
@@ -567,7 +585,7 @@ paths:
         '404':
           description: no artist was found
 
-  /playlist/create:
+  /playlist:
     post:
       summary: creates new playlist
       operationId: createPlaylist
@@ -585,6 +603,25 @@ paths:
                 $ref: '#/components/schemas/PlaylistCreateResponse'
         '401':
           description: unauthorized
+    get:
+      summary: get all user's playlist
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+            format: int64
+      operationId: getPlaylists
+      responses :
+        '200':
+          description: playlists was fetched
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlaylistInfoResponse'
 
   /playlist/{playlistId}:
     get:

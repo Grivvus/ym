@@ -205,6 +205,26 @@ func (s *TrackService) GetMeta(
 	}, nil
 }
 
+func (s *TrackService) GetUserTracks(ctx context.Context, userID int64) ([]api.TrackMetadata, error) {
+	tracks, err := s.queries.GetUserTracks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("can't fetch track info: %w", err)
+	}
+	ret := make([]api.TrackMetadata, len(tracks))
+	for i, track := range tracks {
+		ret[i] = api.TrackMetadata{
+			ArtistId:            int(track.ArtistID),
+			Name:                track.Name,
+			TrackId:             int(track.ID),
+			TrackFastPreset:     &track.FastPresetFname.String,
+			TrackStandardPreset: &track.StandardPresetFname.String,
+			TrackHighPreset:     &track.HighPresetFname.String,
+			TrackLosslessPreset: nil,
+		}
+	}
+	return ret, nil
+}
+
 func (s *TrackService) GetStreamMeta(
 	ctx context.Context, trackId int, trackQuality string,
 ) (StreamMeta, error) {

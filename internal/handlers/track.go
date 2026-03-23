@@ -75,6 +75,18 @@ func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trac
 	}
 }
 
+func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request, params api.GetTracksParams) {
+	w.Header().Set("Content-Type", "application/json")
+	tracks, err := h.trackService.GetUserTracks(r.Context(), params.XUserId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	err = json.NewEncoder(w).Encode(tracks)
+	if err != nil {
+		slog.Error("can't encode response", "err", err)
+	}
+}
+
 func (h TrackHandlers) StreamTrack(
 	w http.ResponseWriter, r *http.Request,
 	trackId int, params api.StreamTrackParams,
