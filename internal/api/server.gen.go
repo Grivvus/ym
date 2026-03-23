@@ -111,6 +111,12 @@ type PlaylistInfoResponse struct {
 	Tracks       []int   `json:"tracks"`
 }
 
+// PlaylistsResponse defines model for PlaylistsResponse.
+type PlaylistsResponse = []struct {
+	PlaylistId   int    `json:"playlist_id"`
+	PlaylistName string `json:"playlist_name"`
+}
+
 // TokenResponse defines model for TokenResponse.
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`

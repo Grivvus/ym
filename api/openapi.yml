@@ -619,9 +619,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PlaylistInfoResponse'
+                $ref: '#/components/schemas/PlaylistsResponse'
 
   /playlist/{playlistId}:
     post:
@@ -1112,6 +1110,19 @@ components:
           type: array
           items:
             type: integer
+
+    PlaylistsResponse:
+      type: array
+      items:
+        type: object
+        required:
+          - playlist_id
+          - playlist_name
+        properties:
+          playlist_id:
+            type: integer
+          playlist_name:
+            type: string
 
     PlaylistDeleteResponse:
       type: object

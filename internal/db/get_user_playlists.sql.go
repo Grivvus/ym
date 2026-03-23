@@ -12,16 +12,14 @@ import (
 )
 
 const getUserPlaylists = `-- name: GetUserPlaylists :many
-SELECT "playlist".id, "playlist".name, "track_playlist".track_id
-    from "playlist" inner join "track_playlist"
-    ON "playlist".id = "track_playlist".playlist_id
+SELECT "playlist".id, "playlist".name
+    FROM "playlist"
     WHERE "playlist".owner_id = $1
 `
 
 type GetUserPlaylistsRow struct {
-	ID      int32
-	Name    string
-	TrackID int32
+	ID   int32
+	Name string
 }
 
 func (q *Queries) GetUserPlaylists(ctx context.Context, ownerID pgtype.Int4) ([]GetUserPlaylistsRow, error) {
@@ -33,7 +31,7 @@ func (q *Queries) GetUserPlaylists(ctx context.Context, ownerID pgtype.Int4) ([]
 	var items []GetUserPlaylistsRow
 	for rows.Next() {
 		var i GetUserPlaylistsRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.TrackID); err != nil {
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
