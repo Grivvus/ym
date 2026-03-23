@@ -298,7 +298,6 @@ paths:
           required: true
           schema:
             type: integer
-            format: int64
       operationId: getTracks
       responses:
         '200':
@@ -611,7 +610,6 @@ paths:
           required: true
           schema:
             type: integer
-            format: int64
       operationId: getPlaylists
       responses :
         '200':

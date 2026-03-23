@@ -89,6 +89,17 @@ func (s *PlaylistService) Get(
 	ctx context.Context, playlistID int,
 ) (api.PlaylistInfoResponse, error) {
 	var ret api.PlaylistInfoResponse
+	playlist, err := s.queries.GetPlaylist(ctx, int32(playlistID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ret, NewErrNotFound("playlist", playlistID)
+		} else {
+			return ret, fmt.Errorf("unkown server error: %w", err)
+		}
+	}
+	ret.PlaylistId = int(playlist.ID)
+	ret.PlaylistName = playlist.Name
+	ret.Tracks = []int{}
 	playlistTracks, err := s.queries.GetPlaylistWithTracks(ctx, int32(playlistID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -98,8 +109,6 @@ func (s *PlaylistService) Get(
 		}
 	}
 
-	ret.PlaylistId = int(playlistTracks[0].ID)
-	ret.PlaylistName = playlistTracks[0].Name
 	for _, track := range playlistTracks {
 		ret.Tracks = append(ret.Tracks, int(track.TrackID))
 	}
@@ -113,7 +122,10 @@ func (s *PlaylistService) GetUserPlaylists(ctx context.Context, userID int64) (a
 	}
 	ret := make(api.PlaylistsResponse, len(playlists))
 	for i, playlist := range playlists {
-		ret[i] = api.PlaylistInfoResponse{
+		ret[i] = struct {
+			PlaylistId   int    "json:\"playlist_id\""
+			PlaylistName string "json:\"playlist_name\""
+		}{
 			PlaylistId:   int(playlist.ID),
 			PlaylistName: playlist.Name,
 		}
