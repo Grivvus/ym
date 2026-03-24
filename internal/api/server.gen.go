@@ -239,40 +239,40 @@ type ChangePasswordJSONRequestBody = UserChangePassword
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// creates new album
-	// (POST /album/create)
+	// (POST /albums/create)
 	CreateAlbum(w http.ResponseWriter, r *http.Request)
 	// deletes album by id
-	// (DELETE /album/{albumId})
+	// (DELETE /albums/{albumId})
 	DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int32)
 	// get info about the album
-	// (GET /album/{albumId})
+	// (GET /albums/{albumId})
 	GetAlbum(w http.ResponseWriter, r *http.Request, albumId int32)
 
-	// (DELETE /album/{albumId}/cover)
+	// (DELETE /albums/{albumId}/cover)
 	DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32)
 
-	// (GET /album/{albumId}/cover)
+	// (GET /albums/{albumId}/cover)
 	GetAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32)
 
-	// (POST /album/{albumId}/cover)
+	// (POST /albums/{albumId}/cover)
 	UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32)
 	// creates new artist
-	// (POST /artist/create)
+	// (POST /artists/create)
 	CreateArtist(w http.ResponseWriter, r *http.Request)
 	// deletes artist by id
-	// (DELETE /artist/{artistId})
+	// (DELETE /artists/{artistId})
 	DeleteArtist(w http.ResponseWriter, r *http.Request, artistId int32)
 	// get info about artist
-	// (GET /artist/{artistId})
+	// (GET /artists/{artistId})
 	GetArtist(w http.ResponseWriter, r *http.Request, artistId int32)
 
-	// (DELETE /artist/{artistId}/image)
+	// (DELETE /artists/{artistId}/image)
 	DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistId int32)
 
-	// (GET /artist/{artistId}/image)
+	// (GET /artists/{artistId}/image)
 	GetArtistImage(w http.ResponseWriter, r *http.Request, artistId int32)
 
-	// (POST /artist/{artistId}/image)
+	// (POST /artists/{artistId}/image)
 	UploadArtistImage(w http.ResponseWriter, r *http.Request, artistId int32)
 	// login user into account
 	// (POST /auth/login)
@@ -287,67 +287,67 @@ type ServerInterface interface {
 	// (GET /ping)
 	Ping(w http.ResponseWriter, r *http.Request)
 	// get all user's playlist
-	// (GET /playlist)
+	// (GET /playlists)
 	GetPlaylists(w http.ResponseWriter, r *http.Request)
 	// creates new playlist
-	// (POST /playlist)
+	// (POST /playlists)
 	CreatePlaylist(w http.ResponseWriter, r *http.Request)
 	// deletes playlist by id
-	// (DELETE /playlist/{playlistId})
+	// (DELETE /playlists/{playlistId})
 	DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
 	// get info about playlist
-	// (GET /playlist/{playlistId})
+	// (GET /playlists/{playlistId})
 	GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
 	// add track to playlist
-	// (POST /playlist/{playlistId})
+	// (POST /playlists/{playlistId})
 	AddTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
 	// update playlist
-	// (PUT /playlist/{playlistId})
+	// (PUT /playlists/{playlistId})
 	UpdatePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
 
-	// (DELETE /playlist/{playlistId}/cover)
+	// (DELETE /playlists/{playlistId}/cover)
 	DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32)
 
-	// (GET /playlist/{playlistId}/cover)
+	// (GET /playlists/{playlistId}/cover)
 	GetPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32)
 
-	// (POST /playlist/{playlistId}/cover)
+	// (POST /playlists/{playlistId}/cover)
 	UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32)
 	// get all uploaded tracks meta
-	// (GET /track)
+	// (GET /tracks)
 	GetTracks(w http.ResponseWriter, r *http.Request)
 	// uploads new track, make all transcoding stuff, stores it
-	// (POST /track)
+	// (POST /tracks)
 	UploadTrack(w http.ResponseWriter, r *http.Request)
 	// getting track stream
-	// (GET /track/{id}/stream)
+	// (GET /tracks/{id}/stream)
 	StreamTrack(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackParams)
 	// getting track metadata, needed for streaming
-	// (HEAD /track/{id}/stream)
+	// (HEAD /tracks/{id}/stream)
 	StreamTrackHead(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackHeadParams)
 	// delete track
-	// (DELETE /track/{trackId})
+	// (DELETE /tracks/{trackId})
 	DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int32)
 	// getting track metadata
-	// (GET /track/{trackId})
+	// (GET /tracks/{trackId})
 	GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32)
 	// get user by id
-	// (GET /user/{userId})
+	// (GET /users/{userId})
 	GetUserById(w http.ResponseWriter, r *http.Request, userId int32)
 	// update user
-	// (PATCH /user/{userId})
+	// (PATCH /users/{userId})
 	ChangeUser(w http.ResponseWriter, r *http.Request, userId int32)
 	// delete current avatar
-	// (DELETE /user/{userId}/avatar)
+	// (DELETE /users/{userId}/avatar)
 	DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int32)
 	// get uploaded avatar
-	// (GET /user/{userId}/avatar)
+	// (GET /users/{userId}/avatar)
 	GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int32)
 	// upload new user's avatar to server
-	// (POST /user/{userId}/avatar)
+	// (POST /users/{userId}/avatar)
 	UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int32)
 	// change user's password
-	// (PATCH /user/{userId}/change_password)
+	// (PATCH /users/{userId}/change_password)
 	ChangePassword(w http.ResponseWriter, r *http.Request, userId int32)
 }
 
@@ -356,67 +356,67 @@ type ServerInterface interface {
 type Unimplemented struct{}
 
 // creates new album
-// (POST /album/create)
+// (POST /albums/create)
 func (_ Unimplemented) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // deletes album by id
-// (DELETE /album/{albumId})
+// (DELETE /albums/{albumId})
 func (_ Unimplemented) DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get info about the album
-// (GET /album/{albumId})
+// (GET /albums/{albumId})
 func (_ Unimplemented) GetAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// (DELETE /album/{albumId}/cover)
+// (DELETE /albums/{albumId}/cover)
 func (_ Unimplemented) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// (GET /album/{albumId}/cover)
+// (GET /albums/{albumId}/cover)
 func (_ Unimplemented) GetAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// (POST /album/{albumId}/cover)
+// (POST /albums/{albumId}/cover)
 func (_ Unimplemented) UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // creates new artist
-// (POST /artist/create)
+// (POST /artists/create)
 func (_ Unimplemented) CreateArtist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // deletes artist by id
-// (DELETE /artist/{artistId})
+// (DELETE /artists/{artistId})
 func (_ Unimplemented) DeleteArtist(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get info about artist
-// (GET /artist/{artistId})
+// (GET /artists/{artistId})
 func (_ Unimplemented) GetArtist(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// (DELETE /artist/{artistId}/image)
+// (DELETE /artists/{artistId}/image)
 func (_ Unimplemented) DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// (GET /artist/{artistId}/image)
+// (GET /artists/{artistId}/image)
 func (_ Unimplemented) GetArtistImage(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// (POST /artist/{artistId}/image)
+// (POST /artists/{artistId}/image)
 func (_ Unimplemented) UploadArtistImage(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -446,124 +446,124 @@ func (_ Unimplemented) Ping(w http.ResponseWriter, r *http.Request) {
 }
 
 // get all user's playlist
-// (GET /playlist)
+// (GET /playlists)
 func (_ Unimplemented) GetPlaylists(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // creates new playlist
-// (POST /playlist)
+// (POST /playlists)
 func (_ Unimplemented) CreatePlaylist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // deletes playlist by id
-// (DELETE /playlist/{playlistId})
+// (DELETE /playlists/{playlistId})
 func (_ Unimplemented) DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get info about playlist
-// (GET /playlist/{playlistId})
+// (GET /playlists/{playlistId})
 func (_ Unimplemented) GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // add track to playlist
-// (POST /playlist/{playlistId})
+// (POST /playlists/{playlistId})
 func (_ Unimplemented) AddTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // update playlist
-// (PUT /playlist/{playlistId})
+// (PUT /playlists/{playlistId})
 func (_ Unimplemented) UpdatePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// (DELETE /playlist/{playlistId}/cover)
+// (DELETE /playlists/{playlistId}/cover)
 func (_ Unimplemented) DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// (GET /playlist/{playlistId}/cover)
+// (GET /playlists/{playlistId}/cover)
 func (_ Unimplemented) GetPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// (POST /playlist/{playlistId}/cover)
+// (POST /playlists/{playlistId}/cover)
 func (_ Unimplemented) UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get all uploaded tracks meta
-// (GET /track)
+// (GET /tracks)
 func (_ Unimplemented) GetTracks(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // uploads new track, make all transcoding stuff, stores it
-// (POST /track)
+// (POST /tracks)
 func (_ Unimplemented) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // getting track stream
-// (GET /track/{id}/stream)
+// (GET /tracks/{id}/stream)
 func (_ Unimplemented) StreamTrack(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // getting track metadata, needed for streaming
-// (HEAD /track/{id}/stream)
+// (HEAD /tracks/{id}/stream)
 func (_ Unimplemented) StreamTrackHead(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackHeadParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // delete track
-// (DELETE /track/{trackId})
+// (DELETE /tracks/{trackId})
 func (_ Unimplemented) DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // getting track metadata
-// (GET /track/{trackId})
+// (GET /tracks/{trackId})
 func (_ Unimplemented) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get user by id
-// (GET /user/{userId})
+// (GET /users/{userId})
 func (_ Unimplemented) GetUserById(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // update user
-// (PATCH /user/{userId})
+// (PATCH /users/{userId})
 func (_ Unimplemented) ChangeUser(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // delete current avatar
-// (DELETE /user/{userId}/avatar)
+// (DELETE /users/{userId}/avatar)
 func (_ Unimplemented) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get uploaded avatar
-// (GET /user/{userId}/avatar)
+// (GET /users/{userId}/avatar)
 func (_ Unimplemented) GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // upload new user's avatar to server
-// (POST /user/{userId}/avatar)
+// (POST /users/{userId}/avatar)
 func (_ Unimplemented) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // change user's password
-// (PATCH /user/{userId}/change_password)
+// (PATCH /users/{userId}/change_password)
 func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -1726,40 +1726,40 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/album/create", wrapper.CreateAlbum)
+		r.Post(options.BaseURL+"/albums/create", wrapper.CreateAlbum)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/album/{albumId}", wrapper.DeleteAlbum)
+		r.Delete(options.BaseURL+"/albums/{albumId}", wrapper.DeleteAlbum)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/album/{albumId}", wrapper.GetAlbum)
+		r.Get(options.BaseURL+"/albums/{albumId}", wrapper.GetAlbum)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/album/{albumId}/cover", wrapper.DeleteAlbumCover)
+		r.Delete(options.BaseURL+"/albums/{albumId}/cover", wrapper.DeleteAlbumCover)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/album/{albumId}/cover", wrapper.GetAlbumCover)
+		r.Get(options.BaseURL+"/albums/{albumId}/cover", wrapper.GetAlbumCover)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/album/{albumId}/cover", wrapper.UploadAlbumCover)
+		r.Post(options.BaseURL+"/albums/{albumId}/cover", wrapper.UploadAlbumCover)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/artist/create", wrapper.CreateArtist)
+		r.Post(options.BaseURL+"/artists/create", wrapper.CreateArtist)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/artist/{artistId}", wrapper.DeleteArtist)
+		r.Delete(options.BaseURL+"/artists/{artistId}", wrapper.DeleteArtist)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/artist/{artistId}", wrapper.GetArtist)
+		r.Get(options.BaseURL+"/artists/{artistId}", wrapper.GetArtist)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/artist/{artistId}/image", wrapper.DeleteArtistImage)
+		r.Delete(options.BaseURL+"/artists/{artistId}/image", wrapper.DeleteArtistImage)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/artist/{artistId}/image", wrapper.GetArtistImage)
+		r.Get(options.BaseURL+"/artists/{artistId}/image", wrapper.GetArtistImage)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/artist/{artistId}/image", wrapper.UploadArtistImage)
+		r.Post(options.BaseURL+"/artists/{artistId}/image", wrapper.UploadArtistImage)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/auth/login", wrapper.Login)
@@ -1774,67 +1774,67 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/ping", wrapper.Ping)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/playlist", wrapper.GetPlaylists)
+		r.Get(options.BaseURL+"/playlists", wrapper.GetPlaylists)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/playlist", wrapper.CreatePlaylist)
+		r.Post(options.BaseURL+"/playlists", wrapper.CreatePlaylist)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/playlist/{playlistId}", wrapper.DeletePlaylist)
+		r.Delete(options.BaseURL+"/playlists/{playlistId}", wrapper.DeletePlaylist)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/playlist/{playlistId}", wrapper.GetPlaylist)
+		r.Get(options.BaseURL+"/playlists/{playlistId}", wrapper.GetPlaylist)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/playlist/{playlistId}", wrapper.AddTrackToPlaylist)
+		r.Post(options.BaseURL+"/playlists/{playlistId}", wrapper.AddTrackToPlaylist)
 	})
 	r.Group(func(r chi.Router) {
-		r.Put(options.BaseURL+"/playlist/{playlistId}", wrapper.UpdatePlaylist)
+		r.Put(options.BaseURL+"/playlists/{playlistId}", wrapper.UpdatePlaylist)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/playlist/{playlistId}/cover", wrapper.DeletePlaylistCover)
+		r.Delete(options.BaseURL+"/playlists/{playlistId}/cover", wrapper.DeletePlaylistCover)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/playlist/{playlistId}/cover", wrapper.GetPlaylistCover)
+		r.Get(options.BaseURL+"/playlists/{playlistId}/cover", wrapper.GetPlaylistCover)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/playlist/{playlistId}/cover", wrapper.UploadPlaylistCover)
+		r.Post(options.BaseURL+"/playlists/{playlistId}/cover", wrapper.UploadPlaylistCover)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/track", wrapper.GetTracks)
+		r.Get(options.BaseURL+"/tracks", wrapper.GetTracks)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/track", wrapper.UploadTrack)
+		r.Post(options.BaseURL+"/tracks", wrapper.UploadTrack)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/track/{id}/stream", wrapper.StreamTrack)
+		r.Get(options.BaseURL+"/tracks/{id}/stream", wrapper.StreamTrack)
 	})
 	r.Group(func(r chi.Router) {
-		r.Head(options.BaseURL+"/track/{id}/stream", wrapper.StreamTrackHead)
+		r.Head(options.BaseURL+"/tracks/{id}/stream", wrapper.StreamTrackHead)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/track/{trackId}", wrapper.DeleteTrack)
+		r.Delete(options.BaseURL+"/tracks/{trackId}", wrapper.DeleteTrack)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/track/{trackId}", wrapper.GetTrackMeta)
+		r.Get(options.BaseURL+"/tracks/{trackId}", wrapper.GetTrackMeta)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/user/{userId}", wrapper.GetUserById)
+		r.Get(options.BaseURL+"/users/{userId}", wrapper.GetUserById)
 	})
 	r.Group(func(r chi.Router) {
-		r.Patch(options.BaseURL+"/user/{userId}", wrapper.ChangeUser)
+		r.Patch(options.BaseURL+"/users/{userId}", wrapper.ChangeUser)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/user/{userId}/avatar", wrapper.DeleteUserAvatar)
+		r.Delete(options.BaseURL+"/users/{userId}/avatar", wrapper.DeleteUserAvatar)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/user/{userId}/avatar", wrapper.GetUserAvatar)
+		r.Get(options.BaseURL+"/users/{userId}/avatar", wrapper.GetUserAvatar)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/user/{userId}/avatar", wrapper.UploadUserAvatar)
+		r.Post(options.BaseURL+"/users/{userId}/avatar", wrapper.UploadUserAvatar)
 	})
 	r.Group(func(r chi.Router) {
-		r.Patch(options.BaseURL+"/user/{userId}/change_password", wrapper.ChangePassword)
+		r.Patch(options.BaseURL+"/users/{userId}/change_password", wrapper.ChangePassword)
 	})
 
 	return r

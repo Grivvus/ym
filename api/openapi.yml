@@ -92,7 +92,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /user/{userId}:
+  /users/{userId}:
     get:
       summary: get user by id
       operationId: getUserById
@@ -160,7 +160,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /user/{userId}/avatar:
+  /users/{userId}/avatar:
     get:
       summary: get uploaded avatar
       operationId: getUserAvatar
@@ -233,7 +233,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
     delete:
       summary: delete current avatar
       operationId: deleteUserAvatar
@@ -264,7 +263,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /user/{userId}/change_password:
+  /users/{userId}/change_password:
     patch:
       summary: change user's password
       operationId: changePassword
@@ -298,7 +297,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /track:
+  /tracks:
     post:
       summary: uploads new track, make all transcoding stuff, stores it
       operationId: uploadTrack
@@ -342,8 +341,9 @@ paths:
                 items:
                   $ref: '#/components/schemas/TrackMetadata'
         '404':
-          description: unkown userId
-  /track/{trackId}:
+          description: unknown userId
+
+  /tracks/{trackId}:
     delete:
       summary: delete track
       operationId: deleteTrack
@@ -401,7 +401,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /track/{id}/stream:
+  /tracks/{id}/stream:
     head:
       summary: getting track metadata, needed for streaming
       operationId: streamTrackHead
@@ -481,7 +481,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /artist/create:
+  /artists/create:
     post:
       summary: creates new artist
       operationId: createArtist
@@ -504,7 +504,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /artist/{artistId}:
+  /artists/{artistId}:
     get:
       summary: get info about artist
       operationId: getArtist
@@ -564,7 +564,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /artist/{artistId}/image:
+  /artists/{artistId}/image:
     post:
       description: uploads a new image of an artist
       operationId: uploadArtistImage
@@ -660,7 +660,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /playlist:
+  /playlists:
     post:
       summary: creates new playlist
       operationId: createPlaylist
@@ -699,7 +699,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /playlist/{playlistId}:
+  /playlists/{playlistId}:
     post:
       summary: add track to playlist
       operationId: addTrackToPlaylist
@@ -736,7 +736,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-    put:
+    patch:
       summary: update playlist
       operationId: updatePlaylist
       parameters:
@@ -829,7 +829,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /playlist/{playlistId}/cover:
+  /playlists/{playlistId}/cover:
     post:
       description: uploads a new cover for the playlist
       operationId: uploadPlaylistCover
@@ -925,7 +925,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /album/create:
+  /albums/create:
     post:
       summary: creates new album
       operationId: createAlbum
@@ -948,7 +948,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /album/{albumId}:
+  /albums/{albumId}:
     get:
       summary: get info about the album
       operationId: getAlbum
@@ -1008,7 +1008,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /album/{albumId}/cover:
+  /albums/{albumId}/cover:
     post:
       description: uploads a new cover for the album
       operationId: uploadAlbumCover
