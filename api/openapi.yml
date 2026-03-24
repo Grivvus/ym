@@ -63,8 +63,15 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /auth/refresh:
     post:
+      security: []
       summary: update jwt tokens
       operationId: refreshTokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTokenRequest'
       responses:
         '200':
           description: token were successfully updated
@@ -72,6 +79,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: unauthorized
           content:
@@ -1147,6 +1160,14 @@ components:
         new_username:
           type: string
         new_email:
+          type: string
+
+    UpdateTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
           type: string
 
     TokenResponse:

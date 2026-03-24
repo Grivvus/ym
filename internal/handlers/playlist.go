@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/service"
@@ -19,22 +18,19 @@ type PlaylistHandlers struct {
 
 func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request) {
 	_, coverFileHeader, _ := r.FormFile("playlist_cover")
-
-	var params service.PlaylistCreateParams
-	owner := r.FormValue("owner_id")
-	playlistName := r.FormValue("playlist_name")
-	if owner == "" || playlistName == "" {
-		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("form fields are not set or empty"))
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
 		return
 	}
 
-	ownerID, err := strconv.Atoi(owner)
-	if err != nil {
-		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("owner_id must be int"))
+	var params service.PlaylistCreateParams
+	playlistName := r.FormValue("playlist_name")
+	if playlistName == "" {
+		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("playlist_name is required"))
 		return
 	}
 	params.Name = playlistName
-	params.OwnerID = int32(ownerID)
+	params.OwnerID = userID
 
 	playlistResponse, err := h.playlistService.Create(r.Context(), params, coverFileHeader)
 	if err != nil {
@@ -86,8 +82,11 @@ func (h PlaylistHandlers) GetPlaylist(w http.ResponseWriter, r *http.Request, pl
 }
 
 func (h PlaylistHandlers) GetPlaylists(w http.ResponseWriter, r *http.Request) {
-	panic("not implemented")
-	playlists, err := h.playlistService.GetUserPlaylists(r.Context(), 123)
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+	playlists, err := h.playlistService.GetUserPlaylists(r.Context(), userID)
 	if err != nil {
 		_ = writeError(w, http.StatusInternalServerError, err)
 		return

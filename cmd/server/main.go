@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -75,6 +74,7 @@ func main() {
 
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(handlers.AuthMiddleware(logger, []byte(cfg.JWTSecret)))
 
 	/* swagger-related routes */
 	r.Get("/openapi.yml", func(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +96,7 @@ func main() {
 
 	go func() {
 		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("listen: %s\n", "err", err)
+			logger.Error("listen failed", "err", err)
 		}
 	}()
 
@@ -108,12 +108,12 @@ func main() {
 	// kill -9 is syscall.SIGKILL but can't be caught, so don't need add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutdown Server ...")
+	logger.Info("shutdown server")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := s.Shutdown(ctx); err != nil {
-		logger.Info("Server Shutdown:", "err", err)
+		logger.Error("server shutdown failed", "err", err)
 	}
-	logger.Info("Server exiting")
+	logger.Info("server exiting")
 }

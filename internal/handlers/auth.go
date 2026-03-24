@@ -18,8 +18,7 @@ type AuthHandlers struct {
 
 func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	var user api.UserAuth
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&user)
+	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		_ = writeError(
 			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
@@ -31,11 +30,11 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err.Error() == "wrong password" {
 			_ = writeError(
-				w, http.StatusBadRequest, fmt.Errorf("invalid password"),
+				w, http.StatusUnauthorized, fmt.Errorf("invalid credentials"),
 			)
 		} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = writeError(
-				w, http.StatusBadRequest, fmt.Errorf("invalid username"),
+				w, http.StatusUnauthorized, fmt.Errorf("invalid credentials"),
 			)
 		} else {
 			_ = writeError(w, http.StatusInternalServerError, err)
@@ -51,8 +50,7 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 
 func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 	var user api.UserAuth
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&user)
+	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		_ = writeError(
 			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
@@ -77,5 +75,27 @@ func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h AuthHandlers) RefreshTokens(w http.ResponseWriter, r *http.Request) {
-	_ = writeError(w, http.StatusNotImplemented, fmt.Errorf("not implemented"))
+	var req api.UpdateTokenRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		_ = writeError(
+			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		)
+		return
+	}
+
+	resp, err := h.service.UpdateTokens(r.Context(), req.RefreshToken)
+	if err != nil {
+		if errors.Is(err, service.ErrUnauthorized) {
+			_ = writeError(w, http.StatusUnauthorized, fmt.Errorf("invalid refresh token"))
+		} else {
+			_ = writeError(w, http.StatusInternalServerError, err)
+		}
+		return
+	}
+
+	err = writeJSON(w, http.StatusOK, resp)
+	if err != nil {
+		h.logger.Error("failed to encode response", "err", err)
+	}
 }

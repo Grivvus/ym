@@ -18,6 +18,8 @@ type ErrUserAlreadyExists struct {
 	Username string
 }
 
+var ErrUnauthorized = errors.New("unauthorized")
+
 func (e ErrUserAlreadyExists) Error() string {
 	return fmt.Sprintf("User '%v' already exists", e.Username)
 }
@@ -57,6 +59,8 @@ func (a AuthService) Register(
 			} else {
 				retErr = fmt.Errorf("unknown db error: %w", err)
 			}
+		} else {
+			retErr = fmt.Errorf("unknown error: %w", err)
 		}
 		return api.TokenResponse{}, retErr
 	}
@@ -97,8 +101,34 @@ func (a AuthService) Login(
 	}, err
 }
 
-func (a AuthService) UpdateTokens(ctx context.Context) error {
-	panic("not implemented")
+func (a AuthService) UpdateTokens(
+	ctx context.Context, refreshToken string,
+) (api.TokenResponse, error) {
+	userID, err := utils.ParseRefreshToken(refreshToken, a.jwtSecret)
+	if err != nil {
+		return api.TokenResponse{}, ErrUnauthorized
+	}
+
+	dbuser, err := a.queries.GetUserByID(ctx, userID)
+	if err != nil {
+		a.logger.Error("can't get user from db", "error", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.TokenResponse{}, ErrUnauthorized
+		}
+		return api.TokenResponse{}, fmt.Errorf("unknown error: %w", err)
+	}
+
+	accessToken, newRefreshToken, err := utils.CreateTokens(int(dbuser.ID), a.jwtSecret)
+	if err != nil {
+		return api.TokenResponse{}, fmt.Errorf("can't create tokens: %w", err)
+	}
+
+	return api.TokenResponse{
+		UserId:       dbuser.ID,
+		RefreshToken: newRefreshToken,
+		AccessToken:  accessToken,
+		TokenType:    "bearer",
+	}, nil
 }
 
 func (a AuthService) RevokeTokens(ctx context.Context) error {

@@ -19,6 +19,9 @@ type UserHandlers struct {
 func (u UserHandlers) GetUserById(
 	w http.ResponseWriter, r *http.Request, userId int32,
 ) {
+	if !requireCurrentUser(w, r, userId) {
+		return
+	}
 	user, err := u.userService.GetUserByID(r.Context(), userId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
@@ -36,6 +39,9 @@ func (u UserHandlers) GetUserById(
 }
 
 func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId int32) {
+	if !requireCurrentUser(w, r, userId) {
+		return
+	}
 	var toUpdate api.UserUpdate
 	err := json.NewDecoder(r.Body).Decode(&toUpdate)
 	if err != nil {
@@ -61,6 +67,9 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 }
 
 func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, userId int32) {
+	if !requireCurrentUser(w, r, userId) {
+		return
+	}
 	var updatePassword api.UserChangePassword
 	err := json.NewDecoder(r.Body).Decode(&updatePassword)
 	if err != nil {
@@ -82,6 +91,9 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 }
 
 func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
+	if !requireCurrentUser(w, r, userId) {
+		return
+	}
 	err := u.userService.UploadAvatar(r.Context(), userId, r.Body)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
@@ -98,6 +110,9 @@ func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, u
 }
 
 func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
+	if !requireCurrentUser(w, r, userId) {
+		return
+	}
 	img, err := u.userService.GetAvatar(r.Context(), userId)
 	if err != nil {
 		if _, t := errors.AsType[service.ErrNotFound](err); t {
@@ -115,6 +130,9 @@ func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, user
 }
 
 func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
+	if !requireCurrentUser(w, r, userId) {
+		return
+	}
 	err := u.userService.DeleteAvatar(r.Context(), userId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {

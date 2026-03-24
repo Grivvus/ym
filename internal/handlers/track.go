@@ -74,8 +74,11 @@ func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trac
 }
 
 func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request) {
-	panic("not implemented")
-	tracks, err := h.trackService.GetUserTracks(r.Context(), 123)
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+	tracks, err := h.trackService.GetUserTracks(r.Context(), userID)
 	if err != nil {
 		_ = writeError(w, http.StatusInternalServerError, err)
 		return

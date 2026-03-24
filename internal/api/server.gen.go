@@ -158,6 +158,11 @@ type TrackUploadSuccessResponse struct {
 	TrackId int32 `json:"track_id"`
 }
 
+// UpdateTokenRequest defines model for UpdateTokenRequest.
+type UpdateTokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
 // UserAuth defines model for UserAuth.
 type UserAuth struct {
 	Password string `json:"password"`
@@ -206,6 +211,9 @@ type CreateArtistMultipartRequestBody = ArtistCreateRequest
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = UserAuth
+
+// RefreshTokensJSONRequestBody defines body for RefreshTokens for application/json ContentType.
+type RefreshTokensJSONRequestBody = UpdateTokenRequest
 
 // RegisterJSONRequestBody defines body for Register for application/json ContentType.
 type RegisterJSONRequestBody = UserAuth
@@ -935,12 +943,6 @@ func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request)
 
 // RefreshTokens operation middleware
 func (siw *ServerInterfaceWrapper) RefreshTokens(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.RefreshTokens(w, r)
