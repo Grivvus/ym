@@ -2,93 +2,35 @@ package utils
 
 import (
 	"fmt"
-	"os"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
-	Host      string
-	Port      string
-	JWTSecret string
+	Host      string `envconfig:"APPLICATION_HOST" required:"true"`
+	Port      string `envconfig:"APPLICATION_PORT" required:"true"`
+	JWTSecret string `envconfig:"JWT_SECRET" required:"true"`
 
-	PostgresUser     string
-	PostgresHost     string
-	PostgresPort     string
-	PostgresPassword string
-	PostgresDB       string
+	PostgresUser     string `envconfig:"POSTGRES_USER" required:"true"`
+	PostgresHost     string `envconfig:"POSTGRES_HOST" required:"true"`
+	PostgresPort     string `envconfig:"POSTGRES_PORT" required:"true"`
+	PostgresPassword string `envconfig:"POSTGRES_PASSWORD" required:"true"`
+	PostgresDB       string `envconfig:"POSTGRES_DB" required:"true"`
 
-	S3Host             string
-	S3Port             string
-	S3AccessKey        string
-	S3SecretKey        string
-	S3SecureConnection bool
+	S3Host             string `envconfig:"S3_HOST" required:"true"`
+	S3Port             string `envconfig:"S3_PORT" required:"true"`
+	S3AccessKey        string `envconfig:"MINIO_ACCESS_KEY" required:"true"`
+	S3SecretKey        string `envconfig:"MINIO_SECRET_KEY" required:"true"`
+	S3SecureConnection bool   `envconfig:"S3_SECURE" required:"true"`
 }
 
 func NewConfig() (*Config, error) {
-	host, ok := os.LookupEnv("APPLICATION_HOST")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "APPLICATION_HOST")
+	var cfg Config
+	err := envconfig.Process("", &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("can't process config: %w", err)
 	}
-	port, ok := os.LookupEnv("APPLICATION_PORT")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "APPLICATION_PORT")
-	}
-	jwtsecret, ok := os.LookupEnv("JWT_SECRET")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "JWT_SECRET")
-	}
-	postgresUser, ok := os.LookupEnv("POSTGRES_USER")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "POSTGRES_USER")
-	}
-	postgresHost, ok := os.LookupEnv("POSTGRES_HOST")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "POSTGRES_HOST")
-	}
-	postgresPort, ok := os.LookupEnv("POSTGRES_PORT")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "POSTGRES_PORT")
-	}
-	postgresPassword, ok := os.LookupEnv("POSTGRES_PASSWORD")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "POSTGRES_PASSWORD")
-	}
-	postgresDB, ok := os.LookupEnv("POSTGRES_DB")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "POSTGRES_DB")
-	}
-	s3Host, ok := os.LookupEnv("S3_HOST")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "S3_HOST")
-	}
-	s3Port := os.Getenv("S3_PORT")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "S3_PORT")
-	}
-	minioAccess := os.Getenv("MINIO_ACCESS_KEY")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "MINIO_ACCESS_KEY")
-	}
-	minioSecret := os.Getenv("MINIO_SECRET_KEY")
-	if !ok {
-		return nil, fmt.Errorf("environment variable not found: %v", "MINIO_SECRET_KEY")
-	}
-	fmt.Println(minioAccess, minioSecret)
-
-	return &Config{
-		Host:               host,
-		Port:               port,
-		JWTSecret:          jwtsecret,
-		PostgresUser:       postgresUser,
-		PostgresHost:       postgresHost,
-		PostgresPort:       postgresPort,
-		PostgresPassword:   postgresPassword,
-		PostgresDB:         postgresDB,
-		S3Host:             s3Host,
-		S3Port:             s3Port,
-		S3AccessKey:        minioAccess,
-		S3SecretKey:        minioSecret,
-		S3SecureConnection: false,
-	}, nil
+	return &cfg, nil
 }
 
 func (cfg *Config) DBConnString() string {
