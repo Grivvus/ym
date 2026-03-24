@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 
 	"github.com/Grivvus/ym/internal/utils"
 	"github.com/minio/minio-go/v7"
@@ -27,7 +28,7 @@ type Storage interface {
 	ImageExist(ctx context.Context, imageID string) bool
 }
 
-func New(cfg utils.Config) (Storage, error) {
+func New(ctx context.Context, cfg utils.Config, logger *slog.Logger) (Storage, error) {
 	if cfg.S3Host == "" {
 		return nil, errors.New("can't create storage, S3_HOST env variable is not set")
 	}
@@ -42,8 +43,8 @@ func New(cfg utils.Config) (Storage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't create connection to minio: %w", err)
 	}
-	storage := minioStorage{client: minioClient}
-	err = storage.createBucketsIfNotExists(context.TODO())
+	storage := minioStorage{client: minioClient, logger: logger}
+	err = storage.createBucketsIfNotExists(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't init storage: %w", err)
 	}

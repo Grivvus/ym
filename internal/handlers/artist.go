@@ -39,7 +39,7 @@ func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(artistResponse)
 	if err != nil {
-		slog.Error("ArtistHandlers.CreateArtist", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -53,7 +53,7 @@ func (h ArtistHandlers) DeleteArtist(w http.ResponseWriter, r *http.Request, art
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		slog.Error("ArtistHandlers.DeleteArtist", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -71,7 +71,7 @@ func (h ArtistHandlers) GetArtist(w http.ResponseWriter, r *http.Request, artist
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		slog.Error("ArtistHandlers.GetArtist", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -89,7 +89,7 @@ func (h ArtistHandlers) DeleteArtistImage(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(api.ArtistImageResponse{ArtistId: artistID})
 	if err != nil {
-		slog.Error("ArtistHandlers.DeleteArtistImage, can't encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -103,7 +103,7 @@ func (h ArtistHandlers) UploadArtistImage(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(api.ArtistImageResponse{ArtistId: artistID})
 	if err != nil {
-		slog.Error("ArtistHandlers.UploadArtistImage, can't encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 

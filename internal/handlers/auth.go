@@ -40,7 +40,7 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		slog.Error("AuthHandlers.Login", "err", err)
+		h.logger.Error("failed to encode response", "err", err)
 	}
 }
 
@@ -67,7 +67,7 @@ func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		slog.Error("AuthHandlers.Register", "err", err)
+		h.logger.Error("failed to encode response", "err", err)
 	}
 }
 

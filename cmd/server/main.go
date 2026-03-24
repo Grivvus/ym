@@ -25,33 +25,35 @@ import (
 )
 
 func main() {
-	err := godotenv.Load(".env.minio", ".env")
-	if err != nil {
-		slog.Error("Can't load .env file", "err", err)
-		os.Exit(1)
-	}
-
 	logger := slog.New(slog.NewTextHandler(
 		os.Stdout, &slog.HandlerOptions{AddSource: true},
 	))
 
+	err := godotenv.Load(".env.minio", ".env")
+	if err != nil {
+		logger.Error("Can't load .env file", "err", err)
+		os.Exit(1)
+	}
+
 	cfg, err := utils.NewConfig()
 	if err != nil {
-		panic("can't create config " + err.Error())
+		logger.Error("can't create config", "err", err)
+		os.Exit(1)
 	}
+
 	pool, err := pgxpool.New(context.Background(), cfg.DBConnString())
 	if err != nil {
-		slog.Error("Can't create connection pool to a database", "err", err)
+		logger.Error("Can't create connection pool to a database", "err", err)
 		os.Exit(1)
 	}
-	slog.Info("connection pool to the database was created")
+	logger.Info("connection pool to the database was created")
 
-	storageClient, err := storage.New(*cfg)
+	storageClient, err := storage.New(context.Background(), *cfg, logger)
 	if err != nil {
-		slog.Error("Can't create connection to a storage", "err", err)
+		logger.Error("Can't create connection to a storage", "err", err)
 		os.Exit(1)
 	}
-	slog.Info("connection to the storage was created")
+	logger.Info("connection to the storage was created")
 
 	dbInst := db.New(pool)
 
@@ -90,11 +92,11 @@ func main() {
 		Handler: h,
 	}
 
-	slog.Info("server was started on", "port", cfg.Port)
+	logger.Info("server was started on", "port", cfg.Port)
 
 	go func() {
 		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			logger.Error("listen: %s\n", "err", err)
 		}
 	}()
 
@@ -111,7 +113,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := s.Shutdown(ctx); err != nil {
-		log.Println("Server Shutdown:", err)
+		logger.Info("Server Shutdown:", err)
 	}
-	log.Println("Server exiting")
+	logger.Info("Server exiting")
 }

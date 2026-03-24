@@ -32,7 +32,7 @@ func (u UserHandlers) GetUserById(
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(user)
 	if err != nil {
-		slog.Error("can't encode response", "err", err)
+		u.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -56,7 +56,7 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		slog.Error("Unexpected error", "err", err)
+		u.logger.Error("unexpected error", "err", err)
 	}
 }
 
@@ -65,16 +65,16 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 	var updatePassword api.UserChangePassword
 	err := json.NewDecoder(r.Body).Decode(&updatePassword)
 	if err != nil {
-		http.Error(w, "Invalid body", http.StatusBadRequest)
+		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
 	}
 	err = u.userService.ChangePassword(r.Context(), userId, updatePassword)
 	if err != nil {
-		slog.Error("UserHandler.ChangePassword", "error", err)
+		u.logger.Error("can't change password", "err", err)
 		if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, "Old password is wrong", http.StatusBadRequest)
+			http.Error(w, "old password is wrong", http.StatusBadRequest)
 		} else {
-			http.Error(w, "", http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -95,7 +95,7 @@ func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, u
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(api.MessageResponse{Msg: "avatar was uploaded"})
 	if err != nil {
-		slog.Error("UploadUserAvatar: can't encode json", "err", err)
+		u.logger.Error("can't encode json", "err", err)
 	}
 }
 
@@ -112,7 +112,7 @@ func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, user
 	}
 	_, err = w.Write(img)
 	if err != nil {
-		slog.Error("can't send response")
+		u.logger.Error("can't send response")
 	}
 }
 
@@ -123,12 +123,12 @@ func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, u
 		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "no such user", http.StatusNotFound)
 		} else {
-			http.Error(w, "unkown server error: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "unknown server error: "+err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
 	err = json.NewEncoder(w).Encode(api.MessageResponse{Msg: "avatar was deleted"})
 	if err != nil {
-		slog.Error("DeleteUserAvatar: can't encode json", "err", err)
+		u.logger.Error("can't encode json", "err", err)
 	}
 }

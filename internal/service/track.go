@@ -88,7 +88,7 @@ func (s *TrackService) UploadTrack(
 		return ret, fmt.Errorf("can't create tmp file: %w", err)
 	}
 
-	presetsFiles, err := transcoder.TranscodeConcurrent(ctx, tmpFname)
+	presetsFiles, err := transcoder.TranscodeConcurrent(ctx, tmpFname, s.logger)
 	if err != nil {
 		go func() {
 			_ = s.queries.DeleteTrack(ctx, ret.TrackId)

@@ -43,7 +43,7 @@ func (h AlbumHandlers) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(albumResponse)
 	if err != nil {
-		slog.Error("AlbumHandlers.CreateAlbum: can't encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -60,7 +60,7 @@ func (h AlbumHandlers) GetAlbum(w http.ResponseWriter, r *http.Request, albumId 
 	}
 	err = json.NewEncoder(w).Encode(albumResp)
 	if err != nil {
-		slog.Error("AlbumHandlers.GetAlbum: can't encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -73,7 +73,7 @@ func (h AlbumHandlers) DeleteAlbum(w http.ResponseWriter, r *http.Request, album
 	}
 	err = json.NewEncoder(w).Encode(albumResp)
 	if err != nil {
-		slog.Error("ALbumHandlers.DeleteAlbum: can't encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -84,7 +84,7 @@ func (h AlbumHandlers) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, 
 		http.Error(w, "can't delete cover: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(api.AlbumCoverResponse{AlbumId: albumId})
+	_ = json.NewEncoder(w).Encode(api.AlbumCoverResponse{AlbumId: albumId})
 }
 
 func (h AlbumHandlers) GetAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
@@ -115,5 +115,5 @@ func (h AlbumHandlers) UploadAlbumCover(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(api.AlbumCoverResponse{AlbumId: albumId})
+	_ = json.NewEncoder(w).Encode(api.AlbumCoverResponse{AlbumId: albumId})
 }

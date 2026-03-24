@@ -11,6 +11,7 @@ import (
 
 type minioStorage struct {
 	client *minio.Client
+	logger *slog.Logger
 }
 
 func (m minioStorage) PutTrack(
@@ -101,7 +102,7 @@ func (m minioStorage) createBucketsIfNotExists(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("can't create new bucket: %w", err)
 			}
-			slog.Info("bucket was created:", "bucket", bucketName)
+			m.logger.Info("bucket was created:", "bucket", bucketName)
 		}
 	}
 	return nil

@@ -43,7 +43,7 @@ func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request)
 	}
 	err = json.NewEncoder(w).Encode(playlistResponse)
 	if err != nil {
-		slog.Error("PlaylistHandlers.CraetePlaylist, can't encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -60,7 +60,7 @@ func (h PlaylistHandlers) DeletePlaylist(w http.ResponseWriter, r *http.Request,
 	}
 	err = json.NewEncoder(w).Encode(api.PlaylistDeleteResponse{PlaylistId: playlistId})
 	if err != nil {
-		slog.Error("PlaylistHandlers.DeletePlaylist: can't encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -77,7 +77,7 @@ func (h PlaylistHandlers) GetPlaylist(w http.ResponseWriter, r *http.Request, pl
 	}
 	err = json.NewEncoder(w).Encode(playlistInfo)
 	if err != nil {
-		slog.Error("PlaylistHandlers.GetPlaylist: can't encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -91,7 +91,7 @@ func (h PlaylistHandlers) GetPlaylists(w http.ResponseWriter, r *http.Request) {
 	}
 	err = json.NewEncoder(w).Encode(playlists)
 	if err != nil {
-		slog.Error("can't encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 func (h PlaylistHandlers) AddTrackToPlaylist(
@@ -143,6 +143,6 @@ func (h PlaylistHandlers) UploadPlaylistCover(w http.ResponseWriter, r *http.Req
 	}
 	err = json.NewEncoder(w).Encode(api.PlaylistCoverResponse{PlaylistId: playlistId})
 	if err != nil {
-		slog.Error("PlaylistHandlers.UploadPlaylistCover: can't encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }

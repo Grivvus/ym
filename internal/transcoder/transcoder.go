@@ -31,7 +31,7 @@ func PresetFromString(s string) (Preset, error) {
 	case "lossless":
 		return PresetLossless, nil
 	default:
-		return Preset(0), fmt.Errorf("This preset didn't match to any of existing one")
+		return Preset(0), fmt.Errorf("this preset didn't match to any of existing one")
 	}
 }
 
@@ -46,7 +46,7 @@ func (p Preset) String() string {
 	case PresetLossless:
 		return "lossless"
 	default:
-		return "unkown preset"
+		return "unknown preset"
 	}
 }
 
@@ -85,7 +85,9 @@ func Transcode(ctx context.Context, fname string) (map[Preset]string, error) {
 	return transcodedFiles, nil
 }
 
-func TranscodeConcurrent(ctx context.Context, fname string) (map[Preset]string, error) {
+func TranscodeConcurrent(
+	ctx context.Context, fname string, logger *slog.Logger,
+) (map[Preset]string, error) {
 	presets := []Preset{PresetFast, PresetStandard, PresetHigh, PresetLossless}
 	transcodedFiles := make(map[Preset]string, 4)
 	c := make(chan Preset)
@@ -125,23 +127,23 @@ func TranscodeConcurrent(ctx context.Context, fname string) (map[Preset]string, 
 			}
 		case <-pctx.Done():
 			err := pctx.Err()
-			go removeTmpFiles(fname)
+			go removeTmpFiles(fname, logger)
 			return nil, fmt.Errorf("context was canceled with err: %w", err)
 		}
 	}
 }
 
-func removeTmpFiles(fname string) {
+func removeTmpFiles(fname string, logger *slog.Logger) {
 	err := os.Remove(fname)
 	if err != nil {
-		slog.Error("error on removing tmp", "err", err)
+		logger.Error("error on removing tmp", "err", err)
 	}
 	presets := []Preset{PresetFast, PresetStandard, PresetHigh, PresetLossless}
 	for _, p := range presets {
 		tmp := TranscodedName(fname, p)
 		err := os.Remove(tmp)
 		if err != nil {
-			slog.Error("error on removing tmp", "err", err)
+			logger.Error("error on removing tmp", "err", err)
 		}
 	}
 }
