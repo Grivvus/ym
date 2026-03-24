@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -23,13 +24,13 @@ func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request)
 	owner := r.FormValue("owner_id")
 	playlistName := r.FormValue("playlist_name")
 	if owner == "" || playlistName == "" {
-		http.Error(w, "Form fields are not set or empty", http.StatusBadRequest)
+		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("form fields are not set or empty"))
 		return
 	}
 
 	ownerID, err := strconv.Atoi(owner)
 	if err != nil {
-		http.Error(w, "owner_id must be int", http.StatusBadRequest)
+		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("owner_id must be int"))
 		return
 	}
 	params.Name = playlistName
@@ -37,7 +38,10 @@ func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request)
 
 	playlistResponse, err := h.playlistService.Create(r.Context(), params, coverFileHeader)
 	if err != nil {
-		http.Error(w, "can't create playlist: "+err.Error(), http.StatusInternalServerError)
+		_ = writeError(
+			w, http.StatusInternalServerError,
+			fmt.Errorf("can't create playlist: %w", err),
+		)
 		return
 	}
 	err = writeJSON(w, http.StatusCreated, playlistResponse)
@@ -53,7 +57,10 @@ func (h PlaylistHandlers) UpdatePlaylist(w http.ResponseWriter, r *http.Request,
 func (h PlaylistHandlers) DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	err := h.playlistService.Delete(r.Context(), playlistId)
 	if err != nil {
-		http.Error(w, "can't delete playlist: "+err.Error(), http.StatusInternalServerError)
+		_ = writeError(
+			w, http.StatusInternalServerError,
+			fmt.Errorf("can't delete playlist: %w", err),
+		)
 		return
 	}
 	err = writeJSON(w, http.StatusOK, api.PlaylistDeleteResponse{PlaylistId: playlistId})
@@ -65,10 +72,10 @@ func (h PlaylistHandlers) DeletePlaylist(w http.ResponseWriter, r *http.Request,
 func (h PlaylistHandlers) GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	playlistInfo, err := h.playlistService.Get(r.Context(), playlistId)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, "can't find playlist with this id", http.StatusNotFound)
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, fmt.Errorf("can't find playlist with this id"))
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -82,7 +89,7 @@ func (h PlaylistHandlers) GetPlaylists(w http.ResponseWriter, r *http.Request) {
 	panic("not implemented")
 	playlists, err := h.playlistService.GetUserPlaylists(r.Context(), 123)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 	err = writeJSON(w, http.StatusOK, playlists)
@@ -96,12 +103,14 @@ func (h PlaylistHandlers) AddTrackToPlaylist(
 	var body api.AddTrackToPlaylistJSONBody
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		_ = writeError(
+			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		)
 		return
 	}
 	err = h.playlistService.AddTrack(r.Context(), playlistID, body.TrackId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -109,7 +118,10 @@ func (h PlaylistHandlers) AddTrackToPlaylist(
 func (h PlaylistHandlers) DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	err := h.playlistService.Delete(r.Context(), playlistId)
 	if err != nil {
-		http.Error(w, "can't delete cover: "+err.Error(), http.StatusInternalServerError)
+		_ = writeError(
+			w, http.StatusInternalServerError,
+			fmt.Errorf("can't delete cover: %w", err),
+		)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -118,10 +130,10 @@ func (h PlaylistHandlers) DeletePlaylistCover(w http.ResponseWriter, r *http.Req
 func (h PlaylistHandlers) GetPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	bimage, err := h.playlistService.GetCover(r.Context(), playlistId)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, "can't find playlist with this id", http.StatusNotFound)
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, fmt.Errorf("can't find playlist with this id"))
 		} else {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -135,7 +147,10 @@ func (h PlaylistHandlers) GetPlaylistCover(w http.ResponseWriter, r *http.Reques
 func (h PlaylistHandlers) UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	err := h.playlistService.UploadCover(r.Context(), playlistId, r.Body)
 	if err != nil {
-		http.Error(w, "can't upload image: "+err.Error(), http.StatusInternalServerError)
+		_ = writeError(
+			w, http.StatusInternalServerError,
+			fmt.Errorf("can't upload image: %w", err),
+		)
 		return
 	}
 	err = writeJSON(w, http.StatusCreated, api.PlaylistCoverResponse{PlaylistId: playlistId})

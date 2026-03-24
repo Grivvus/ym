@@ -53,7 +53,7 @@ func (h AlbumHandlers) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 func (h AlbumHandlers) GetAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
 	albumResp, err := h.albumService.Get(r.Context(), albumId)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound{}) {
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = writeError(w, http.StatusNotFound, fmt.Errorf("can't find album with this id: %w", err))
 		} else {
 			_ = writeError(w, http.StatusInternalServerError, err)
@@ -81,7 +81,10 @@ func (h AlbumHandlers) DeleteAlbum(w http.ResponseWriter, r *http.Request, album
 func (h AlbumHandlers) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	err := h.albumService.DeleteCover(r.Context(), albumId)
 	if err != nil {
-		http.Error(w, "can't delete cover: "+err.Error(), http.StatusInternalServerError)
+		_ = writeError(
+			w, http.StatusInternalServerError,
+			fmt.Errorf("can't delete cover: %w", err),
+		)
 		return
 	}
 	err = writeJSON(w, http.StatusOK, api.AlbumCoverResponse{AlbumId: albumId})
@@ -94,7 +97,7 @@ func (h AlbumHandlers) GetAlbumCover(w http.ResponseWriter, r *http.Request, alb
 	w.Header().Set("Content-Type", "image/webp")
 	bimage, err := h.albumService.GetCover(r.Context(), albumId)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound{}) {
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = writeError(
 				w, http.StatusNotFound,
 				fmt.Errorf("no album with this id was found: %w", err),
@@ -114,10 +117,10 @@ func (h AlbumHandlers) GetAlbumCover(w http.ResponseWriter, r *http.Request, alb
 func (h AlbumHandlers) UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	err := h.albumService.UploadCover(r.Context(), albumId, r.Body)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, "no album with this id was found", http.StatusNotFound)
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, fmt.Errorf("no album with this id was found"))
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}

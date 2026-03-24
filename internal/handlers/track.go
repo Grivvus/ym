@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -19,20 +20,21 @@ type TrackHandlers struct {
 func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	_, header, err := r.FormFile("track")
 	if err != nil || header == nil {
-		http.Error(w, "Form must include track file", http.StatusBadRequest)
+		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("form must include track file"))
 		return
 	}
 	name := r.FormValue("name")
 	album := r.FormValue("album_id")
 	artist := r.FormValue("artist_id")
 	if name == "" || album == "" || artist == "" {
-		http.Error(w, "Form fields are not set or empty", http.StatusBadRequest)
+		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("form fields are not set or empty"))
 		return
 	}
 	albumID, err1 := strconv.Atoi(album)
 	artistID, err2 := strconv.Atoi(artist)
 	if err1 != nil || err2 != nil {
-		http.Error(w, "album_id and artist_id must be int", http.StatusBadRequest)
+		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("album_id and artist_id must be int"))
+		return
 	}
 	var uploadParams = service.TrackUploadParams{
 		ArtistID: int32(artistID),
@@ -42,7 +44,7 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.trackService.UploadTrack(r.Context(), uploadParams, header)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 	err = writeJSON(w, http.StatusCreated, resp)
@@ -54,7 +56,7 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int32) {
 	err := h.trackService.DeleteTrack(r.Context(), trackId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -62,7 +64,7 @@ func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, track
 func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32) {
 	metadata, err := h.trackService.GetMeta(r.Context(), trackId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 	err = writeJSON(w, http.StatusOK, metadata)
@@ -75,7 +77,7 @@ func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request) {
 	panic("not implemented")
 	tracks, err := h.trackService.GetUserTracks(r.Context(), 123)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 	err = writeJSON(w, http.StatusOK, tracks)
@@ -105,25 +107,25 @@ func (h TrackHandlers) StreamTrack(
 	meta, err := h.trackService.GetStreamMeta(r.Context(), trackId, quality)
 	if err != nil {
 		if errors.Is(err, service.ErrPresetCantBeSelected) {
-			http.Error(w, err.Error()+". Probably wrong name", http.StatusBadRequest)
-		} else if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("%w. Probably wrong name", err))
+		} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, err)
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
 
 	stream, err := h.trackService.GetStream(r.Context(), trackId, quality)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	_, err = io.Copy(w, stream)
 	if err != nil {
 		h.logger.Error("can't write stream to response", "err", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		_ = writeError(w, http.StatusInternalServerError, err)
 	}
 	w.Header().Set("Content-Type", meta.ContentType)
 	w.Header().Set("Content-Length", strconv.Itoa(int(meta.ContentLength)))
@@ -143,11 +145,11 @@ func (h TrackHandlers) StreamTrackHead(
 	meta, err := h.trackService.GetStreamMeta(r.Context(), trackId, quality)
 	if err != nil {
 		if errors.Is(err, service.ErrPresetCantBeSelected) {
-			http.Error(w, err.Error()+". Probably wrong name", http.StatusBadRequest)
-		} else if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("%w. Probably wrong name", err))
+		} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, err)
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}

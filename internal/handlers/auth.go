@@ -21,7 +21,9 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&user)
 	if err != nil {
-		http.Error(w, "Invalid body", http.StatusBadRequest)
+		_ = writeError(
+			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		)
 		return
 	}
 
@@ -75,5 +77,5 @@ func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h AuthHandlers) RefreshTokens(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	_ = writeError(w, http.StatusNotImplemented, fmt.Errorf("not implemented"))
 }

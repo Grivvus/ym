@@ -119,7 +119,6 @@ func (h ArtistHandlers) GetArtistImage(w http.ResponseWriter, r *http.Request, a
 				fmt.Errorf("artist image not found or artist doesn't exist: %w", err),
 			)
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
 			_ = writeError(
 				w, http.StatusInternalServerError,
 				fmt.Errorf("can't get artist image: %w", err),

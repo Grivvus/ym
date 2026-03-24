@@ -26,7 +26,7 @@ type TrackUploadParams struct {
 	Duration *int
 }
 
-var ErrPresetCantBeSelected error = errors.New("preset can't be selected for this track")
+var ErrPresetCantBeSelected = errors.New("preset can't be selected for this track")
 
 type StreamMeta struct {
 	ContentLength uint

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -20,10 +21,10 @@ func (u UserHandlers) GetUserById(
 ) {
 	user, err := u.userService.GetUserByID(r.Context(), userId)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, "Wrong username", http.StatusBadRequest)
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("wrong username"))
 		} else {
-			http.Error(w, "", http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -38,15 +39,17 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 	var toUpdate api.UserUpdate
 	err := json.NewDecoder(r.Body).Decode(&toUpdate)
 	if err != nil {
-		http.Error(w, "Invalid body", http.StatusBadRequest)
+		_ = writeError(
+			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		)
 		return
 	}
 	resp, err := u.userService.ChangeUser(r.Context(), userId, toUpdate)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, "No such user", http.StatusBadRequest)
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("no such user"))
 		} else {
-			http.Error(w, "", http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -61,16 +64,18 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 	var updatePassword api.UserChangePassword
 	err := json.NewDecoder(r.Body).Decode(&updatePassword)
 	if err != nil {
-		http.Error(w, "invalid body", http.StatusBadRequest)
+		_ = writeError(
+			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		)
 		return
 	}
 	err = u.userService.ChangePassword(r.Context(), userId, updatePassword)
 	if err != nil {
 		u.logger.Error("can't change password", "err", err)
-		if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, "old password is wrong", http.StatusBadRequest)
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("old password is wrong"))
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -79,10 +84,10 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	err := u.userService.UploadAvatar(r.Context(), userId, r.Body)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, "no such user", http.StatusNotFound)
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, fmt.Errorf("no such user"))
 		} else {
-			http.Error(w, "unknown server error: "+err.Error(), http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -96,9 +101,9 @@ func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, user
 	img, err := u.userService.GetAvatar(r.Context(), userId)
 	if err != nil {
 		if _, t := errors.AsType[service.ErrNotFound](err); t {
-			http.Error(w, "user not found or no avatar", http.StatusNotFound)
+			_ = writeError(w, http.StatusNotFound, fmt.Errorf("user not found or no avatar"))
 		} else {
-			http.Error(w, "unknown server error", http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -112,10 +117,10 @@ func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, user
 func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	err := u.userService.DeleteAvatar(r.Context(), userId)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, "no such user", http.StatusNotFound)
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, fmt.Errorf("no such user"))
 		} else {
-			http.Error(w, "unknown server error: "+err.Error(), http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
