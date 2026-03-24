@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -13,14 +12,14 @@ import (
 
 type UserHandlers struct {
 	userService service.UserService
+	logger      *slog.Logger
 }
 
 func (u UserHandlers) GetUserById(
-	w http.ResponseWriter, r *http.Request, userId int,
+	w http.ResponseWriter, r *http.Request, userId int32,
 ) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
-	user, err := u.userService.GetUserByID(ctx, userId)
+	user, err := u.userService.GetUserByID(r.Context(), userId)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "Wrong username", http.StatusBadRequest)
@@ -37,16 +36,15 @@ func (u UserHandlers) GetUserById(
 	}
 }
 
-func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId int) {
+func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
 	var toUpdate api.UserUpdate
 	err := json.NewDecoder(r.Body).Decode(&toUpdate)
 	if err != nil {
 		http.Error(w, "Invalid body", http.StatusBadRequest)
 		return
 	}
-	resp, err := u.userService.ChangeUser(ctx, userId, toUpdate)
+	resp, err := u.userService.ChangeUser(r.Context(), userId, toUpdate)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "No such user", http.StatusBadRequest)
@@ -62,16 +60,15 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 	}
 }
 
-func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, userId int) {
+func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
 	var updatePassword api.UserChangePassword
 	err := json.NewDecoder(r.Body).Decode(&updatePassword)
 	if err != nil {
 		http.Error(w, "Invalid body", http.StatusBadRequest)
 		return
 	}
-	err = u.userService.ChangePassword(ctx, userId, updatePassword)
+	err = u.userService.ChangePassword(r.Context(), userId, updatePassword)
 	if err != nil {
 		slog.Error("UserHandler.ChangePassword", "error", err)
 		if errors.Is(err, service.ErrNotFound{}) {
@@ -84,15 +81,14 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 	w.WriteHeader(http.StatusOK)
 }
 
-func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
+func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
-	err := u.userService.UploadAvatar(ctx, userId, r.Body)
+	err := u.userService.UploadAvatar(r.Context(), userId, r.Body)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "no such user", http.StatusNotFound)
 		} else {
-			http.Error(w, "unkown server error: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "unknown server error: "+err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -103,14 +99,14 @@ func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, u
 	}
 }
 
-func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
+func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.Header().Set("Content-Type", "image/webp")
 	img, err := u.userService.GetAvatar(r.Context(), userId)
 	if err != nil {
 		if _, t := errors.AsType[service.ErrNotFound](err); t {
 			http.Error(w, "user not found or no avatar", http.StatusNotFound)
 		} else {
-			http.Error(w, "unkown server error", http.StatusInternalServerError)
+			http.Error(w, "unknown server error", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -120,10 +116,9 @@ func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, user
 	}
 }
 
-func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
+func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
-	err := u.userService.DeleteAvatar(ctx, userId)
+	err := u.userService.DeleteAvatar(r.Context(), userId)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "no such user", http.StatusNotFound)

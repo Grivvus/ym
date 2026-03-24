@@ -31,6 +31,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	logger := slog.New(slog.NewTextHandler(
+		os.Stdout, &slog.HandlerOptions{AddSource: true},
+	))
+
 	cfg, err := utils.NewConfig()
 	if err != nil {
 		panic("can't create config " + err.Error())
@@ -51,15 +55,17 @@ func main() {
 
 	dbInst := db.New(pool)
 
-	authService := service.NewAuthService(dbInst)
-	userService := service.NewUserService(dbInst, storageClient)
-	albumService := service.NewAlbumService(dbInst, storageClient)
-	playlistService := service.NewPlaylistService(dbInst, storageClient)
-	trackService := service.NewTrackService(dbInst, storageClient)
-	artistService := service.NewArtistService(dbInst, storageClient)
+	authService := service.NewAuthService(dbInst, logger, cfg)
+	userService := service.NewUserService(dbInst, storageClient, logger)
+	albumService := service.NewAlbumService(dbInst, storageClient, logger)
+	playlistService := service.NewPlaylistService(dbInst, storageClient, logger)
+	trackService := service.NewTrackService(dbInst, storageClient, logger)
+	artistService := service.NewArtistService(dbInst, storageClient, logger)
 
 	var server api.ServerInterface = handlers.NewRootHandler(
-		authService, userService, albumService, artistService,
+		logger,
+		authService, userService,
+		albumService, artistService,
 		trackService, playlistService,
 	)
 

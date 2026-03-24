@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 
 	"github.com/Grivvus/ym/internal/api"
@@ -15,19 +16,21 @@ import (
 )
 
 type AlbumCreateParams struct {
-	ArtistID int
+	ArtistID int32
 	Name     string
 }
 
 type AlbumService struct {
 	queries *db.Queries
 	st      storage.Storage
+	logger  *slog.Logger
 }
 
-func NewAlbumService(q *db.Queries, st storage.Storage) AlbumService {
+func NewAlbumService(q *db.Queries, st storage.Storage, logger *slog.Logger) AlbumService {
 	return AlbumService{
 		queries: q,
 		st:      st,
+		logger:  logger,
 	}
 }
 
@@ -38,13 +41,13 @@ func (s *AlbumService) Create(
 	var ret api.AlbumCreateResponse
 	var album = db.CreateAlbumParams{
 		Name:     albumInfo.Name,
-		ArtistID: int32(albumInfo.ArtistID),
+		ArtistID: albumInfo.ArtistID,
 	}
 	albumRet, err := s.queries.CreateAlbum(ctx, album)
 	if err != nil {
-		return ret, fmt.Errorf("unkown server error: %w", err)
+		return ret, fmt.Errorf("unknown server error: %w", err)
 	}
-	ret.AlbumId = int(albumRet.ID)
+	ret.AlbumId = albumRet.ID
 
 	if coverFileHeader == nil {
 		return ret, nil
@@ -56,7 +59,7 @@ func (s *AlbumService) Create(
 	}
 	defer func() { _ = rc.Close() }()
 
-	err = s.UploadCover(ctx, int(albumRet.ID), rc)
+	err = s.UploadCover(ctx, albumRet.ID, rc)
 	if err != nil {
 		go func() {
 			_ = s.queries.DeleteAlbum(ctx, int32(ret.AlbumId))
@@ -67,32 +70,31 @@ func (s *AlbumService) Create(
 }
 
 func (s *AlbumService) Get(
-	ctx context.Context, albumID int,
+	ctx context.Context, albumID int32,
 ) (api.AlbumInfoResponse, error) {
 	var ret api.AlbumInfoResponse
-	albumTracks, err := s.queries.GetAlbumWithTracks(ctx, int32(albumID))
+	albumTracks, err := s.queries.GetAlbumWithTracks(ctx, albumID)
 	if err != nil {
 		// no tracks in album, but album exists
 		// could be valid state
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("album", albumID)
-		} else {
-			return ret, fmt.Errorf("unkown server error: %w", err)
 		}
+		return ret, fmt.Errorf("unknown server error: %w", err)
 	}
 	ret.AlbumId = albumID
 	ret.AlbumName = albumTracks[0].Name
 	for _, t := range albumTracks {
-		ret.Tracks = append(ret.Tracks, int(t.TrackID))
+		ret.Tracks = append(ret.Tracks, t.TrackID)
 	}
 	return ret, nil
 }
 
 func (s *AlbumService) Delete(
-	ctx context.Context, albumID int,
+	ctx context.Context, albumID int32,
 ) (api.AlbumDeleteResponse, error) {
 	var ret = api.AlbumDeleteResponse{AlbumId: albumID}
-	album, err := s.queries.GetAlbum(ctx, int32(albumID))
+	album, err := s.queries.GetAlbum(ctx, albumID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, nil
@@ -100,9 +102,9 @@ func (s *AlbumService) Delete(
 	}
 	err = s.st.RemoveImage(ctx, ImageID("album", int(album.ID), album.Name))
 	if err != nil {
-		return ret, fmt.Errorf("Can't delete image: %w", err)
+		return ret, fmt.Errorf("can't delete image: %w", err)
 	}
-	err = s.queries.DeleteAlbum(ctx, int32(albumID))
+	err = s.queries.DeleteAlbum(ctx, albumID)
 	if err != nil {
 		return ret, err
 	}
@@ -110,16 +112,16 @@ func (s *AlbumService) Delete(
 }
 
 func (s *AlbumService) DeleteCover(
-	ctx context.Context, albumID int,
+	ctx context.Context, albumID int32,
 ) error {
-	album, err := s.queries.GetAlbum(ctx, int32(albumID))
+	album, err := s.queries.GetAlbum(ctx, albumID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		return fmt.Errorf("can't delete image, cause: %w", err)
 	}
-	err = s.st.RemoveImage(ctx, ImageID("album", albumID, album.Name))
+	err = s.st.RemoveImage(ctx, ImageID("album", int(albumID), album.Name))
 	if err != nil {
 		return fmt.Errorf("can't delete image, cause: %w", err)
 	}
@@ -127,15 +129,14 @@ func (s *AlbumService) DeleteCover(
 }
 
 func (s *AlbumService) UploadCover(
-	ctx context.Context, albumID int, cover io.Reader,
+	ctx context.Context, albumID int32, cover io.Reader,
 ) error {
-	album, err := s.queries.GetAlbum(ctx, int32(albumID))
+	album, err := s.queries.GetAlbum(ctx, albumID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
-		} else {
-			return fmt.Errorf("can't upload image, cause: %w", err)
 		}
+		return fmt.Errorf("can't upload image, cause: %w", err)
 	}
 	rcTranscoded, err := transcoder.ToWebp(cover)
 	if err != nil {
@@ -151,18 +152,18 @@ func (s *AlbumService) UploadCover(
 }
 
 func (s *AlbumService) GetCover(
-	ctx context.Context, albumID int,
+	ctx context.Context, albumID int32,
 ) ([]byte, error) {
-	album, err := s.queries.GetAlbum(ctx, int32(albumID))
+	album, err := s.queries.GetAlbum(ctx, albumID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, NewErrNotFound("album", albumID)
 		}
-		return nil, fmt.Errorf("unkown server error: %w", err)
+		return nil, fmt.Errorf("unknown server error: %w", err)
 	}
 	bimage, err := s.st.GetImage(ctx, ImageID("album", int(album.ID), album.Name))
 	if err != nil {
-		return nil, fmt.Errorf("unkown server error: %w", err)
+		return nil, fmt.Errorf("unknown server error: %w", err)
 	}
 	return bimage, nil
 }

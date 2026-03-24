@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,11 +13,11 @@ import (
 
 type ArtistHandlers struct {
 	artistService service.ArtistService
+	logger        *slog.Logger
 }
 
 func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
 	// if there's no artist_image it's still ok
 	_, fileHeader, _ := r.FormFile("artist_image")
 	artistName := r.FormValue("artist_name")
@@ -31,7 +30,7 @@ func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	artistResponse, err := h.artistService.Create(ctx, artistName, fileHeader)
+	artistResponse, err := h.artistService.Create(r.Context(), artistName, fileHeader)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("can't create new artist: %v", err.Error()), http.StatusInternalServerError)
 		return
@@ -44,10 +43,9 @@ func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h ArtistHandlers) DeleteArtist(w http.ResponseWriter, r *http.Request, artistID int) {
+func (h ArtistHandlers) DeleteArtist(w http.ResponseWriter, r *http.Request, artistID int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
-	response, err := h.artistService.Delete(ctx, artistID)
+	response, err := h.artistService.Delete(r.Context(), artistID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("can't delete artist: %v", err.Error()), http.StatusInternalServerError)
 		return
@@ -59,10 +57,9 @@ func (h ArtistHandlers) DeleteArtist(w http.ResponseWriter, r *http.Request, art
 	}
 }
 
-func (h ArtistHandlers) GetArtist(w http.ResponseWriter, r *http.Request, artistID int) {
+func (h ArtistHandlers) GetArtist(w http.ResponseWriter, r *http.Request, artistID int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
-	response, err := h.artistService.Get(ctx, artistID)
+	response, err := h.artistService.Get(r.Context(), artistID)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			http.Error(w, "Artist with this id is not found", http.StatusNotFound)
@@ -78,10 +75,9 @@ func (h ArtistHandlers) GetArtist(w http.ResponseWriter, r *http.Request, artist
 	}
 }
 
-func (h ArtistHandlers) DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistID int) {
+func (h ArtistHandlers) DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistID int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
-	err := h.artistService.DeleteImage(ctx, artistID)
+	err := h.artistService.DeleteImage(r.Context(), artistID)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			http.Error(w, "no artist with this id", http.StatusNotFound)
@@ -97,10 +93,9 @@ func (h ArtistHandlers) DeleteArtistImage(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (h ArtistHandlers) UploadArtistImage(w http.ResponseWriter, r *http.Request, artistID int) {
+func (h ArtistHandlers) UploadArtistImage(w http.ResponseWriter, r *http.Request, artistID int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
-	err := h.artistService.UploadImage(ctx, artistID, r.Body)
+	err := h.artistService.UploadImage(r.Context(), artistID, r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -112,10 +107,9 @@ func (h ArtistHandlers) UploadArtistImage(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (h ArtistHandlers) GetArtistImage(w http.ResponseWriter, r *http.Request, artistID int) {
+func (h ArtistHandlers) GetArtistImage(w http.ResponseWriter, r *http.Request, artistID int32) {
 	w.Header().Set("Content-Type", "image/webp")
-	ctx := context.TODO()
-	bimage, err := h.artistService.GetImage(ctx, artistID)
+	bimage, err := h.artistService.GetImage(r.Context(), artistID)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			http.Error(w, "no artist with this id or no image", http.StatusNotFound)

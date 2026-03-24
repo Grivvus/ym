@@ -19,31 +19,33 @@ import (
 type UserService struct {
 	queries *db.Queries
 	st      storage.Storage
+	logger  *slog.Logger
 }
 
-func NewUserService(q *db.Queries, st storage.Storage) UserService {
+func NewUserService(q *db.Queries, st storage.Storage, logger *slog.Logger) UserService {
 	return UserService{
 		queries: q,
 		st:      st,
+		logger:  logger,
 	}
 }
 
 func (u *UserService) GetUserByID(
-	ctx context.Context, userID int,
+	ctx context.Context, userID int32,
 ) (api.UserReturn, error) {
 	var ret api.UserReturn
 
 	user, err := u.queries.GetUserByID(ctx, int32(userID))
 	if err != nil {
-		slog.Error("GetuserByID", "err", err)
+		slog.Error("Get-userByID", "err", err)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("user", userID)
 		}
-		return ret, fmt.Errorf("unkown server error: %w", err)
+		return ret, fmt.Errorf("unknown server error: %w", err)
 	}
 
 	ret.Username = user.Username
-	ret.Id = int(user.ID)
+	ret.Id = user.ID
 	if user.Email.Valid {
 		ret.Email = &user.Email.String
 	} else {
@@ -55,11 +57,11 @@ func (u *UserService) GetUserByID(
 
 func (u *UserService) ChangeUser(
 	ctx context.Context,
-	userID int,
+	userID int32,
 	newUserParams api.UserUpdate,
 ) (api.UserReturn, error) {
 	updateParamsDB := db.UpdateUserParams{
-		ID:       int32(userID),
+		ID:       userID,
 		Username: newUserParams.NewUsername,
 	}
 	if newUserParams.NewEmail != "" {
@@ -79,11 +81,11 @@ func (u *UserService) ChangeUser(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("user", userID)
 		}
-		return ret, fmt.Errorf("unkown db error: %w", err)
+		return ret, fmt.Errorf("unknown db error: %w", err)
 	}
 
 	ret.Username = updatedUser.Username
-	ret.Id = int(updatedUser.ID)
+	ret.Id = updatedUser.ID
 	if updatedUser.Email.Valid {
 		ret.Email = &updatedUser.Email.String
 	} else {
@@ -94,32 +96,32 @@ func (u *UserService) ChangeUser(
 }
 
 func (u *UserService) ChangePassword(
-	ctx context.Context, userID int, newPasswordParams api.UserChangePassword,
+	ctx context.Context, userID int32, newPasswordParams api.UserChangePassword,
 ) error {
-	user, err := u.queries.GetUserByID(ctx, int32(userID))
+	user, err := u.queries.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return NewErrNotFound("user", userID)
 		}
-		return fmt.Errorf("unkown db error: %w", err)
+		return fmt.Errorf("unknown db error: %w", err)
 	}
 	if !utils.VerifyPassword(newPasswordParams.OldPassword, user.Salt, user.Password) {
 		return fmt.Errorf("wrong password")
 	}
 	newHashed, newSalt := utils.HashPassword(newPasswordParams.NewPassword)
 	err = u.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
-		ID:       int32(userID),
+		ID:       userID,
 		Password: newHashed,
 		Salt:     newSalt,
 	})
 	if err != nil {
-		return fmt.Errorf("unkown db error: %w", err)
+		return fmt.Errorf("unknown db error: %w", err)
 	}
 	return nil
 }
 
 func (u *UserService) UploadAvatar(
-	ctx context.Context, userID int, avatar io.Reader,
+	ctx context.Context, userID int32, avatar io.Reader,
 ) error {
 	rcTranscoded, err := transcoder.ToWebp(avatar)
 	if err != nil {
@@ -127,32 +129,32 @@ func (u *UserService) UploadAvatar(
 	}
 	defer func() { _ = rcTranscoded.Close() }()
 
-	err = u.st.PutImage(ctx, ImageID("user", userID, ""), rcTranscoded)
+	err = u.st.PutImage(ctx, ImageID("user", int(userID), ""), rcTranscoded)
 	if err != nil {
 		return fmt.Errorf("can't upload avatar: %w", err)
 	}
 	return nil
 }
 
-func (u *UserService) GetAvatar(ctx context.Context, userID int) ([]byte, error) {
-	user, err := u.queries.GetUserByID(ctx, int32(userID))
+func (u *UserService) GetAvatar(ctx context.Context, userID int32) ([]byte, error) {
+	user, err := u.queries.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, NewErrNotFound("user", userID)
 		}
-		return nil, fmt.Errorf("unkown server error: %w", err)
+		return nil, fmt.Errorf("unknown server error: %w", err)
 	}
 	bimage, err := u.st.GetImage(ctx, ImageID("user", int(user.ID), ""))
 	if err != nil {
-		return nil, fmt.Errorf("unkown server error: %w", err)
+		return nil, fmt.Errorf("unknown server error: %w", err)
 	}
 	return bimage, nil
 }
 
 func (u *UserService) DeleteAvatar(
-	ctx context.Context, userID int,
+	ctx context.Context, userID int32,
 ) error {
-	err := u.st.RemoveImage(ctx, ImageID("user", userID, ""))
+	err := u.st.RemoveImage(ctx, ImageID("user", int(userID), ""))
 	if err != nil {
 		// no switch on error, if i want to distinguish errors
 		// i should create my own on a storage level, so they

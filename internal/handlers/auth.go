@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -13,11 +12,11 @@ import (
 
 type AuthHandlers struct {
 	service service.AuthService
+	logger  *slog.Logger
 }
 
 func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
 	var user api.UserAuth
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&user)
@@ -26,7 +25,7 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.service.Login(ctx, user)
+	resp, err := h.service.Login(r.Context(), user)
 	if err != nil {
 		if err.Error() == "wrong password" {
 			http.Error(w, "Invalid password", http.StatusBadRequest)
@@ -47,7 +46,6 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 
 func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
 	var user api.UserAuth
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&user)
@@ -56,7 +54,7 @@ func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.service.Register(ctx, user)
+	resp, err := h.service.Register(r.Context(), user)
 	if err != nil {
 		if errors.Is(err, service.ErrUserAlreadyExists{}) {
 			http.Error(w, "User already exists", http.StatusBadRequest)
@@ -71,4 +69,9 @@ func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("AuthHandlers.Register", "err", err)
 	}
+}
+
+func (h AuthHandlers) RefreshTokens(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	http.Error(w, "Not implemented", http.StatusNotImplemented)
 }

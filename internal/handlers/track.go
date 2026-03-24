@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -15,6 +14,7 @@ import (
 
 type TrackHandlers struct {
 	trackService service.TrackService
+	logger       *slog.Logger
 }
 
 func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
@@ -37,12 +37,12 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "album_id and artist_id must be int", http.StatusBadRequest)
 	}
 	var uploadParams = service.TrackUploadParams{
-		ArtistID: artistID,
-		AlbumID:  albumID,
+		ArtistID: int32(artistID),
+		AlbumID:  int32(albumID),
 		Name:     name,
 	}
 
-	resp, err := h.trackService.UploadTrack(context.TODO(), uploadParams, header)
+	resp, err := h.trackService.UploadTrack(r.Context(), uploadParams, header)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -54,17 +54,17 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int) {
-	err := h.trackService.DeleteTrack(context.TODO(), trackId)
+func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int32) {
+	err := h.trackService.DeleteTrack(r.Context(), trackId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int) {
+func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32) {
 	w.Header().Set("Content-Type", "application/json")
-	metadata, err := h.trackService.GetMeta(context.TODO(), trackId)
+	metadata, err := h.trackService.GetMeta(r.Context(), trackId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -75,9 +75,10 @@ func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trac
 	}
 }
 
-func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request, params api.GetTracksParams) {
+func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	tracks, err := h.trackService.GetUserTracks(r.Context(), params.XUserId)
+	panic("not implemented")
+	tracks, err := h.trackService.GetUserTracks(r.Context(), 123)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -90,18 +91,15 @@ func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request, params 
 
 func (h TrackHandlers) StreamTrack(
 	w http.ResponseWriter, r *http.Request,
-	trackId int, params api.StreamTrackParams,
+	trackId int32, params api.StreamTrackParams,
 ) {
 
 	rangeHeader := r.Header.Get("Range")
 	if rangeHeader != "" {
 		w.WriteHeader(http.StatusNotImplemented)
 		return
-	} else {
-		w.WriteHeader(http.StatusOK)
 	}
 
-	ctx := context.TODO()
 	var quality string
 	if params.Quality == nil {
 		quality = "standard"
@@ -109,7 +107,7 @@ func (h TrackHandlers) StreamTrack(
 		quality = *params.Quality
 	}
 
-	meta, err := h.trackService.GetStreamMeta(ctx, trackId, quality)
+	meta, err := h.trackService.GetStreamMeta(r.Context(), trackId, quality)
 	if err != nil {
 		if errors.Is(err, service.ErrPresetCantBeSelected) {
 			http.Error(w, err.Error()+". Probably wrong name", http.StatusBadRequest)
@@ -121,7 +119,7 @@ func (h TrackHandlers) StreamTrack(
 		return
 	}
 
-	stream, err := h.trackService.GetStream(ctx, trackId, quality)
+	stream, err := h.trackService.GetStream(r.Context(), trackId, quality)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -138,7 +136,7 @@ func (h TrackHandlers) StreamTrack(
 
 func (h TrackHandlers) StreamTrackHead(
 	w http.ResponseWriter, r *http.Request,
-	trackId int, params api.StreamTrackHeadParams,
+	trackId int32, params api.StreamTrackHeadParams,
 ) {
 	var quality string
 	if params.Quality == nil {
@@ -147,7 +145,7 @@ func (h TrackHandlers) StreamTrackHead(
 		quality = *params.Quality
 	}
 
-	meta, err := h.trackService.GetStreamMeta(context.TODO(), trackId, quality)
+	meta, err := h.trackService.GetStreamMeta(r.Context(), trackId, quality)
 	if err != nil {
 		if errors.Is(err, service.ErrPresetCantBeSelected) {
 			http.Error(w, err.Error()+". Probably wrong name", http.StatusBadRequest)

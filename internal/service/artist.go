@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 
 	"github.com/Grivvus/ym/internal/api"
@@ -17,52 +18,54 @@ import (
 type ArtistService struct {
 	queries *db.Queries
 	st      storage.Storage
+	logger  *slog.Logger
 }
 
-func NewArtistService(q *db.Queries, st storage.Storage) ArtistService {
+func NewArtistService(q *db.Queries, st storage.Storage, logger *slog.Logger) ArtistService {
 	return ArtistService{
 		queries: q,
 		st:      st,
+		logger:  logger,
 	}
 }
 
-func (s *ArtistService) Get(ctx context.Context, id int) (api.ArtistInfoResponse, error) {
+func (s *ArtistService) Get(ctx context.Context, id int32) (api.ArtistInfoResponse, error) {
 	var ret api.ArtistInfoResponse
 
 	var (
-		artistID   int
+		artistID   int32
 		artistName string
 	)
 
-	artistWithAlbums, err := s.queries.GetArtistWithAlbums(ctx, int32(id))
+	artistWithAlbums, err := s.queries.GetArtistWithAlbums(ctx, id)
 	if len(artistWithAlbums) == 0 || errors.Is(err, pgx.ErrNoRows) {
-		artist, err := s.queries.GetArtist(ctx, int32(id))
+		artist, err := s.queries.GetArtist(ctx, id)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return ret, NewErrNotFound("artist", id)
 			}
-			return ret, fmt.Errorf("unkown server error: %w", err)
+			return ret, fmt.Errorf("unknown server error: %w", err)
 		}
-		artistID = int(artist.ID)
+		artistID = artist.ID
 		artistName = artist.Name
 	} else if err != nil {
-		return ret, fmt.Errorf("unkown server error: %w", err)
+		return ret, fmt.Errorf("unknown server error: %w", err)
 	}
 
-	albums := make([]int, len(artistWithAlbums))
+	albums := make([]int32, len(artistWithAlbums))
 	for i, album := range artistWithAlbums {
-		albums[i] = int(album.AlbumID)
+		albums[i] = album.AlbumID
 	}
 
 	if len(artistWithAlbums) > 0 {
-		artistID = int(artistWithAlbums[0].ArtistID)
+		artistID = artistWithAlbums[0].ArtistID
 		artistName = artistWithAlbums[0].ArtistName
 	}
 
 	ret.ArtistId = artistID
 	ret.ArtistName = artistName
 
-	artistImageID := ImageID("artist", artistID, artistName)
+	artistImageID := ImageID("artist", int(artistID), artistName)
 	if s.st.ImageExist(ctx, artistImageID) {
 		url := fmt.Sprintf("http://my_url/?type=image,id=%v", artistImageID)
 		ret.ArtistCoverUrl = &url
@@ -75,24 +78,24 @@ func (s *ArtistService) Get(ctx context.Context, id int) (api.ArtistInfoResponse
 	return ret, nil
 }
 
-func (s *ArtistService) Delete(ctx context.Context, id int) (api.ArtistDeleteResponse, error) {
+func (s *ArtistService) Delete(ctx context.Context, id int32) (api.ArtistDeleteResponse, error) {
 	ret := api.ArtistDeleteResponse{ArtistId: id}
-	artist, err := s.queries.GetArtist(ctx, int32(id))
+	artist, err := s.queries.GetArtist(ctx, id)
 	if err != nil {
 		// delete artist's, that doesn't exist is noop
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, nil
 		}
-		return ret, fmt.Errorf("unkown server error: %w", err)
+		return ret, fmt.Errorf("unknown server error: %w", err)
 	}
 	/* could i make this 2 ops transactional? */
 	err = s.st.RemoveImage(ctx, ImageID("artist", int(artist.ID), artist.Name))
 	if err != nil {
 		return ret, fmt.Errorf("can't delete artist image: %w", err)
 	}
-	err = s.queries.DeleteArtist(ctx, int32(id))
+	err = s.queries.DeleteArtist(ctx, id)
 	if err != nil {
-		return ret, fmt.Errorf("unkown server error: %w", err)
+		return ret, fmt.Errorf("unknown server error: %w", err)
 	}
 	return ret, nil
 }
@@ -104,10 +107,10 @@ func (s *ArtistService) Create(
 	var ret api.ArtistCreateResponse
 	artist, err := s.queries.CreateArtist(ctx, artistName)
 	if err != nil {
-		return ret, fmt.Errorf("unkown server error: %w", err)
+		return ret, fmt.Errorf("unknown server error: %w", err)
 	}
 
-	ret.ArtistId = int(artist.ID)
+	ret.ArtistId = artist.ID
 	if artistImage == nil {
 		return ret, nil
 	}
@@ -122,7 +125,7 @@ func (s *ArtistService) Create(
 	err = s.UploadImage(ctx, ret.ArtistId, rc)
 	if err != nil {
 		go func() {
-			_ = s.queries.DeleteArtist(ctx, int32(ret.ArtistId))
+			_ = s.queries.DeleteArtist(ctx, ret.ArtistId)
 		}()
 		return ret, err
 	}
@@ -130,15 +133,14 @@ func (s *ArtistService) Create(
 }
 
 func (s *ArtistService) UploadImage(
-	ctx context.Context, artistID int, file io.Reader,
+	ctx context.Context, artistID int32, file io.Reader,
 ) error {
-	artist, err := s.queries.GetArtist(ctx, int32(artistID))
+	artist, err := s.queries.GetArtist(ctx, artistID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
-		} else {
-			return fmt.Errorf("can't upload image, cause: %w", err)
 		}
+		return fmt.Errorf("can't upload image, cause: %w", err)
 	}
 	rcTranscoded, err := transcoder.ToWebp(file)
 	if err != nil {
@@ -154,16 +156,16 @@ func (s *ArtistService) UploadImage(
 }
 
 func (s *ArtistService) DeleteImage(
-	ctx context.Context, artistID int,
+	ctx context.Context, artistID int32,
 ) error {
-	artist, err := s.queries.GetArtist(ctx, int32(artistID))
+	artist, err := s.queries.GetArtist(ctx, artistID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return NewErrNotFound("artist", artistID)
 		}
 		return fmt.Errorf("can't delete image, cause: %w", err)
 	}
-	err = s.st.RemoveImage(ctx, ImageID("artist", artistID, artist.Name))
+	err = s.st.RemoveImage(ctx, ImageID("artist", int(artistID), artist.Name))
 	if err != nil {
 		return fmt.Errorf("can't delete image, cause: %w", err)
 	}
@@ -171,21 +173,21 @@ func (s *ArtistService) DeleteImage(
 }
 
 func (s *ArtistService) GetImage(
-	ctx context.Context, artistID int,
+	ctx context.Context, artistID int32,
 ) ([]byte, error) {
-	artist, err := s.queries.GetArtist(ctx, int32(artistID))
+	artist, err := s.queries.GetArtist(ctx, artistID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, NewErrNotFound("artist", artistID)
 		}
-		return nil, fmt.Errorf("unkown server error: %w", err)
+		return nil, fmt.Errorf("unknown server error: %w", err)
 	}
 	bimage, err := s.st.GetImage(ctx, ImageID("artist", int(artist.ID), artist.Name))
 	if err != nil {
 		if err.Error() == "The specified key does not exist." {
 			return nil, NewErrNotFound("artistImage", artistID)
 		}
-		return nil, fmt.Errorf("unkown server error: %w", err)
+		return nil, fmt.Errorf("unknown server error: %w", err)
 	}
 	return bimage, nil
 }

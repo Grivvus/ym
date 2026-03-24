@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 
 	"github.com/Grivvus/ym/internal/api"
@@ -16,19 +17,21 @@ import (
 )
 
 type PlaylistCreateParams struct {
-	OwnerID int
+	OwnerID int32
 	Name    string
 }
 
 type PlaylistService struct {
 	queries *db.Queries
 	st      storage.Storage
+	logger  *slog.Logger
 }
 
-func NewPlaylistService(q *db.Queries, st storage.Storage) PlaylistService {
+func NewPlaylistService(q *db.Queries, st storage.Storage, logger *slog.Logger) PlaylistService {
 	return PlaylistService{
 		queries: q,
 		st:      st,
+		logger:  logger,
 	}
 }
 
@@ -39,12 +42,12 @@ func (s *PlaylistService) Create(
 	var ret api.PlaylistCreateResponse
 	playlist, err := s.queries.CreatePlaylist(ctx, db.CreatePlaylistParams{
 		Name:    playlistInfo.Name,
-		OwnerID: pgtype.Int4{Int32: int32(playlistInfo.OwnerID), Valid: true},
+		OwnerID: pgtype.Int4{Int32: playlistInfo.OwnerID, Valid: true},
 	})
 	if err != nil {
 		return ret, fmt.Errorf("can't create playlist: %w", err)
 	}
-	ret.PlaylistId = int(playlist.ID)
+	ret.PlaylistId = playlist.ID
 	// no cover was provided
 	if coverFileHeader == nil {
 		return ret, nil
@@ -67,18 +70,18 @@ func (s *PlaylistService) Create(
 	return ret, nil
 }
 
-func (s *PlaylistService) AddTrack(ctx context.Context, playlistID, trackID int) error {
+func (s *PlaylistService) AddTrack(ctx context.Context, playlistID, trackID int32) error {
 	err := s.queries.AddTrackToPlaylist(ctx, db.AddTrackToPlaylistParams{
-		TrackID:    int32(trackID),
-		PlaylistID: int32(playlistID),
+		TrackID:    trackID,
+		PlaylistID: playlistID,
 	})
 	return err
 }
 
 func (s *PlaylistService) Delete(
-	ctx context.Context, playlistID int,
+	ctx context.Context, playlistID int32,
 ) error {
-	err := s.queries.DeletePlaylist(ctx, int32(playlistID))
+	err := s.queries.DeletePlaylist(ctx, playlistID)
 	if err != nil {
 		return fmt.Errorf("can't delete playlist: %w", err)
 	}
@@ -86,47 +89,42 @@ func (s *PlaylistService) Delete(
 }
 
 func (s *PlaylistService) Get(
-	ctx context.Context, playlistID int,
-) (api.PlaylistInfoResponse, error) {
-	var ret api.PlaylistInfoResponse
-	playlist, err := s.queries.GetPlaylist(ctx, int32(playlistID))
+	ctx context.Context, playlistID int32,
+) (api.PlaylistWithTracksResponse, error) {
+	var ret api.PlaylistWithTracksResponse
+	playlist, err := s.queries.GetPlaylist(ctx, playlistID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("playlist", playlistID)
-		} else {
-			return ret, fmt.Errorf("unkown server error: %w", err)
 		}
+		return ret, fmt.Errorf("unknown server error: %w", err)
 	}
-	ret.PlaylistId = int(playlist.ID)
+	ret.PlaylistId = playlist.ID
 	ret.PlaylistName = playlist.Name
-	ret.Tracks = []int{}
-	playlistTracks, err := s.queries.GetPlaylistWithTracks(ctx, int32(playlistID))
+	ret.Tracks = []int32{}
+	playlistTracks, err := s.queries.GetPlaylistWithTracks(ctx, playlistID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("playlist", playlistID)
-		} else {
-			return ret, fmt.Errorf("unkown server error: %w", err)
 		}
+		return ret, fmt.Errorf("unknown server error: %w", err)
 	}
 
 	for _, track := range playlistTracks {
-		ret.Tracks = append(ret.Tracks, int(track.TrackID))
+		ret.Tracks = append(ret.Tracks, track.TrackID)
 	}
 	return ret, nil
 }
 
-func (s *PlaylistService) GetUserPlaylists(ctx context.Context, userID int64) (api.PlaylistsResponse, error) {
-	playlists, err := s.queries.GetUserPlaylists(ctx, pgtype.Int4{Int32: int32(userID), Valid: true})
+func (s *PlaylistService) GetUserPlaylists(ctx context.Context, userID int32) (api.Playlists, error) {
+	playlists, err := s.queries.GetUserPlaylists(ctx, pgtype.Int4{Int32: userID, Valid: true})
 	if err != nil {
-		return nil, fmt.Errorf("unkown server error: %w", err)
+		return nil, fmt.Errorf("unknown server error: %w", err)
 	}
-	ret := make(api.PlaylistsResponse, len(playlists))
+	ret := make(api.Playlists, len(playlists))
 	for i, playlist := range playlists {
-		ret[i] = struct {
-			PlaylistId   int    "json:\"playlist_id\""
-			PlaylistName string "json:\"playlist_name\""
-		}{
-			PlaylistId:   int(playlist.ID),
+		ret[i] = api.PlaylistResponse{
+			PlaylistId:   playlist.ID,
 			PlaylistName: playlist.Name,
 		}
 	}
@@ -134,15 +132,14 @@ func (s *PlaylistService) GetUserPlaylists(ctx context.Context, userID int64) (a
 }
 
 func (s *PlaylistService) UploadCover(
-	ctx context.Context, playlistID int, cover io.Reader,
+	ctx context.Context, playlistID int32, cover io.Reader,
 ) error {
-	playlist, err := s.queries.GetPlaylist(ctx, int32(playlistID))
+	playlist, err := s.queries.GetPlaylist(ctx, playlistID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
-		} else {
-			return fmt.Errorf("can't upload image, cause: %w", err)
 		}
+		return fmt.Errorf("can't upload image, cause: %w", err)
 	}
 	rcTranscoded, err := transcoder.ToWebp(cover)
 	if err != nil {
@@ -158,16 +155,16 @@ func (s *PlaylistService) UploadCover(
 }
 
 func (s *PlaylistService) DeleteCover(
-	ctx context.Context, playlistID int,
+	ctx context.Context, playlistID int32,
 ) error {
-	playlist, err := s.queries.GetPlaylist(ctx, int32(playlistID))
+	playlist, err := s.queries.GetPlaylist(ctx, playlistID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		return fmt.Errorf("can't delete image, cause: %w", err)
 	}
-	err = s.st.RemoveImage(ctx, ImageID("playlist", playlistID, playlist.Name))
+	err = s.st.RemoveImage(ctx, ImageID("playlist", int(playlistID), playlist.Name))
 	if err != nil {
 		return fmt.Errorf("can't delete image, cause: %w", err)
 	}
@@ -175,18 +172,18 @@ func (s *PlaylistService) DeleteCover(
 }
 
 func (s *PlaylistService) GetCover(
-	ctx context.Context, playlistID int,
+	ctx context.Context, playlistID int32,
 ) ([]byte, error) {
-	playlist, err := s.queries.GetPlaylist(ctx, int32(playlistID))
+	playlist, err := s.queries.GetPlaylist(ctx, playlistID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, NewErrNotFound("playlist", playlistID)
 		}
-		return nil, fmt.Errorf("unkown server error: %w", err)
+		return nil, fmt.Errorf("unknown server error: %w", err)
 	}
 	bimage, err := s.st.GetImage(ctx, ImageID("playlist", int(playlist.ID), playlist.Name))
 	if err != nil {
-		return nil, fmt.Errorf("unkown server error: %w", err)
+		return nil, fmt.Errorf("unknown server error: %w", err)
 	}
 	return bimage, nil
 }

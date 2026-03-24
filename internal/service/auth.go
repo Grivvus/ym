@@ -14,8 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-var secret = []byte("hackme")
-
 type ErrUserAlreadyExists struct {
 	Username string
 }
@@ -25,12 +23,16 @@ func (e ErrUserAlreadyExists) Error() string {
 }
 
 type AuthService struct {
-	queries *db.Queries
+	queries   *db.Queries
+	logger    *slog.Logger
+	jwtSecret []byte
 }
 
-func NewAuthService(q *db.Queries) AuthService {
+func NewAuthService(q *db.Queries, logger *slog.Logger, cfg *utils.Config) AuthService {
 	return AuthService{
-		queries: q,
+		queries:   q,
+		logger:    logger,
+		jwtSecret: []byte(cfg.JWTSecret),
 	}
 }
 
@@ -46,29 +48,27 @@ func (a AuthService) Register(
 	}
 	createdUser, err := a.queries.CreateUser(ctx, arg)
 	if err != nil {
-		slog.Error("AuthService.Register", "error", err)
+		a.logger.Error("can't create user", "error", err)
 		var retErr error
-		if pgErr, ok := err.(*pgconn.PgError); ok {
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 			// duplicate key value violates unique constraint
 			if pgErr.SQLState() == "23505" {
 				retErr = ErrUserAlreadyExists{Username: user.Username}
 			} else {
-				retErr = fmt.Errorf("Unkown db error: %w", err)
+				retErr = fmt.Errorf("unknown db error: %w", err)
 			}
-		} else {
-			retErr = fmt.Errorf("Unkown error: %w", err)
 		}
 		return api.TokenResponse{}, retErr
 	}
 
-	accessToken, refreshToken, err := utils.CreateTokens(int(createdUser.ID), secret)
+	accessToken, refreshToken, err := utils.CreateTokens(int(createdUser.ID), a.jwtSecret)
 
 	return api.TokenResponse{
-		UserId:       int(createdUser.ID),
+		UserId:       createdUser.ID,
 		RefreshToken: refreshToken,
 		AccessToken:  accessToken,
 		TokenType:    "bearer",
-	}, nil
+	}, err
 }
 
 func (a AuthService) Login(
@@ -76,23 +76,31 @@ func (a AuthService) Login(
 ) (api.TokenResponse, error) {
 	dbuser, err := a.queries.GetUserByUsername(ctx, user.Username)
 	if err != nil {
-		slog.Error("AuthService.Login", "error", err)
+		a.logger.Error("can't get user from db", "error", err)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return api.TokenResponse{}, NewErrNotFound("user", user.Username)
 		}
-		return api.TokenResponse{}, fmt.Errorf("Unkown error: %w", err)
+		return api.TokenResponse{}, fmt.Errorf("unknown error: %w", err)
 	}
 
 	if !utils.VerifyPassword(user.Password, dbuser.Salt, dbuser.Password) {
 		return api.TokenResponse{}, fmt.Errorf("wrong password")
 	}
 
-	accessToken, refreshToken, err := utils.CreateTokens(int(dbuser.ID), secret)
+	accessToken, refreshToken, err := utils.CreateTokens(int(dbuser.ID), a.jwtSecret)
 
 	return api.TokenResponse{
-		UserId:       int(dbuser.ID),
+		UserId:       dbuser.ID,
 		RefreshToken: refreshToken,
 		AccessToken:  accessToken,
 		TokenType:    "bearer",
-	}, nil
+	}, err
+}
+
+func (a AuthService) UpdateTokens(ctx context.Context) error {
+	panic("not implemented")
+}
+
+func (a AuthService) RevokeTokens(ctx context.Context) error {
+	panic("not implemented")
 }

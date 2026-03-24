@@ -4,6 +4,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -12,34 +13,38 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	BearerAuthScopes = "bearerAuth.Scopes"
+)
+
 // AlbumCoverResponse defines model for AlbumCoverResponse.
 type AlbumCoverResponse struct {
-	AlbumId int `json:"album_id"`
+	AlbumId int32 `json:"album_id"`
 }
 
 // AlbumCreateRequest defines model for AlbumCreateRequest.
 type AlbumCreateRequest struct {
 	AlbumCover *openapi_types.File `json:"album_cover,omitempty"`
 	AlbumName  string              `json:"album_name"`
-	ArtistId   int                 `json:"artist_id"`
+	ArtistId   int32               `json:"artist_id"`
 }
 
 // AlbumCreateResponse defines model for AlbumCreateResponse.
 type AlbumCreateResponse struct {
-	AlbumId int `json:"album_id"`
+	AlbumId int32 `json:"album_id"`
 }
 
 // AlbumDeleteResponse defines model for AlbumDeleteResponse.
 type AlbumDeleteResponse struct {
-	AlbumId int `json:"album_id"`
+	AlbumId int32 `json:"album_id"`
 }
 
 // AlbumInfoResponse defines model for AlbumInfoResponse.
 type AlbumInfoResponse struct {
-	AlbumId   int     `json:"album_id"`
+	AlbumId   int32   `json:"album_id"`
 	AlbumName string  `json:"album_name"`
 	CoverUrl  *string `json:"cover_url,omitempty"`
-	Tracks    []int   `json:"tracks"`
+	Tracks    []int32 `json:"tracks"`
 }
 
 // ArtistCreateRequest defines model for ArtistCreateRequest.
@@ -50,24 +55,24 @@ type ArtistCreateRequest struct {
 
 // ArtistCreateResponse defines model for ArtistCreateResponse.
 type ArtistCreateResponse struct {
-	ArtistId int `json:"artist_id"`
+	ArtistId int32 `json:"artist_id"`
 }
 
 // ArtistDeleteResponse defines model for ArtistDeleteResponse.
 type ArtistDeleteResponse struct {
-	ArtistId int `json:"artist_id"`
+	ArtistId int32 `json:"artist_id"`
 }
 
 // ArtistImageResponse defines model for ArtistImageResponse.
 type ArtistImageResponse struct {
-	ArtistId int `json:"artist_id"`
+	ArtistId int32 `json:"artist_id"`
 }
 
 // ArtistInfoResponse defines model for ArtistInfoResponse.
 type ArtistInfoResponse struct {
-	ArtistAlbums   []int   `json:"artist_albums"`
+	ArtistAlbums   []int32 `json:"artist_albums"`
 	ArtistCoverUrl *string `json:"artist_cover_url,omitempty"`
-	ArtistId       int     `json:"artist_id"`
+	ArtistId       int32   `json:"artist_id"`
 	ArtistName     string  `json:"artist_name"`
 }
 
@@ -83,71 +88,74 @@ type MessageResponse struct {
 
 // PlaylistCoverResponse defines model for PlaylistCoverResponse.
 type PlaylistCoverResponse struct {
-	PlaylistId int `json:"playlist_id"`
+	PlaylistId int32 `json:"playlist_id"`
 }
 
 // PlaylistCreateRequest defines model for PlaylistCreateRequest.
 type PlaylistCreateRequest struct {
-	OwnerId       int                 `json:"owner_id"`
+	OwnerId       int32               `json:"owner_id"`
 	PlaylistCover *openapi_types.File `json:"playlist_cover,omitempty"`
 	PlaylistName  string              `json:"playlist_name"`
 }
 
 // PlaylistCreateResponse defines model for PlaylistCreateResponse.
 type PlaylistCreateResponse struct {
-	PlaylistId int `json:"playlist_id"`
+	PlaylistId int32 `json:"playlist_id"`
 }
 
 // PlaylistDeleteResponse defines model for PlaylistDeleteResponse.
 type PlaylistDeleteResponse struct {
-	PlaylistId int `json:"playlist_id"`
+	PlaylistId int32 `json:"playlist_id"`
 }
 
-// PlaylistInfoResponse defines model for PlaylistInfoResponse.
-type PlaylistInfoResponse struct {
-	CoverUrl     *string `json:"cover_url,omitempty"`
-	PlaylistId   int     `json:"playlist_id"`
-	PlaylistName string  `json:"playlist_name"`
-	Tracks       []int   `json:"tracks"`
-}
-
-// PlaylistsResponse defines model for PlaylistsResponse.
-type PlaylistsResponse = []struct {
-	PlaylistId   int    `json:"playlist_id"`
+// PlaylistResponse defines model for PlaylistResponse.
+type PlaylistResponse struct {
+	PlaylistId   int32  `json:"playlist_id"`
 	PlaylistName string `json:"playlist_name"`
 }
+
+// PlaylistWithTracksResponse defines model for PlaylistWithTracksResponse.
+type PlaylistWithTracksResponse struct {
+	CoverUrl     *string `json:"cover_url,omitempty"`
+	PlaylistId   int32   `json:"playlist_id"`
+	PlaylistName string  `json:"playlist_name"`
+	Tracks       []int32 `json:"tracks"`
+}
+
+// Playlists defines model for Playlists.
+type Playlists = []PlaylistResponse
 
 // TokenResponse defines model for TokenResponse.
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	TokenType    string `json:"token_type"`
-	UserId       int    `json:"user_id"`
+	UserId       int32  `json:"user_id"`
 }
 
 // TrackMetadata defines model for TrackMetadata.
 type TrackMetadata struct {
-	ArtistId            int     `json:"artist_id"`
+	ArtistId            int32   `json:"artist_id"`
 	CoverUrl            *string `json:"cover_url,omitempty"`
 	Name                string  `json:"name"`
 	TrackFastPreset     *string `json:"track_fast_preset,omitempty"`
 	TrackHighPreset     *string `json:"track_high_preset,omitempty"`
-	TrackId             int     `json:"track_id"`
+	TrackId             int32   `json:"track_id"`
 	TrackLosslessPreset *string `json:"track_lossless_preset,omitempty"`
 	TrackStandardPreset *string `json:"track_standard_preset,omitempty"`
 }
 
 // TrackUploadRequest defines model for TrackUploadRequest.
 type TrackUploadRequest struct {
-	AlbumId  int                `json:"album_id"`
-	ArtistId int                `json:"artist_id"`
+	AlbumId  int32              `json:"album_id"`
+	ArtistId int32              `json:"artist_id"`
 	Name     string             `json:"name"`
 	Track    openapi_types.File `json:"track"`
 }
 
 // TrackUploadSuccessResponse defines model for TrackUploadSuccessResponse.
 type TrackUploadSuccessResponse struct {
-	TrackId int `json:"track_id"`
+	TrackId int32 `json:"track_id"`
 }
 
 // UserAuth defines model for UserAuth.
@@ -165,7 +173,7 @@ type UserChangePassword struct {
 // UserReturn defines model for UserReturn.
 type UserReturn struct {
 	Email    *string `json:"email"`
-	Id       int     `json:"id"`
+	Id       int32   `json:"id"`
 	Username string  `json:"username"`
 }
 
@@ -175,19 +183,9 @@ type UserUpdate struct {
 	NewUsername string `json:"new_username"`
 }
 
-// GetPlaylistsParams defines parameters for GetPlaylists.
-type GetPlaylistsParams struct {
-	XUserId int64 `json:"X-User-Id"`
-}
-
 // AddTrackToPlaylistJSONBody defines parameters for AddTrackToPlaylist.
 type AddTrackToPlaylistJSONBody struct {
-	TrackId int `json:"track_id"`
-}
-
-// GetTracksParams defines parameters for GetTracks.
-type GetTracksParams struct {
-	XUserId int64 `json:"X-User-Id"`
+	TrackId int32 `json:"track_id"`
 }
 
 // StreamTrackParams defines parameters for StreamTrack.
@@ -218,6 +216,9 @@ type CreatePlaylistMultipartRequestBody = PlaylistCreateRequest
 // AddTrackToPlaylistJSONRequestBody defines body for AddTrackToPlaylist for application/json ContentType.
 type AddTrackToPlaylistJSONRequestBody AddTrackToPlaylistJSONBody
 
+// UpdatePlaylistJSONRequestBody defines body for UpdatePlaylist for application/json ContentType.
+type UpdatePlaylistJSONRequestBody = PlaylistResponse
+
 // UploadTrackMultipartRequestBody defines body for UploadTrack for multipart/form-data ContentType.
 type UploadTrackMultipartRequestBody = TrackUploadRequest
 
@@ -234,40 +235,43 @@ type ServerInterface interface {
 	CreateAlbum(w http.ResponseWriter, r *http.Request)
 	// deletes album by id
 	// (DELETE /album/{albumId})
-	DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int)
+	DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int32)
 	// get info about the album
 	// (GET /album/{albumId})
-	GetAlbum(w http.ResponseWriter, r *http.Request, albumId int)
+	GetAlbum(w http.ResponseWriter, r *http.Request, albumId int32)
 
 	// (DELETE /album/{albumId}/cover)
-	DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int)
+	DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32)
 
 	// (GET /album/{albumId}/cover)
-	GetAlbumCover(w http.ResponseWriter, r *http.Request, albumId int)
+	GetAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32)
 
 	// (POST /album/{albumId}/cover)
-	UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int)
+	UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32)
 	// creates new artist
 	// (POST /artist/create)
 	CreateArtist(w http.ResponseWriter, r *http.Request)
 	// deletes artist by id
 	// (DELETE /artist/{artistId})
-	DeleteArtist(w http.ResponseWriter, r *http.Request, artistId int)
+	DeleteArtist(w http.ResponseWriter, r *http.Request, artistId int32)
 	// get info about artist
 	// (GET /artist/{artistId})
-	GetArtist(w http.ResponseWriter, r *http.Request, artistId int)
+	GetArtist(w http.ResponseWriter, r *http.Request, artistId int32)
 
 	// (DELETE /artist/{artistId}/image)
-	DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistId int)
+	DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistId int32)
 
 	// (GET /artist/{artistId}/image)
-	GetArtistImage(w http.ResponseWriter, r *http.Request, artistId int)
+	GetArtistImage(w http.ResponseWriter, r *http.Request, artistId int32)
 
 	// (POST /artist/{artistId}/image)
-	UploadArtistImage(w http.ResponseWriter, r *http.Request, artistId int)
+	UploadArtistImage(w http.ResponseWriter, r *http.Request, artistId int32)
 	// login user into account
 	// (POST /auth/login)
 	Login(w http.ResponseWriter, r *http.Request)
+	// update jwt tokens
+	// (POST /auth/refresh)
+	RefreshTokens(w http.ResponseWriter, r *http.Request)
 	// register new user
 	// (POST /auth/register)
 	Register(w http.ResponseWriter, r *http.Request)
@@ -276,64 +280,67 @@ type ServerInterface interface {
 	Ping(w http.ResponseWriter, r *http.Request)
 	// get all user's playlist
 	// (GET /playlist)
-	GetPlaylists(w http.ResponseWriter, r *http.Request, params GetPlaylistsParams)
+	GetPlaylists(w http.ResponseWriter, r *http.Request)
 	// creates new playlist
 	// (POST /playlist)
 	CreatePlaylist(w http.ResponseWriter, r *http.Request)
 	// deletes playlist by id
 	// (DELETE /playlist/{playlistId})
-	DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int)
+	DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
 	// get info about playlist
 	// (GET /playlist/{playlistId})
-	GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int)
+	GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
 	// add track to playlist
 	// (POST /playlist/{playlistId})
-	AddTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int)
+	AddTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
+	// update playlist
+	// (PUT /playlist/{playlistId})
+	UpdatePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
 
 	// (DELETE /playlist/{playlistId}/cover)
-	DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int)
+	DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32)
 
 	// (GET /playlist/{playlistId}/cover)
-	GetPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int)
+	GetPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32)
 
 	// (POST /playlist/{playlistId}/cover)
-	UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int)
+	UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32)
 	// get all uploaded tracks meta
 	// (GET /track)
-	GetTracks(w http.ResponseWriter, r *http.Request, params GetTracksParams)
+	GetTracks(w http.ResponseWriter, r *http.Request)
 	// uploads new track, make all transcoding stuff, stores it
 	// (POST /track)
 	UploadTrack(w http.ResponseWriter, r *http.Request)
 	// getting track stream
 	// (GET /track/{id}/stream)
-	StreamTrack(w http.ResponseWriter, r *http.Request, id int, params StreamTrackParams)
+	StreamTrack(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackParams)
 	// getting track metadata, needed for streaming
 	// (HEAD /track/{id}/stream)
-	StreamTrackHead(w http.ResponseWriter, r *http.Request, id int, params StreamTrackHeadParams)
+	StreamTrackHead(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackHeadParams)
 	// delete track
 	// (DELETE /track/{trackId})
-	DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int)
+	DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int32)
 	// getting track metadata
 	// (GET /track/{trackId})
-	GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int)
+	GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32)
 	// get user by id
 	// (GET /user/{userId})
-	GetUserById(w http.ResponseWriter, r *http.Request, userId int)
+	GetUserById(w http.ResponseWriter, r *http.Request, userId int32)
 	// update user
 	// (PATCH /user/{userId})
-	ChangeUser(w http.ResponseWriter, r *http.Request, userId int)
+	ChangeUser(w http.ResponseWriter, r *http.Request, userId int32)
 	// delete current avatar
 	// (DELETE /user/{userId}/avatar)
-	DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int)
+	DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int32)
 	// get uploaded avatar
 	// (GET /user/{userId}/avatar)
-	GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int)
+	GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int32)
 	// upload new user's avatar to server
 	// (POST /user/{userId}/avatar)
-	UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int)
+	UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int32)
 	// change user's password
 	// (PATCH /user/{userId}/change_password)
-	ChangePassword(w http.ResponseWriter, r *http.Request, userId int)
+	ChangePassword(w http.ResponseWriter, r *http.Request, userId int32)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -348,28 +355,28 @@ func (_ Unimplemented) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 
 // deletes album by id
 // (DELETE /album/{albumId})
-func (_ Unimplemented) DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int) {
+func (_ Unimplemented) DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get info about the album
 // (GET /album/{albumId})
-func (_ Unimplemented) GetAlbum(w http.ResponseWriter, r *http.Request, albumId int) {
+func (_ Unimplemented) GetAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // (DELETE /album/{albumId}/cover)
-func (_ Unimplemented) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int) {
+func (_ Unimplemented) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // (GET /album/{albumId}/cover)
-func (_ Unimplemented) GetAlbumCover(w http.ResponseWriter, r *http.Request, albumId int) {
+func (_ Unimplemented) GetAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // (POST /album/{albumId}/cover)
-func (_ Unimplemented) UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int) {
+func (_ Unimplemented) UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -381,34 +388,40 @@ func (_ Unimplemented) CreateArtist(w http.ResponseWriter, r *http.Request) {
 
 // deletes artist by id
 // (DELETE /artist/{artistId})
-func (_ Unimplemented) DeleteArtist(w http.ResponseWriter, r *http.Request, artistId int) {
+func (_ Unimplemented) DeleteArtist(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get info about artist
 // (GET /artist/{artistId})
-func (_ Unimplemented) GetArtist(w http.ResponseWriter, r *http.Request, artistId int) {
+func (_ Unimplemented) GetArtist(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // (DELETE /artist/{artistId}/image)
-func (_ Unimplemented) DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistId int) {
+func (_ Unimplemented) DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // (GET /artist/{artistId}/image)
-func (_ Unimplemented) GetArtistImage(w http.ResponseWriter, r *http.Request, artistId int) {
+func (_ Unimplemented) GetArtistImage(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // (POST /artist/{artistId}/image)
-func (_ Unimplemented) UploadArtistImage(w http.ResponseWriter, r *http.Request, artistId int) {
+func (_ Unimplemented) UploadArtistImage(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // login user into account
 // (POST /auth/login)
 func (_ Unimplemented) Login(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// update jwt tokens
+// (POST /auth/refresh)
+func (_ Unimplemented) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -426,7 +439,7 @@ func (_ Unimplemented) Ping(w http.ResponseWriter, r *http.Request) {
 
 // get all user's playlist
 // (GET /playlist)
-func (_ Unimplemented) GetPlaylists(w http.ResponseWriter, r *http.Request, params GetPlaylistsParams) {
+func (_ Unimplemented) GetPlaylists(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -438,40 +451,46 @@ func (_ Unimplemented) CreatePlaylist(w http.ResponseWriter, r *http.Request) {
 
 // deletes playlist by id
 // (DELETE /playlist/{playlistId})
-func (_ Unimplemented) DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int) {
+func (_ Unimplemented) DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get info about playlist
 // (GET /playlist/{playlistId})
-func (_ Unimplemented) GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int) {
+func (_ Unimplemented) GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // add track to playlist
 // (POST /playlist/{playlistId})
-func (_ Unimplemented) AddTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int) {
+func (_ Unimplemented) AddTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// update playlist
+// (PUT /playlist/{playlistId})
+func (_ Unimplemented) UpdatePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // (DELETE /playlist/{playlistId}/cover)
-func (_ Unimplemented) DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int) {
+func (_ Unimplemented) DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // (GET /playlist/{playlistId}/cover)
-func (_ Unimplemented) GetPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int) {
+func (_ Unimplemented) GetPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // (POST /playlist/{playlistId}/cover)
-func (_ Unimplemented) UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int) {
+func (_ Unimplemented) UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get all uploaded tracks meta
 // (GET /track)
-func (_ Unimplemented) GetTracks(w http.ResponseWriter, r *http.Request, params GetTracksParams) {
+func (_ Unimplemented) GetTracks(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -483,61 +502,61 @@ func (_ Unimplemented) UploadTrack(w http.ResponseWriter, r *http.Request) {
 
 // getting track stream
 // (GET /track/{id}/stream)
-func (_ Unimplemented) StreamTrack(w http.ResponseWriter, r *http.Request, id int, params StreamTrackParams) {
+func (_ Unimplemented) StreamTrack(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // getting track metadata, needed for streaming
 // (HEAD /track/{id}/stream)
-func (_ Unimplemented) StreamTrackHead(w http.ResponseWriter, r *http.Request, id int, params StreamTrackHeadParams) {
+func (_ Unimplemented) StreamTrackHead(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackHeadParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // delete track
 // (DELETE /track/{trackId})
-func (_ Unimplemented) DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int) {
+func (_ Unimplemented) DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // getting track metadata
 // (GET /track/{trackId})
-func (_ Unimplemented) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int) {
+func (_ Unimplemented) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get user by id
 // (GET /user/{userId})
-func (_ Unimplemented) GetUserById(w http.ResponseWriter, r *http.Request, userId int) {
+func (_ Unimplemented) GetUserById(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // update user
 // (PATCH /user/{userId})
-func (_ Unimplemented) ChangeUser(w http.ResponseWriter, r *http.Request, userId int) {
+func (_ Unimplemented) ChangeUser(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // delete current avatar
 // (DELETE /user/{userId}/avatar)
-func (_ Unimplemented) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
+func (_ Unimplemented) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // get uploaded avatar
 // (GET /user/{userId}/avatar)
-func (_ Unimplemented) GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
+func (_ Unimplemented) GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // upload new user's avatar to server
 // (POST /user/{userId}/avatar)
-func (_ Unimplemented) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int) {
+func (_ Unimplemented) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // change user's password
 // (PATCH /user/{userId}/change_password)
-func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request, userId int) {
+func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -552,6 +571,12 @@ type MiddlewareFunc func(http.Handler) http.Handler
 
 // CreateAlbum operation middleware
 func (siw *ServerInterfaceWrapper) CreateAlbum(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateAlbum(w, r)
@@ -570,13 +595,19 @@ func (siw *ServerInterfaceWrapper) DeleteAlbum(w http.ResponseWriter, r *http.Re
 	var err error
 
 	// ------------- Path parameter "albumId" -------------
-	var albumId int
+	var albumId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "albumId", chi.URLParam(r, "albumId"), &albumId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "albumId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteAlbum(w, r, albumId)
@@ -595,13 +626,19 @@ func (siw *ServerInterfaceWrapper) GetAlbum(w http.ResponseWriter, r *http.Reque
 	var err error
 
 	// ------------- Path parameter "albumId" -------------
-	var albumId int
+	var albumId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "albumId", chi.URLParam(r, "albumId"), &albumId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "albumId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAlbum(w, r, albumId)
@@ -620,13 +657,19 @@ func (siw *ServerInterfaceWrapper) DeleteAlbumCover(w http.ResponseWriter, r *ht
 	var err error
 
 	// ------------- Path parameter "albumId" -------------
-	var albumId int
+	var albumId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "albumId", chi.URLParam(r, "albumId"), &albumId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "albumId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteAlbumCover(w, r, albumId)
@@ -645,13 +688,19 @@ func (siw *ServerInterfaceWrapper) GetAlbumCover(w http.ResponseWriter, r *http.
 	var err error
 
 	// ------------- Path parameter "albumId" -------------
-	var albumId int
+	var albumId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "albumId", chi.URLParam(r, "albumId"), &albumId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "albumId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAlbumCover(w, r, albumId)
@@ -670,13 +719,19 @@ func (siw *ServerInterfaceWrapper) UploadAlbumCover(w http.ResponseWriter, r *ht
 	var err error
 
 	// ------------- Path parameter "albumId" -------------
-	var albumId int
+	var albumId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "albumId", chi.URLParam(r, "albumId"), &albumId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "albumId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UploadAlbumCover(w, r, albumId)
@@ -691,6 +746,12 @@ func (siw *ServerInterfaceWrapper) UploadAlbumCover(w http.ResponseWriter, r *ht
 
 // CreateArtist operation middleware
 func (siw *ServerInterfaceWrapper) CreateArtist(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateArtist(w, r)
@@ -709,13 +770,19 @@ func (siw *ServerInterfaceWrapper) DeleteArtist(w http.ResponseWriter, r *http.R
 	var err error
 
 	// ------------- Path parameter "artistId" -------------
-	var artistId int
+	var artistId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "artistId", chi.URLParam(r, "artistId"), &artistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "artistId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteArtist(w, r, artistId)
@@ -734,13 +801,19 @@ func (siw *ServerInterfaceWrapper) GetArtist(w http.ResponseWriter, r *http.Requ
 	var err error
 
 	// ------------- Path parameter "artistId" -------------
-	var artistId int
+	var artistId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "artistId", chi.URLParam(r, "artistId"), &artistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "artistId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetArtist(w, r, artistId)
@@ -759,13 +832,19 @@ func (siw *ServerInterfaceWrapper) DeleteArtistImage(w http.ResponseWriter, r *h
 	var err error
 
 	// ------------- Path parameter "artistId" -------------
-	var artistId int
+	var artistId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "artistId", chi.URLParam(r, "artistId"), &artistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "artistId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteArtistImage(w, r, artistId)
@@ -784,13 +863,19 @@ func (siw *ServerInterfaceWrapper) GetArtistImage(w http.ResponseWriter, r *http
 	var err error
 
 	// ------------- Path parameter "artistId" -------------
-	var artistId int
+	var artistId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "artistId", chi.URLParam(r, "artistId"), &artistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "artistId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetArtistImage(w, r, artistId)
@@ -809,13 +894,19 @@ func (siw *ServerInterfaceWrapper) UploadArtistImage(w http.ResponseWriter, r *h
 	var err error
 
 	// ------------- Path parameter "artistId" -------------
-	var artistId int
+	var artistId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "artistId", chi.URLParam(r, "artistId"), &artistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "artistId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UploadArtistImage(w, r, artistId)
@@ -833,6 +924,26 @@ func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Login(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RefreshTokens operation middleware
+func (siw *ServerInterfaceWrapper) RefreshTokens(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RefreshTokens(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -873,38 +984,14 @@ func (siw *ServerInterfaceWrapper) Ping(w http.ResponseWriter, r *http.Request) 
 // GetPlaylists operation middleware
 func (siw *ServerInterfaceWrapper) GetPlaylists(w http.ResponseWriter, r *http.Request) {
 
-	var err error
+	ctx := r.Context()
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetPlaylistsParams
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
-	headers := r.Header
-
-	// ------------- Required header parameter "X-User-Id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
-		var XUserId int64
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
-			return
-		}
-
-		params.XUserId = XUserId
-
-	} else {
-		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
-		return
-	}
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetPlaylists(w, r, params)
+		siw.Handler.GetPlaylists(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -916,6 +1003,12 @@ func (siw *ServerInterfaceWrapper) GetPlaylists(w http.ResponseWriter, r *http.R
 
 // CreatePlaylist operation middleware
 func (siw *ServerInterfaceWrapper) CreatePlaylist(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreatePlaylist(w, r)
@@ -934,13 +1027,19 @@ func (siw *ServerInterfaceWrapper) DeletePlaylist(w http.ResponseWriter, r *http
 	var err error
 
 	// ------------- Path parameter "playlistId" -------------
-	var playlistId int
+	var playlistId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playlistId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeletePlaylist(w, r, playlistId)
@@ -959,13 +1058,19 @@ func (siw *ServerInterfaceWrapper) GetPlaylist(w http.ResponseWriter, r *http.Re
 	var err error
 
 	// ------------- Path parameter "playlistId" -------------
-	var playlistId int
+	var playlistId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playlistId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetPlaylist(w, r, playlistId)
@@ -984,7 +1089,7 @@ func (siw *ServerInterfaceWrapper) AddTrackToPlaylist(w http.ResponseWriter, r *
 	var err error
 
 	// ------------- Path parameter "playlistId" -------------
-	var playlistId int
+	var playlistId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
@@ -992,8 +1097,45 @@ func (siw *ServerInterfaceWrapper) AddTrackToPlaylist(w http.ResponseWriter, r *
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AddTrackToPlaylist(w, r, playlistId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdatePlaylist operation middleware
+func (siw *ServerInterfaceWrapper) UpdatePlaylist(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "playlistId" -------------
+	var playlistId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playlistId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdatePlaylist(w, r, playlistId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1009,13 +1151,19 @@ func (siw *ServerInterfaceWrapper) DeletePlaylistCover(w http.ResponseWriter, r 
 	var err error
 
 	// ------------- Path parameter "playlistId" -------------
-	var playlistId int
+	var playlistId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playlistId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeletePlaylistCover(w, r, playlistId)
@@ -1034,13 +1182,19 @@ func (siw *ServerInterfaceWrapper) GetPlaylistCover(w http.ResponseWriter, r *ht
 	var err error
 
 	// ------------- Path parameter "playlistId" -------------
-	var playlistId int
+	var playlistId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playlistId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetPlaylistCover(w, r, playlistId)
@@ -1059,13 +1213,19 @@ func (siw *ServerInterfaceWrapper) UploadPlaylistCover(w http.ResponseWriter, r 
 	var err error
 
 	// ------------- Path parameter "playlistId" -------------
-	var playlistId int
+	var playlistId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playlistId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UploadPlaylistCover(w, r, playlistId)
@@ -1081,38 +1241,14 @@ func (siw *ServerInterfaceWrapper) UploadPlaylistCover(w http.ResponseWriter, r 
 // GetTracks operation middleware
 func (siw *ServerInterfaceWrapper) GetTracks(w http.ResponseWriter, r *http.Request) {
 
-	var err error
+	ctx := r.Context()
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetTracksParams
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
-	headers := r.Header
-
-	// ------------- Required header parameter "X-User-Id" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
-		var XUserId int64
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
-			return
-		}
-
-		params.XUserId = XUserId
-
-	} else {
-		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
-		return
-	}
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetTracks(w, r, params)
+		siw.Handler.GetTracks(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1124,6 +1260,12 @@ func (siw *ServerInterfaceWrapper) GetTracks(w http.ResponseWriter, r *http.Requ
 
 // UploadTrack operation middleware
 func (siw *ServerInterfaceWrapper) UploadTrack(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UploadTrack(w, r)
@@ -1142,13 +1284,19 @@ func (siw *ServerInterfaceWrapper) StreamTrack(w http.ResponseWriter, r *http.Re
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id int
+	var id int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params StreamTrackParams
@@ -1178,13 +1326,19 @@ func (siw *ServerInterfaceWrapper) StreamTrackHead(w http.ResponseWriter, r *htt
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id int
+	var id int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params StreamTrackHeadParams
@@ -1214,13 +1368,19 @@ func (siw *ServerInterfaceWrapper) DeleteTrack(w http.ResponseWriter, r *http.Re
 	var err error
 
 	// ------------- Path parameter "trackId" -------------
-	var trackId int
+	var trackId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "trackId", chi.URLParam(r, "trackId"), &trackId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "trackId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteTrack(w, r, trackId)
@@ -1239,13 +1399,19 @@ func (siw *ServerInterfaceWrapper) GetTrackMeta(w http.ResponseWriter, r *http.R
 	var err error
 
 	// ------------- Path parameter "trackId" -------------
-	var trackId int
+	var trackId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "trackId", chi.URLParam(r, "trackId"), &trackId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "trackId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetTrackMeta(w, r, trackId)
@@ -1264,13 +1430,19 @@ func (siw *ServerInterfaceWrapper) GetUserById(w http.ResponseWriter, r *http.Re
 	var err error
 
 	// ------------- Path parameter "userId" -------------
-	var userId int
+	var userId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetUserById(w, r, userId)
@@ -1289,13 +1461,19 @@ func (siw *ServerInterfaceWrapper) ChangeUser(w http.ResponseWriter, r *http.Req
 	var err error
 
 	// ------------- Path parameter "userId" -------------
-	var userId int
+	var userId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ChangeUser(w, r, userId)
@@ -1314,13 +1492,19 @@ func (siw *ServerInterfaceWrapper) DeleteUserAvatar(w http.ResponseWriter, r *ht
 	var err error
 
 	// ------------- Path parameter "userId" -------------
-	var userId int
+	var userId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteUserAvatar(w, r, userId)
@@ -1339,13 +1523,19 @@ func (siw *ServerInterfaceWrapper) GetUserAvatar(w http.ResponseWriter, r *http.
 	var err error
 
 	// ------------- Path parameter "userId" -------------
-	var userId int
+	var userId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetUserAvatar(w, r, userId)
@@ -1364,13 +1554,19 @@ func (siw *ServerInterfaceWrapper) UploadUserAvatar(w http.ResponseWriter, r *ht
 	var err error
 
 	// ------------- Path parameter "userId" -------------
-	var userId int
+	var userId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UploadUserAvatar(w, r, userId)
@@ -1389,13 +1585,19 @@ func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http
 	var err error
 
 	// ------------- Path parameter "userId" -------------
-	var userId int
+	var userId int32
 
 	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ChangePassword(w, r, userId)
@@ -1561,6 +1763,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/auth/login", wrapper.Login)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/auth/refresh", wrapper.RefreshTokens)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/auth/register", wrapper.Register)
 	})
 	r.Group(func(r chi.Router) {
@@ -1580,6 +1785,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/playlist/{playlistId}", wrapper.AddTrackToPlaylist)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/playlist/{playlistId}", wrapper.UpdatePlaylist)
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/playlist/{playlistId}/cover", wrapper.DeletePlaylistCover)

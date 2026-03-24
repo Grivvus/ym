@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"os"
 	"strconv"
@@ -19,13 +20,13 @@ import (
 )
 
 type TrackUploadParams struct {
-	ArtistID int
-	AlbumID  int
+	ArtistID int32
+	AlbumID  int32
 	Name     string
 	Duration *int
 }
 
-var ErrPresetCantBeSelected error = errors.New("Preset can't be selected for this track")
+var ErrPresetCantBeSelected error = errors.New("preset can't be selected for this track")
 
 type StreamMeta struct {
 	ContentLength uint
@@ -35,12 +36,14 @@ type StreamMeta struct {
 type TrackService struct {
 	queries *db.Queries
 	st      storage.Storage
+	logger  *slog.Logger
 }
 
-func NewTrackService(q *db.Queries, st storage.Storage) TrackService {
+func NewTrackService(q *db.Queries, st storage.Storage, logger *slog.Logger) TrackService {
 	return TrackService{
 		queries: q,
 		st:      st,
+		logger:  logger,
 	}
 }
 
@@ -57,18 +60,18 @@ func (s *TrackService) UploadTrack(
 	}
 	track, err := s.queries.CreateTrack(ctx, db.CreateTrackParams{
 		Name:     params.Name,
-		ArtistID: int32(params.ArtistID),
+		ArtistID: params.ArtistID,
 		Duration: duration,
 	})
 	if err != nil {
 		return ret, fmt.Errorf("can't create new record in db: %w", err)
 	}
 
-	ret.TrackId = int(track.ID)
+	ret.TrackId = track.ID
 
 	err = s.queries.AddTrackToAlbum(ctx, db.AddTrackToAlbumParams{
 		TrackID: track.ID,
-		AlbumID: int32(params.AlbumID),
+		AlbumID: params.AlbumID,
 	})
 	if err != nil {
 		return ret, fmt.Errorf("can't add this track to album: %w", err)
@@ -79,7 +82,7 @@ func (s *TrackService) UploadTrack(
 		panic(err)
 	}
 	defer func() { _ = rc.Close() }()
-	tmpFname := s.tmpFileName(int(track.ID))
+	tmpFname := s.tmpFileName(track.ID)
 	err = utils.SaveAsFile(rc, tmpFname)
 	if err != nil {
 		return ret, fmt.Errorf("can't create tmp file: %w", err)
@@ -88,8 +91,8 @@ func (s *TrackService) UploadTrack(
 	presetsFiles, err := transcoder.TranscodeConcurrent(ctx, tmpFname)
 	if err != nil {
 		go func() {
-			s.queries.DeleteTrack(ctx, int32(ret.TrackId))
-			s.queries.DeleteTrackFromAlbum(ctx, int32(ret.TrackId))
+			_ = s.queries.DeleteTrack(ctx, ret.TrackId)
+			_ = s.queries.DeleteTrackFromAlbum(ctx, ret.TrackId)
 		}()
 		return ret, fmt.Errorf("error in transcoding process: %w", err)
 	}
@@ -98,9 +101,10 @@ func (s *TrackService) UploadTrack(
 		if err != nil {
 			return ret, fmt.Errorf("can't find file with transcoded samples: %w", err)
 		}
+		// defer inside loop
 		defer func() {
 			_ = f.Close()
-			os.Remove(v)
+			_ = os.Remove(v)
 		}()
 
 		err = s.st.PutTrack(ctx, v, f)
@@ -136,7 +140,7 @@ func (s *TrackService) UploadTrack(
 
 }
 
-func (s *TrackService) DeleteTrack(ctx context.Context, trackID int) error {
+func (s *TrackService) DeleteTrack(ctx context.Context, trackID int32) error {
 	metadata, err := s.GetMeta(ctx, trackID)
 	if err != nil {
 		return fmt.Errorf("can't fetch track metadata: %w", err)
@@ -167,9 +171,9 @@ func (s *TrackService) DeleteTrack(ctx context.Context, trackID int) error {
 }
 
 func (s *TrackService) GetMeta(
-	ctx context.Context, trackID int,
+	ctx context.Context, trackID int32,
 ) (api.TrackMetadata, error) {
-	trackInfo, err := s.queries.GetTrack(ctx, int32(trackID))
+	trackInfo, err := s.queries.GetTrack(ctx, trackID)
 	if err != nil {
 		return api.TrackMetadata{}, fmt.Errorf("can't fetch info about track: %w", err)
 	}
@@ -194,8 +198,8 @@ func (s *TrackService) GetMeta(
 	}
 
 	return api.TrackMetadata{
-		TrackId:             int(trackInfo.ID),
-		ArtistId:            int(trackInfo.ArtistID),
+		TrackId:             trackInfo.ID,
+		ArtistId:            trackInfo.ArtistID,
 		CoverUrl:            nil,
 		Name:                trackInfo.Name,
 		TrackFastPreset:     fastPreset,
@@ -205,7 +209,7 @@ func (s *TrackService) GetMeta(
 	}, nil
 }
 
-func (s *TrackService) GetUserTracks(ctx context.Context, userID int64) ([]api.TrackMetadata, error) {
+func (s *TrackService) GetUserTracks(ctx context.Context, userID int32) ([]api.TrackMetadata, error) {
 	tracks, err := s.queries.GetUserTracks(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't fetch track info: %w", err)
@@ -213,9 +217,9 @@ func (s *TrackService) GetUserTracks(ctx context.Context, userID int64) ([]api.T
 	ret := make([]api.TrackMetadata, len(tracks))
 	for i, track := range tracks {
 		ret[i] = api.TrackMetadata{
-			ArtistId:            int(track.ArtistID),
+			ArtistId:            track.ArtistID,
 			Name:                track.Name,
-			TrackId:             int(track.ID),
+			TrackId:             track.ID,
 			TrackFastPreset:     &track.FastPresetFname.String,
 			TrackStandardPreset: &track.StandardPresetFname.String,
 			TrackHighPreset:     &track.HighPresetFname.String,
@@ -226,11 +230,11 @@ func (s *TrackService) GetUserTracks(ctx context.Context, userID int64) ([]api.T
 }
 
 func (s *TrackService) GetStreamMeta(
-	ctx context.Context, trackId int, trackQuality string,
+	ctx context.Context, trackId int32, trackQuality string,
 ) (StreamMeta, error) {
 	preset, err := transcoder.PresetFromString(trackQuality)
 	if err != nil {
-		return StreamMeta{}, fmt.Errorf("Invalid name of trackQuality: %v", trackQuality)
+		return StreamMeta{}, fmt.Errorf("invalid name of trackQuality: %v", trackQuality)
 	}
 	fullTrackName := transcoder.TranscodedName(s.tmpFileName(trackId), preset)
 	clen, ctype, err := s.st.GetTrackInfo(ctx, fullTrackName)
@@ -244,11 +248,11 @@ func (s *TrackService) GetStreamMeta(
 }
 
 func (s *TrackService) GetStream(
-	ctx context.Context, trackID int, trackQuality string,
+	ctx context.Context, trackID int32, trackQuality string,
 ) (io.ReadCloser, error) {
 	preset, err := transcoder.PresetFromString(trackQuality)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid name of trackQuality: %v", trackQuality)
+		return nil, fmt.Errorf("invalid name of trackQuality: %v", trackQuality)
 	}
 	track, trackExist, err := s.trackExists(ctx, trackID)
 	if err != nil {
@@ -267,15 +271,14 @@ func (s *TrackService) GetStream(
 }
 
 func (s *TrackService) trackExists(
-	ctx context.Context, trackID int,
+	ctx context.Context, trackID int32,
 ) (db.Track, bool, error) {
-	track, err := s.queries.GetTrack(ctx, int32(trackID))
+	track, err := s.queries.GetTrack(ctx, trackID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return track, false, nil
-		} else {
-			return track, false, fmt.Errorf("unexpected db error: %w", err)
 		}
+		return track, false, fmt.Errorf("unexpected db error: %w", err)
 	}
 	return track, true, nil
 }
@@ -289,9 +292,8 @@ func (s *TrackService) findClosestExistingPreset(
 	case transcoder.PresetLossless:
 		if track.LosslessPresetFname.Valid {
 			return transcoder.PresetLossless, nil
-		} else {
-			return transcoder.Preset(0), ErrPresetCantBeSelected
 		}
+		return transcoder.Preset(0), ErrPresetCantBeSelected
 		// if we're looking for high
 		// searching H->S->F
 	case transcoder.PresetHigh:
@@ -301,9 +303,8 @@ func (s *TrackService) findClosestExistingPreset(
 			return transcoder.PresetStandard, nil
 		} else if track.FastPresetFname.Valid {
 			return transcoder.PresetFast, nil
-		} else {
-			return transcoder.Preset(0), ErrPresetCantBeSelected
 		}
+		return transcoder.Preset(0), ErrPresetCantBeSelected
 		// if we're looking for standard
 		// searching S->F->H
 	case transcoder.PresetStandard:
@@ -313,9 +314,8 @@ func (s *TrackService) findClosestExistingPreset(
 			return transcoder.PresetFast, nil
 		} else if track.HighPresetFname.Valid {
 			return transcoder.PresetHigh, nil
-		} else {
-			return transcoder.Preset(0), ErrPresetCantBeSelected
 		}
+		return transcoder.Preset(0), ErrPresetCantBeSelected
 		// if we're looking for fast
 		// searching F->S->H
 	case transcoder.PresetFast:
@@ -325,14 +325,13 @@ func (s *TrackService) findClosestExistingPreset(
 			return transcoder.PresetStandard, nil
 		} else if track.HighPresetFname.Valid {
 			return transcoder.PresetHigh, nil
-		} else {
-			return transcoder.Preset(0), ErrPresetCantBeSelected
 		}
+		return transcoder.Preset(0), ErrPresetCantBeSelected
 	default:
 		return transcoder.Preset(0), ErrPresetCantBeSelected
 	}
 }
 
-func (s *TrackService) tmpFileName(trackID int) string {
-	return "track" + strconv.Itoa(trackID)
+func (s *TrackService) tmpFileName(trackID int32) string {
+	return "track" + strconv.Itoa(int(trackID))
 }

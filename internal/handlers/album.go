@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -14,11 +13,11 @@ import (
 
 type AlbumHandlers struct {
 	albumService service.AlbumService
+	logger       *slog.Logger
 }
 
 func (h AlbumHandlers) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
 	_, fileHeader, _ := r.FormFile("album_cover")
 	artist := r.FormValue("artist_id")
 	name := r.FormValue("album_name")
@@ -32,11 +31,11 @@ func (h AlbumHandlers) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var params = service.AlbumCreateParams{
-		ArtistID: artistID,
+		ArtistID: int32(artistID),
 		Name:     name,
 	}
 
-	albumResponse, err := h.albumService.Create(ctx, params, fileHeader)
+	albumResponse, err := h.albumService.Create(r.Context(), params, fileHeader)
 	if err != nil {
 		http.Error(w, "can't create album, cause: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -48,10 +47,9 @@ func (h AlbumHandlers) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h AlbumHandlers) GetAlbum(w http.ResponseWriter, r *http.Request, albumId int) {
+func (h AlbumHandlers) GetAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
-	albumResp, err := h.albumService.Get(ctx, albumId)
+	albumResp, err := h.albumService.Get(r.Context(), albumId)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "can't find album with this id", http.StatusNotFound)
@@ -66,10 +64,9 @@ func (h AlbumHandlers) GetAlbum(w http.ResponseWriter, r *http.Request, albumId 
 	}
 }
 
-func (h AlbumHandlers) DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int) {
+func (h AlbumHandlers) DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
-	albumResp, err := h.albumService.Delete(ctx, albumId)
+	albumResp, err := h.albumService.Delete(r.Context(), albumId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -80,10 +77,9 @@ func (h AlbumHandlers) DeleteAlbum(w http.ResponseWriter, r *http.Request, album
 	}
 }
 
-func (h AlbumHandlers) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int) {
+func (h AlbumHandlers) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
-	err := h.albumService.DeleteCover(ctx, albumId)
+	err := h.albumService.DeleteCover(r.Context(), albumId)
 	if err != nil {
 		http.Error(w, "can't delete cover: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -91,10 +87,9 @@ func (h AlbumHandlers) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, 
 	json.NewEncoder(w).Encode(api.AlbumCoverResponse{AlbumId: albumId})
 }
 
-func (h AlbumHandlers) GetAlbumCover(w http.ResponseWriter, r *http.Request, albumId int) {
+func (h AlbumHandlers) GetAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.Header().Set("Content-Type", "image/webp")
-	ctx := context.TODO()
-	bimage, err := h.albumService.GetCover(ctx, albumId)
+	bimage, err := h.albumService.GetCover(r.Context(), albumId)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "no album with this id was found", http.StatusNotFound)
@@ -108,10 +103,9 @@ func (h AlbumHandlers) GetAlbumCover(w http.ResponseWriter, r *http.Request, alb
 	_, _ = w.Write(bimage)
 }
 
-func (h AlbumHandlers) UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int) {
+func (h AlbumHandlers) UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.Header().Set("Content-Type", "application/json")
-	ctx := context.TODO()
-	err := h.albumService.UploadCover(ctx, albumId, r.Body)
+	err := h.albumService.UploadCover(r.Context(), albumId, r.Body)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
 			http.Error(w, "no album with this id was found", http.StatusNotFound)
