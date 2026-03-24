@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -16,7 +17,6 @@ type AuthHandlers struct {
 }
 
 func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	var user api.UserAuth
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&user)
@@ -28,50 +28,52 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.Login(r.Context(), user)
 	if err != nil {
 		if err.Error() == "wrong password" {
-			http.Error(w, "Invalid password", http.StatusBadRequest)
-		} else if errors.Is(err, service.ErrNotFound{}) {
-			http.Error(w, "Invalid username", http.StatusBadRequest)
+			_ = writeError(
+				w, http.StatusBadRequest, fmt.Errorf("invalid password"),
+			)
+		} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(
+				w, http.StatusBadRequest, fmt.Errorf("invalid username"),
+			)
 		} else {
-			http.Error(w, "", http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(resp)
+	err = writeJSON(w, http.StatusOK, resp)
 	if err != nil {
 		h.logger.Error("failed to encode response", "err", err)
 	}
 }
 
 func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	var user api.UserAuth
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&user)
 	if err != nil {
-		http.Error(w, "Invalid body", http.StatusBadRequest)
+		_ = writeError(
+			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		)
 		return
 	}
 
 	resp, err := h.service.Register(r.Context(), user)
 	if err != nil {
-		if errors.Is(err, service.ErrUserAlreadyExists{}) {
-			http.Error(w, "User already exists", http.StatusBadRequest)
+		if _, ok := errors.AsType[service.ErrUserAlreadyExists](err); ok {
+			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("user already exists"))
 		} else {
-			http.Error(w, "", http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(resp)
+	err = writeJSON(w, http.StatusCreated, resp)
 	if err != nil {
 		h.logger.Error("failed to encode response", "err", err)
 	}
 }
 
 func (h AuthHandlers) RefreshTokens(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	http.Error(w, "Not implemented", http.StatusNotImplemented)
 }

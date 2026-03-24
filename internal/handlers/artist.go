@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -17,106 +16,118 @@ type ArtistHandlers struct {
 }
 
 func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	// if there's no artist_image it's still ok
 	_, fileHeader, _ := r.FormFile("artist_image")
 	artistName := r.FormValue("artist_name")
 	if artistName == "" {
-		http.Error(
-			w,
-			"can't find artistName in multipart-form or the name is empty",
-			http.StatusBadRequest,
-		)
+		_ = writeError(w, http.StatusBadRequest, errors.New("artist name is required"))
 		return
 	}
 
 	artistResponse, err := h.artistService.Create(r.Context(), artistName, fileHeader)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("can't create new artist: %v", err.Error()), http.StatusInternalServerError)
+		_ = writeError(
+			w, http.StatusInternalServerError,
+			fmt.Errorf("can't create new artist: %w", err),
+		)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(artistResponse)
+	err = writeJSON(w, http.StatusCreated, artistResponse)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
 func (h ArtistHandlers) DeleteArtist(w http.ResponseWriter, r *http.Request, artistID int32) {
-	w.Header().Set("Content-Type", "application/json")
 	response, err := h.artistService.Delete(r.Context(), artistID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("can't delete artist: %v", err.Error()), http.StatusInternalServerError)
+		_ = writeError(
+			w, http.StatusInternalServerError,
+			fmt.Errorf("can't delete artist: %w", err),
+		)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(response)
+	err = writeJSON(w, http.StatusOK, response)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
 func (h ArtistHandlers) GetArtist(w http.ResponseWriter, r *http.Request, artistID int32) {
-	w.Header().Set("Content-Type", "application/json")
 	response, err := h.artistService.Get(r.Context(), artistID)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			http.Error(w, "Artist with this id is not found", http.StatusNotFound)
+			_ = writeError(
+				w, http.StatusNotFound,
+				fmt.Errorf("can't find artist with this id: %w", err),
+			)
 		} else {
-			http.Error(w, fmt.Sprintf("can't get artist: %v", err.Error()), http.StatusInternalServerError)
+			_ = writeError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(response)
+	err = writeJSON(w, http.StatusOK, response)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
 func (h ArtistHandlers) DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistID int32) {
-	w.Header().Set("Content-Type", "application/json")
 	err := h.artistService.DeleteImage(r.Context(), artistID)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			http.Error(w, "no artist with this id", http.StatusNotFound)
+			_ = writeError(
+				w, http.StatusNotFound,
+				fmt.Errorf("can't find artist with this id: %w", err),
+			)
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			_ = writeError(
+				w, http.StatusInternalServerError,
+				fmt.Errorf("can't delete artist image: %w", err),
+			)
 		}
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(api.ArtistImageResponse{ArtistId: artistID})
+	err = writeJSON(w, http.StatusOK, api.ArtistImageResponse{ArtistId: artistID})
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
 func (h ArtistHandlers) UploadArtistImage(w http.ResponseWriter, r *http.Request, artistID int32) {
-	w.Header().Set("Content-Type", "application/json")
 	err := h.artistService.UploadImage(r.Context(), artistID, r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		_ = writeError(
+			w, http.StatusInternalServerError,
+			fmt.Errorf("can't upload artist image: %w", err),
+		)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(api.ArtistImageResponse{ArtistId: artistID})
+	err = writeJSON(w, http.StatusCreated, api.ArtistImageResponse{ArtistId: artistID})
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
 func (h ArtistHandlers) GetArtistImage(w http.ResponseWriter, r *http.Request, artistID int32) {
-	w.Header().Set("Content-Type", "image/webp")
 	bimage, err := h.artistService.GetImage(r.Context(), artistID)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			http.Error(w, "no artist with this id or no image", http.StatusNotFound)
+			_ = writeError(
+				w, http.StatusNotFound,
+				fmt.Errorf("artist image not found or artist doesn't exist: %w", err),
+			)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			_ = writeError(
+				w, http.StatusInternalServerError,
+				fmt.Errorf("can't get artist image: %w", err),
+			)
 		}
 		return
 	}
+
+	w.Header().Set("Content-Type", "image/webp")
 	_, _ = w.Write(bimage)
 }

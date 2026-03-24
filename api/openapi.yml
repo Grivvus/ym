@@ -74,6 +74,10 @@ paths:
                 $ref: '#/components/schemas/TokenResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /user/{userId}:
     get:
@@ -536,8 +540,16 @@ paths:
                 $ref: '#/components/schemas/ArtistDeleteResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no artist was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /artist/{artistId}/image:
     post:
@@ -565,8 +577,16 @@ paths:
                 $ref: '#/components/schemas/ArtistImageResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no artist was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       description: deletes an image of an artist, if there's none no-op
       operationId: deleteArtistImage
@@ -586,8 +606,16 @@ paths:
                 $ref: '#/components/schemas/ArtistImageResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no artist was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
       description: fetching image of an artist
       operationId: getArtistImage
@@ -608,8 +636,16 @@ paths:
                 format: binary
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no artist was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /playlist:
     post:
@@ -629,6 +665,10 @@ paths:
                 $ref: '#/components/schemas/PlaylistCreateResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
       summary: get all user's playlist
       operationId: getPlaylists
@@ -641,6 +681,10 @@ paths:
                 $ref: '#/components/schemas/Playlists'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /playlist/{playlistId}:
     post:
@@ -669,8 +713,16 @@ paths:
           description: track was successfully added to playlist
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no playlist found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
       summary: update playlist
       operationId: updatePlaylist
@@ -695,8 +747,16 @@ paths:
                 $ref: '#/components/schemas/PlaylistWithTracksResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no playlist found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
       summary: get info about playlist
       operationId: getPlaylist
@@ -716,8 +776,16 @@ paths:
                 $ref: '#/components/schemas/PlaylistWithTracksResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no playlist found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       summary: deletes playlist by id
       operationId: deletePlaylist
@@ -737,8 +805,16 @@ paths:
                 $ref: '#/components/schemas/PlaylistDeleteResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no playlist found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /playlist/{playlistId}/cover:
     post:
@@ -766,8 +842,16 @@ paths:
                 $ref: '#/components/schemas/PlaylistCoverResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no playlist was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       description: deletes the playlist's cover, if there's none no-op
       operationId: deletePlaylistCover
@@ -787,8 +871,16 @@ paths:
                 $ref: '#/components/schemas/PlaylistCoverResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no playlist was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
       description: fetching cover of the playlist
       operationId: getPlaylistCover
@@ -809,8 +901,16 @@ paths:
                 format: binary
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no playlist was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /album/create:
     post:
@@ -830,6 +930,10 @@ paths:
                 $ref: '#/components/schemas/AlbumCreateResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /album/{albumId}:
     get:
@@ -851,8 +955,16 @@ paths:
                 $ref: '#/components/schemas/AlbumInfoResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no album found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       summary: deletes album by id
       operationId: deleteAlbum
@@ -872,8 +984,16 @@ paths:
                 $ref: '#/components/schemas/AlbumDeleteResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no album found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /album/{albumId}/cover:
     post:
@@ -901,8 +1021,16 @@ paths:
                 $ref: '#/components/schemas/AlbumCoverResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no album was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       description: deletes the album's cover, if there's none no-op
       operationId: deleteAlbumCover
@@ -922,8 +1050,16 @@ paths:
                 $ref: '#/components/schemas/AlbumCoverResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no album was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
       description: fetching cover of the album
       operationId: getAlbumCover
@@ -944,8 +1080,16 @@ paths:
                 format: binary
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no album was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   securitySchemes:

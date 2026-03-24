@@ -18,7 +18,6 @@ type UserHandlers struct {
 func (u UserHandlers) GetUserById(
 	w http.ResponseWriter, r *http.Request, userId int32,
 ) {
-	w.Header().Set("Content-Type", "application/json")
 	user, err := u.userService.GetUserByID(r.Context(), userId)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
@@ -29,15 +28,13 @@ func (u UserHandlers) GetUserById(
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(user)
+	err = writeJSON(w, http.StatusOK, user)
 	if err != nil {
 		u.logger.Error("can't encode response", "err", err)
 	}
 }
 
 func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId int32) {
-	w.Header().Set("Content-Type", "application/json")
 	var toUpdate api.UserUpdate
 	err := json.NewDecoder(r.Body).Decode(&toUpdate)
 	if err != nil {
@@ -54,14 +51,13 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(resp)
+	err = writeJSON(w, http.StatusOK, resp)
 	if err != nil {
 		u.logger.Error("unexpected error", "err", err)
 	}
 }
 
 func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, userId int32) {
-	w.Header().Set("Content-Type", "application/json")
 	var updatePassword api.UserChangePassword
 	err := json.NewDecoder(r.Body).Decode(&updatePassword)
 	if err != nil {
@@ -78,11 +74,9 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 		}
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
-	w.Header().Set("Content-Type", "application/json")
 	err := u.userService.UploadAvatar(r.Context(), userId, r.Body)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
@@ -92,15 +86,13 @@ func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, u
 		}
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(api.MessageResponse{Msg: "avatar was uploaded"})
+	err = writeJSON(w, http.StatusCreated, api.MessageResponse{Msg: "avatar was uploaded"})
 	if err != nil {
 		u.logger.Error("can't encode json", "err", err)
 	}
 }
 
 func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
-	w.Header().Set("Content-Type", "image/webp")
 	img, err := u.userService.GetAvatar(r.Context(), userId)
 	if err != nil {
 		if _, t := errors.AsType[service.ErrNotFound](err); t {
@@ -110,14 +102,14 @@ func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, user
 		}
 		return
 	}
+	w.Header().Set("Content-Type", "image/webp")
 	_, err = w.Write(img)
 	if err != nil {
-		u.logger.Error("can't send response")
+		u.logger.Error("can't write response")
 	}
 }
 
 func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
-	w.Header().Set("Content-Type", "application/json")
 	err := u.userService.DeleteAvatar(r.Context(), userId)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
@@ -127,7 +119,7 @@ func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, u
 		}
 		return
 	}
-	err = json.NewEncoder(w).Encode(api.MessageResponse{Msg: "avatar was deleted"})
+	err = writeJSON(w, http.StatusOK, api.MessageResponse{Msg: "avatar was deleted"})
 	if err != nil {
 		u.logger.Error("can't encode json", "err", err)
 	}

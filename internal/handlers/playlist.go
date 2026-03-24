@@ -17,7 +17,6 @@ type PlaylistHandlers struct {
 }
 
 func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	_, coverFileHeader, _ := r.FormFile("playlist_cover")
 
 	var params service.PlaylistCreateParams
@@ -41,7 +40,7 @@ func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "can't create playlist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = json.NewEncoder(w).Encode(playlistResponse)
+	err = writeJSON(w, http.StatusCreated, playlistResponse)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -52,20 +51,18 @@ func (h PlaylistHandlers) UpdatePlaylist(w http.ResponseWriter, r *http.Request,
 }
 
 func (h PlaylistHandlers) DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	w.Header().Set("Content-Type", "application/json")
 	err := h.playlistService.Delete(r.Context(), playlistId)
 	if err != nil {
 		http.Error(w, "can't delete playlist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = json.NewEncoder(w).Encode(api.PlaylistDeleteResponse{PlaylistId: playlistId})
+	err = writeJSON(w, http.StatusOK, api.PlaylistDeleteResponse{PlaylistId: playlistId})
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
 func (h PlaylistHandlers) GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	w.Header().Set("Content-Type", "application/json")
 	playlistInfo, err := h.playlistService.Get(r.Context(), playlistId)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
@@ -75,21 +72,20 @@ func (h PlaylistHandlers) GetPlaylist(w http.ResponseWriter, r *http.Request, pl
 		}
 		return
 	}
-	err = json.NewEncoder(w).Encode(playlistInfo)
+	err = writeJSON(w, http.StatusOK, playlistInfo)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
 func (h PlaylistHandlers) GetPlaylists(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	panic("not implemented")
 	playlists, err := h.playlistService.GetUserPlaylists(r.Context(), 123)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = json.NewEncoder(w).Encode(playlists)
+	err = writeJSON(w, http.StatusOK, playlists)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -111,7 +107,6 @@ func (h PlaylistHandlers) AddTrackToPlaylist(
 }
 
 func (h PlaylistHandlers) DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	w.Header().Set("Content-Type", "application/json")
 	err := h.playlistService.Delete(r.Context(), playlistId)
 	if err != nil {
 		http.Error(w, "can't delete cover: "+err.Error(), http.StatusInternalServerError)
@@ -121,7 +116,6 @@ func (h PlaylistHandlers) DeletePlaylistCover(w http.ResponseWriter, r *http.Req
 }
 
 func (h PlaylistHandlers) GetPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	w.Header().Set("Content-Type", "image/webp")
 	bimage, err := h.playlistService.GetCover(r.Context(), playlistId)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound{}) {
@@ -131,17 +125,20 @@ func (h PlaylistHandlers) GetPlaylistCover(w http.ResponseWriter, r *http.Reques
 		}
 		return
 	}
-	_, _ = w.Write(bimage)
+	w.Header().Set("Content-Type", "image/webp")
+	_, err = w.Write(bimage)
+	if err != nil {
+		h.logger.Error("can't write response", "err", err)
+	}
 }
 
 func (h PlaylistHandlers) UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	w.Header().Set("Content-Type", "application/json")
 	err := h.playlistService.UploadCover(r.Context(), playlistId, r.Body)
 	if err != nil {
 		http.Error(w, "can't upload image: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = json.NewEncoder(w).Encode(api.PlaylistCoverResponse{PlaylistId: playlistId})
+	err = writeJSON(w, http.StatusCreated, api.PlaylistCoverResponse{PlaylistId: playlistId})
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}

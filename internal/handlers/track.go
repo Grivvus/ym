@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -18,7 +17,6 @@ type TrackHandlers struct {
 }
 
 func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	_, header, err := r.FormFile("track")
 	if err != nil || header == nil {
 		http.Error(w, "Form must include track file", http.StatusBadRequest)
@@ -47,8 +45,7 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(resp)
+	err = writeJSON(w, http.StatusCreated, resp)
 	if err != nil {
 		slog.Error("Trackhandlers.UploadTrack, can't encode response", "err", err)
 	}
@@ -63,27 +60,25 @@ func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, track
 }
 
 func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32) {
-	w.Header().Set("Content-Type", "application/json")
 	metadata, err := h.trackService.GetMeta(r.Context(), trackId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = json.NewEncoder(w).Encode(metadata)
+	err = writeJSON(w, http.StatusOK, metadata)
 	if err != nil {
 		slog.Error("TrackHandlers.GetTrackMeta, can't encode response", "err", err)
 	}
 }
 
 func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	panic("not implemented")
 	tracks, err := h.trackService.GetUserTracks(r.Context(), 123)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = json.NewEncoder(w).Encode(tracks)
+	err = writeJSON(w, http.StatusOK, tracks)
 	if err != nil {
 		slog.Error("can't encode response", "err", err)
 	}
@@ -127,7 +122,7 @@ func (h TrackHandlers) StreamTrack(
 
 	_, err = io.Copy(w, stream)
 	if err != nil {
-		slog.Error("Can't write stream to response", "err", err)
+		h.logger.Error("can't write stream to response", "err", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	w.Header().Set("Content-Type", meta.ContentType)
