@@ -25,7 +25,7 @@ func (u UserHandlers) GetUserById(
 	user, err := u.userService.GetUserByID(r.Context(), userId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("wrong username"))
+			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("can't find user with this id"))
 		} else {
 			_ = writeError(w, http.StatusInternalServerError, err)
 		}
