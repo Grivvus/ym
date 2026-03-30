@@ -23,4 +23,6 @@ CREATE INDEX track_fk_on_user ON "track" (upload_by_user);
 -- +goose Down
 -- +goose StatementBegin
 DROP TABLE "track"
+DROP INDEX IF EXISTS track_fk_on_user;
+DROP INDEX IF EXISTS track_fk_on_artist;
 -- +goose StatementEnd
