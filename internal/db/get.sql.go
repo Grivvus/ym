@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getAlbum = `-- name: GetAlbum :one
@@ -59,22 +61,38 @@ func (q *Queries) GetPlaylist(ctx context.Context, id int32) (GetPlaylistRow, er
 }
 
 const getTrack = `-- name: GetTrack :one
-SELECT id, name, duration, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, artist_id FROM "track"
-    WHERE id = $1
+SELECT t.id, t.name, t.artist_id, ta.album_id,
+t.fast_preset_fname, t.standard_preset_fname,
+t.high_preset_fname, t.lossless_preset_fname
+    FROM "track" AS t INNER JOIN "track_album" AS ta
+    ON t.id = ta.track_id
+        WHERE "track".id = $1
+        LIMIT 1
 `
 
-func (q *Queries) GetTrack(ctx context.Context, id int32) (Track, error) {
+type GetTrackRow struct {
+	ID                  int32
+	Name                string
+	ArtistID            int32
+	AlbumID             int32
+	FastPresetFname     pgtype.Text
+	StandardPresetFname pgtype.Text
+	HighPresetFname     pgtype.Text
+	LosslessPresetFname pgtype.Text
+}
+
+func (q *Queries) GetTrack(ctx context.Context, id int32) (GetTrackRow, error) {
 	row := q.db.QueryRow(ctx, getTrack, id)
-	var i Track
+	var i GetTrackRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.Duration,
+		&i.ArtistID,
+		&i.AlbumID,
 		&i.FastPresetFname,
 		&i.StandardPresetFname,
 		&i.HighPresetFname,
 		&i.LosslessPresetFname,
-		&i.ArtistID,
 	)
 	return i, err
 }

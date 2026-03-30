@@ -196,11 +196,14 @@ func (s *TrackService) GetMeta(
 	if trackInfo.LosslessPresetFname.Valid {
 		losslessPreset = &trackInfo.LosslessPresetFname.String
 	}
+	s.logger.Warn("remove hardcoded values")
+	trackCoverURL := fmt.Sprintf("0.0.0.0:8000/albums/%d/cover", trackInfo.AlbumID)
 
 	return api.TrackMetadata{
 		TrackId:             trackInfo.ID,
 		ArtistId:            trackInfo.ArtistID,
-		CoverUrl:            nil,
+		AlbumId:             trackInfo.AlbumID,
+		CoverUrl:            &trackCoverURL,
 		Name:                trackInfo.Name,
 		TrackFastPreset:     fastPreset,
 		TrackStandardPreset: standardPreset,
@@ -272,7 +275,7 @@ func (s *TrackService) GetStream(
 
 func (s *TrackService) trackExists(
 	ctx context.Context, trackID int32,
-) (db.Track, bool, error) {
+) (db.GetTrackRow, bool, error) {
 	track, err := s.queries.GetTrack(ctx, trackID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -284,7 +287,7 @@ func (s *TrackService) trackExists(
 }
 
 func (s *TrackService) findClosestExistingPreset(
-	track db.Track, chosenPreset transcoder.Preset,
+	track db.GetTrackRow, chosenPreset transcoder.Preset,
 ) (transcoder.Preset, error) {
 	switch chosenPreset {
 	// if we're looking for Lossless:

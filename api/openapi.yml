@@ -1239,6 +1239,7 @@ components:
         - track_id
         - name
         - artist_id
+        - album_id
       properties:
         track_id:
           type: integer
@@ -1246,6 +1247,9 @@ components:
         name:
           type: string
         artist_id:
+          type: integer
+          format: int32
+        album_id:
           type: integer
           format: int32
         cover_url:
