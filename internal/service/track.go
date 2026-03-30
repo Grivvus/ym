@@ -20,10 +20,13 @@ import (
 )
 
 type TrackUploadParams struct {
-	ArtistID int32
-	AlbumID  int32
-	Name     string
-	Duration *int
+	ArtistID            int32
+	AlbumID             *int32
+	UploadBy            *int32
+	IsGloballyAvailable bool
+	IsSingle            bool
+	Name                string
+	Duration            *int
 }
 
 var ErrPresetCantBeSelected = errors.New("preset can't be selected for this track")
@@ -58,10 +61,16 @@ func (s *TrackService) UploadTrack(
 	} else {
 		duration = pgtype.Int4{Valid: true, Int32: int32(*params.Duration)}
 	}
+	var userID int32
+	if params.UploadBy != nil {
+		userID = *params.UploadBy
+	}
 	track, err := s.queries.CreateTrack(ctx, db.CreateTrackParams{
-		Name:     params.Name,
-		ArtistID: params.ArtistID,
-		Duration: duration,
+		Name:                params.Name,
+		ArtistID:            params.ArtistID,
+		Duration:            duration,
+		IsGloballyAvailable: params.IsGloballyAvailable,
+		UploadByUser:        pgtype.Int4{Valid: params.UploadBy != nil, Int32: userID},
 	})
 	if err != nil {
 		return ret, fmt.Errorf("can't create new record in db: %w", err)
@@ -69,9 +78,26 @@ func (s *TrackService) UploadTrack(
 
 	ret.TrackId = track.ID
 
+	var albumID int32
+	if params.IsSingle {
+		single, err := s.queries.CreateAlbum(ctx, db.CreateAlbumParams{
+			Name:     track.Name,
+			ArtistID: track.ArtistID,
+		})
+		if err != nil {
+			return ret, fmt.Errorf("can't create single album for the track: %w", err)
+		}
+		albumID = single.ID
+	} else {
+		if params.AlbumID == nil {
+			return ret, fmt.Errorf("albumID is required if track is not a single")
+		}
+		albumID = *params.AlbumID
+	}
+
 	err = s.queries.AddTrackToAlbum(ctx, db.AddTrackToAlbumParams{
 		TrackID: track.ID,
-		AlbumID: params.AlbumID,
+		AlbumID: albumID,
 	})
 	if err != nil {
 		return ret, fmt.Errorf("can't add this track to album: %w", err)

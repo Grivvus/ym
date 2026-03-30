@@ -18,7 +18,7 @@ UPDATE "track" SET
     high_preset_fname = $4,
     lossless_preset_fname = $5
 WHERE id = $1
-RETURNING id, name, duration, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, artist_id
+RETURNING id, name, duration, url, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, is_globally_available, artist_id, upload_by_user
 `
 
 type AddTrackPresetsParams struct {
@@ -42,11 +42,14 @@ func (q *Queries) AddTrackPresets(ctx context.Context, arg AddTrackPresetsParams
 		&i.ID,
 		&i.Name,
 		&i.Duration,
+		&i.Url,
 		&i.FastPresetFname,
 		&i.StandardPresetFname,
 		&i.HighPresetFname,
 		&i.LosslessPresetFname,
+		&i.IsGloballyAvailable,
 		&i.ArtistID,
+		&i.UploadByUser,
 	)
 	return i, err
 }

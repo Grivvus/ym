@@ -10,7 +10,7 @@ import (
 )
 
 const getUserTracks = `-- name: GetUserTracks :many
-SELECT id, name, duration, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, artist_id FROM "track"
+SELECT id, name, duration, url, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, is_globally_available, artist_id, upload_by_user FROM "track"
 `
 
 func (q *Queries) GetUserTracks(ctx context.Context) ([]Track, error) {
@@ -26,11 +26,14 @@ func (q *Queries) GetUserTracks(ctx context.Context) ([]Track, error) {
 			&i.ID,
 			&i.Name,
 			&i.Duration,
+			&i.Url,
 			&i.FastPresetFname,
 			&i.StandardPresetFname,
 			&i.HighPresetFname,
 			&i.LosslessPresetFname,
+			&i.IsGloballyAvailable,
 			&i.ArtistID,
+			&i.UploadByUser,
 		); err != nil {
 			return nil, err
 		}

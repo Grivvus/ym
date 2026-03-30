@@ -61,29 +61,40 @@ func (q *Queries) CreatePlaylist(ctx context.Context, arg CreatePlaylistParams) 
 }
 
 const createTrack = `-- name: CreateTrack :one
-INSERT INTO "track" (name, artist_id, duration)
-    VALUES ($1, $2, $3)
-RETURNING id, name, duration, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, artist_id
+INSERT INTO "track" (name, artist_id, duration, upload_by_user, is_globally_available)
+    VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, duration, url, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, is_globally_available, artist_id, upload_by_user
 `
 
 type CreateTrackParams struct {
-	Name     string
-	ArtistID int32
-	Duration pgtype.Int4
+	Name                string
+	ArtistID            int32
+	Duration            pgtype.Int4
+	UploadByUser        pgtype.Int4
+	IsGloballyAvailable bool
 }
 
 func (q *Queries) CreateTrack(ctx context.Context, arg CreateTrackParams) (Track, error) {
-	row := q.db.QueryRow(ctx, createTrack, arg.Name, arg.ArtistID, arg.Duration)
+	row := q.db.QueryRow(ctx, createTrack,
+		arg.Name,
+		arg.ArtistID,
+		arg.Duration,
+		arg.UploadByUser,
+		arg.IsGloballyAvailable,
+	)
 	var i Track
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Duration,
+		&i.Url,
 		&i.FastPresetFname,
 		&i.StandardPresetFname,
 		&i.HighPresetFname,
 		&i.LosslessPresetFname,
+		&i.IsGloballyAvailable,
 		&i.ArtistID,
+		&i.UploadByUser,
 	)
 	return i, err
 }

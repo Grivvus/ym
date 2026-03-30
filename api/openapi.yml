@@ -1217,7 +1217,6 @@ components:
       type: object
       required:
         - name
-        - album_id
         - artist_id
         - track
       properties:
@@ -1226,6 +1225,10 @@ components:
         album_id:
           type: integer
           format: int32
+        is_single:
+          type: boolean
+        is_globally_available:
+          type: boolean
         artist_id:
           type: integer
           format: int32

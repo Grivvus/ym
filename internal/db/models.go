@@ -29,11 +29,14 @@ type Track struct {
 	ID                  int32
 	Name                string
 	Duration            pgtype.Int4
+	Url                 pgtype.Text
 	FastPresetFname     pgtype.Text
 	StandardPresetFname pgtype.Text
 	HighPresetFname     pgtype.Text
 	LosslessPresetFname pgtype.Text
+	IsGloballyAvailable bool
 	ArtistID            int32
+	UploadByUser        pgtype.Int4
 }
 
 type TrackAlbum struct {

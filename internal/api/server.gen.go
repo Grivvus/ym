@@ -148,10 +148,12 @@ type TrackMetadata struct {
 
 // TrackUploadRequest defines model for TrackUploadRequest.
 type TrackUploadRequest struct {
-	AlbumId  int32              `json:"album_id"`
-	ArtistId int32              `json:"artist_id"`
-	Name     string             `json:"name"`
-	Track    openapi_types.File `json:"track"`
+	AlbumId             *int32             `json:"album_id,omitempty"`
+	ArtistId            int32              `json:"artist_id"`
+	IsGloballyAvailable *bool              `json:"is_globally_available,omitempty"`
+	IsSingle            *bool              `json:"is_single,omitempty"`
+	Name                string             `json:"name"`
+	Track               openapi_types.File `json:"track"`
 }
 
 // TrackUploadSuccessResponse defines model for TrackUploadSuccessResponse.

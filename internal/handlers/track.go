@@ -18,6 +18,10 @@ type TrackHandlers struct {
 }
 
 func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
+	}
 	_, header, err := r.FormFile("track")
 	if err != nil || header == nil {
 		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("form must include track file"))
@@ -26,20 +30,34 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
 	album := r.FormValue("album_id")
 	artist := r.FormValue("artist_id")
-	if name == "" || album == "" || artist == "" {
-		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("form fields are not set or empty"))
+	isGloballyAvailable := r.FormValue("is_globally_available")
+	isSingle := r.FormValue("is_single")
+	if name == "" || artist == "" {
+		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("track name and artist are required"))
 		return
 	}
-	albumID, err1 := strconv.Atoi(album)
-	artistID, err2 := strconv.Atoi(artist)
-	if err1 != nil || err2 != nil {
-		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("album_id and artist_id must be int"))
+	artistID, err := strconv.Atoi(artist)
+	if err != nil {
+		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("artist_id must be valid int"))
 		return
+	}
+	var albumID *int32
+	if album != "" {
+		albumIDInt, err := strconv.Atoi(album)
+		if err != nil {
+			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("album_id must be valid int"))
+			return
+		}
+		albumID32 := int32(albumIDInt)
+		albumID = &albumID32
 	}
 	var uploadParams = service.TrackUploadParams{
-		ArtistID: int32(artistID),
-		AlbumID:  int32(albumID),
-		Name:     name,
+		ArtistID:            int32(artistID),
+		AlbumID:             albumID,
+		Name:                name,
+		UploadBy:            &userID,
+		IsGloballyAvailable: formValueToBool(isGloballyAvailable),
+		IsSingle:            formValueToBool(isSingle),
 	}
 
 	resp, err := h.trackService.UploadTrack(r.Context(), uploadParams, header)
@@ -158,4 +176,8 @@ func (h TrackHandlers) StreamTrackHead(
 	}
 	w.Header().Set("Content-Type", meta.ContentType)
 	w.Header().Set("Content-Length", strconv.Itoa(int(meta.ContentLength)))
+}
+
+func formValueToBool(val string) bool {
+	return val == "true" || val == "True"
 }
