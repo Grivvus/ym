@@ -1,12 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/Grivvus/ym/internal/api"
-)
-import (
-	"encoding/json"
 )
 
 func writeJSON(w http.ResponseWriter, status int, v any) error {
