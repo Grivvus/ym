@@ -61,7 +61,7 @@ func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.Register(r.Context(), user)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrUserAlreadyExists](err); ok {
-			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("user already exists"))
+			_ = writeError(w, http.StatusConflict, fmt.Errorf("user already exists"))
 		} else {
 			_ = writeError(w, http.StatusInternalServerError, err)
 		}
