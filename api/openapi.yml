@@ -949,7 +949,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /albums/create:
+  /albums:
     post:
       summary: creates new album
       operationId: createAlbum

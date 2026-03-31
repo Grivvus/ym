@@ -242,7 +242,7 @@ type ChangePasswordJSONRequestBody = UserChangePassword
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// creates new album
-	// (POST /albums/create)
+	// (POST /albums)
 	CreateAlbum(w http.ResponseWriter, r *http.Request)
 	// deletes album by id
 	// (DELETE /albums/{albumId})
@@ -362,7 +362,7 @@ type ServerInterface interface {
 type Unimplemented struct{}
 
 // creates new album
-// (POST /albums/create)
+// (POST /albums)
 func (_ Unimplemented) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -1758,7 +1758,7 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/albums/create", wrapper.CreateAlbum)
+		r.Post(options.BaseURL+"/albums", wrapper.CreateAlbum)
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/albums/{albumId}", wrapper.DeleteAlbum)

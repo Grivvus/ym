@@ -40,7 +40,14 @@ func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h ArtistHandlers) GetAllArtists(w http.ResponseWriter, r *http.Request) {
-	h.artistService.
+	artists, err := h.artistService.GetAll(r.Context())
+	if err != nil {
+		_ = writeError(w, http.StatusInternalServerError, err)
+	}
+	err = writeJSON(w, http.StatusOK, artists)
+	if err != nil {
+		h.logger.Error("can't encode response", "err", err)
+	}
 }
 
 func (h ArtistHandlers) DeleteArtist(w http.ResponseWriter, r *http.Request, artistID int32) {
