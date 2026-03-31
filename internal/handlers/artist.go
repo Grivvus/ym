@@ -39,6 +39,10 @@ func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h ArtistHandlers) GetAllArtists(w http.ResponseWriter, r *http.Request) {
+	h.artistService.
+}
+
 func (h ArtistHandlers) DeleteArtist(w http.ResponseWriter, r *http.Request, artistID int32) {
 	response, err := h.artistService.Delete(r.Context(), artistID)
 	if err != nil {

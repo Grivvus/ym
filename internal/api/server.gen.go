@@ -259,8 +259,11 @@ type ServerInterface interface {
 
 	// (POST /albums/{albumId}/cover)
 	UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32)
+	// get list of all artists
+	// (GET /artists)
+	GetAllArtists(w http.ResponseWriter, r *http.Request)
 	// creates new artist
-	// (POST /artists/create)
+	// (POST /artists)
 	CreateArtist(w http.ResponseWriter, r *http.Request)
 	// deletes artist by id
 	// (DELETE /artists/{artistId})
@@ -391,8 +394,14 @@ func (_ Unimplemented) UploadAlbumCover(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// get list of all artists
+// (GET /artists)
+func (_ Unimplemented) GetAllArtists(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // creates new artist
-// (POST /artists/create)
+// (POST /artists)
 func (_ Unimplemented) CreateArtist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -746,6 +755,26 @@ func (siw *ServerInterfaceWrapper) UploadAlbumCover(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UploadAlbumCover(w, r, albumId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAllArtists operation middleware
+func (siw *ServerInterfaceWrapper) GetAllArtists(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAllArtists(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1747,7 +1776,10 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/albums/{albumId}/cover", wrapper.UploadAlbumCover)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/artists/create", wrapper.CreateArtist)
+		r.Get(options.BaseURL+"/artists", wrapper.GetAllArtists)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/artists", wrapper.CreateArtist)
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/artists/{artistId}", wrapper.DeleteArtist)

@@ -78,6 +78,21 @@ func (s *ArtistService) Get(ctx context.Context, id int32) (api.ArtistInfoRespon
 	return ret, nil
 }
 
+func (s *ArtistService) GetAll(ctx context.Context) ([]api.ArtistInfoResponse, error) {
+	dbArtists, err := s.queries.GetAllArtists(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unknown db error: %w", err)
+	}
+	artists := make([]api.ArtistInfoResponse, len(dbArtists))
+	for i, artist := range dbArtists {
+		artists[i] = api.ArtistInfoResponse{
+			ArtistId:   artist.ID,
+			ArtistName: artist.Name,
+		}
+	}
+	return artists, nil
+}
+
 func (s *ArtistService) Delete(ctx context.Context, id int32) (api.ArtistDeleteResponse, error) {
 	ret := api.ArtistDeleteResponse{ArtistId: id}
 	artist, err := s.queries.GetArtist(ctx, id)
