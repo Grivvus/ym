@@ -34,10 +34,14 @@ func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request)
 
 	playlistResponse, err := h.playlistService.Create(r.Context(), params, coverFileHeader)
 	if err != nil {
-		_ = writeError(
-			w, http.StatusInternalServerError,
-			fmt.Errorf("can't create playlist: %w", err),
-		)
+		if errors.Is(err, service.ErrEntityAlreadyExists) {
+			_ = writeError(w, http.StatusConflict, fmt.Errorf("playlist with this name already exists"))
+		} else {
+			_ = writeError(
+				w, http.StatusInternalServerError,
+				fmt.Errorf("can't create playlist: %w", err),
+			)
+		}
 		return
 	}
 	err = writeJSON(w, http.StatusCreated, playlistResponse)

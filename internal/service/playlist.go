@@ -16,6 +16,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+var ErrEntityAlreadyExists = errors.New("conflict: entity already exists")
+
 type PlaylistCreateParams struct {
 	OwnerID int32
 	Name    string
@@ -40,6 +42,17 @@ func (s *PlaylistService) Create(
 	coverFileHeader *multipart.FileHeader,
 ) (api.PlaylistCreateResponse, error) {
 	var ret api.PlaylistCreateResponse
+	_, err := s.queries.FindUsersPlaylistByName(ctx, db.FindUsersPlaylistByNameParams{
+		OwnerID: pgtype.Int4{Valid: true, Int32: playlistInfo.OwnerID},
+		Name:    playlistInfo.Name,
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return ret, fmt.Errorf("can't create playlist: %w", err)
+	}
+	// err == nil, so playlist was found
+	if err == nil {
+		return ret, fmt.Errorf("%w: album with this name already exists", ErrEntityAlreadyExists)
+	}
 	playlist, err := s.queries.CreatePlaylist(ctx, db.CreatePlaylistParams{
 		Name:    playlistInfo.Name,
 		OwnerID: pgtype.Int4{Int32: playlistInfo.OwnerID, Valid: true},

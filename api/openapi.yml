@@ -676,8 +676,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlaylistCreateResponse'
+        '400':
+          description: can't find required params
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: conflict, playlist with this name already exists
           content:
             application/json:
               schema:
