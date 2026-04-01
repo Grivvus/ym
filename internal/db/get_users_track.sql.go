@@ -12,7 +12,7 @@ import (
 )
 
 const getUserTracks = `-- name: GetUserTracks :many
-SELECT t.id, t.name, t.artist_id,
+SELECT t.id, t.name, t.artist_id, duration_ms,
 t.fast_preset_fname, t.standard_preset_fname,
 t.high_preset_fname, t.lossless_preset_fname
     FROM "track" AS t
@@ -23,6 +23,7 @@ type GetUserTracksRow struct {
 	ID                  int32
 	Name                string
 	ArtistID            int32
+	DurationMs          pgtype.Int4
 	FastPresetFname     pgtype.Text
 	StandardPresetFname pgtype.Text
 	HighPresetFname     pgtype.Text
@@ -42,6 +43,7 @@ func (q *Queries) GetUserTracks(ctx context.Context, uploadByUser pgtype.Int4) (
 			&i.ID,
 			&i.Name,
 			&i.ArtistID,
+			&i.DurationMs,
 			&i.FastPresetFname,
 			&i.StandardPresetFname,
 			&i.HighPresetFname,

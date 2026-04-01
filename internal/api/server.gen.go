@@ -138,6 +138,7 @@ type TrackMetadata struct {
 	AlbumId             int32   `json:"album_id"`
 	ArtistId            int32   `json:"artist_id"`
 	CoverUrl            *string `json:"cover_url,omitempty"`
+	DurationMs          int32   `json:"duration_ms"`
 	Name                string  `json:"name"`
 	TrackFastPreset     *string `json:"track_fast_preset,omitempty"`
 	TrackHighPreset     *string `json:"track_high_preset,omitempty"`

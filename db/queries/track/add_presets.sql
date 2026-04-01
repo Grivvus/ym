@@ -1,8 +1,9 @@
--- name: AddTrackPresets :one
+-- name: AddPostTranscodingInfo :one
 UPDATE "track" SET
-    fast_preset_fname = $2,
-    standard_preset_fname = $3,
-    high_preset_fname = $4,
-    lossless_preset_fname = $5
+    duration_ms = $2,
+    fast_preset_fname = $3,
+    standard_preset_fname = $4,
+    high_preset_fname = $5,
+    lossless_preset_fname = $6
 WHERE id = $1
 RETURNING *;

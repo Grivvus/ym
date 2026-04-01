@@ -61,13 +61,13 @@ func (q *Queries) GetPlaylist(ctx context.Context, id int32) (GetPlaylistRow, er
 }
 
 const getTrack = `-- name: GetTrack :one
-SELECT t.id, t.name, t.artist_id, ta.album_id,
+SELECT t.id, t.name, t.artist_id, ta.album_id, t.duration_ms,
 t.fast_preset_fname, t.standard_preset_fname,
 t.high_preset_fname, t.lossless_preset_fname
     FROM "track" AS t
     INNER JOIN "track_album" AS ta
         ON t.id = ta.track_id
-    WHERE "track".id = $1
+    WHERE t.id = $1
     LIMIT 1
 `
 
@@ -76,6 +76,7 @@ type GetTrackRow struct {
 	Name                string
 	ArtistID            int32
 	AlbumID             int32
+	DurationMs          pgtype.Int4
 	FastPresetFname     pgtype.Text
 	StandardPresetFname pgtype.Text
 	HighPresetFname     pgtype.Text
@@ -90,6 +91,7 @@ func (q *Queries) GetTrack(ctx context.Context, id int32) (GetTrackRow, error) {
 		&i.Name,
 		&i.ArtistID,
 		&i.AlbumID,
+		&i.DurationMs,
 		&i.FastPresetFname,
 		&i.StandardPresetFname,
 		&i.HighPresetFname,

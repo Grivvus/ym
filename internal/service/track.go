@@ -26,7 +26,6 @@ type TrackUploadParams struct {
 	IsGloballyAvailable bool
 	IsSingle            bool
 	Name                string
-	Duration            *int
 }
 
 var ErrPresetCantBeSelected = errors.New("preset can't be selected for this track")
@@ -55,12 +54,6 @@ func (s *TrackService) UploadTrack(
 	trackFileHeader *multipart.FileHeader,
 ) (api.TrackUploadSuccessResponse, error) {
 	var ret api.TrackUploadSuccessResponse
-	var duration pgtype.Int4
-	if params.Duration == nil {
-		duration = pgtype.Int4{Valid: false}
-	} else {
-		duration = pgtype.Int4{Valid: true, Int32: int32(*params.Duration)}
-	}
 	var userID int32
 	if params.UploadBy != nil {
 		userID = *params.UploadBy
@@ -68,7 +61,6 @@ func (s *TrackService) UploadTrack(
 	track, err := s.queries.CreateTrack(ctx, db.CreateTrackParams{
 		Name:                params.Name,
 		ArtistID:            params.ArtistID,
-		Duration:            duration,
 		IsGloballyAvailable: params.IsGloballyAvailable,
 		UploadByUser:        pgtype.Int4{Valid: params.UploadBy != nil, Int32: userID},
 	})
@@ -105,13 +97,19 @@ func (s *TrackService) UploadTrack(
 
 	rc, err := trackFileHeader.Open()
 	if err != nil {
-		panic(err)
+		return ret, fmt.Errorf("should never happen: %w", err)
 	}
 	defer func() { _ = rc.Close() }()
+
 	tmpFname := s.tmpFileName(track.ID)
 	err = utils.SaveAsFile(rc, tmpFname)
 	if err != nil {
 		return ret, fmt.Errorf("can't create tmp file: %w", err)
+	}
+
+	durationMs, err := transcoder.ProbeDurationMs(ctx, tmpFname)
+	if err != nil {
+		return ret, fmt.Errorf("can't calculate duration: %w", err)
 	}
 
 	presetsFiles, err := transcoder.TranscodeConcurrent(ctx, tmpFname, s.logger)
@@ -127,7 +125,7 @@ func (s *TrackService) UploadTrack(
 		if err != nil {
 			return ret, fmt.Errorf("can't find file with transcoded samples: %w", err)
 		}
-		// defer inside loop
+		s.logger.Warn("defer inside loop")
 		defer func() {
 			_ = f.Close()
 			_ = os.Remove(v)
@@ -138,9 +136,10 @@ func (s *TrackService) UploadTrack(
 			return ret, fmt.Errorf("can't save transcoded sample: %w", err)
 		}
 	}
-	_, err = s.queries.AddTrackPresets(
-		ctx, db.AddTrackPresetsParams{
-			ID: int32(ret.TrackId),
+	_, err = s.queries.AddPostTranscodingInfo(
+		ctx, db.AddPostTranscodingInfoParams{
+			ID:         ret.TrackId,
+			DurationMs: pgtype.Int4{Valid: true, Int32: int32(durationMs)},
 			FastPresetFname: pgtype.Text{
 				String: presetsFiles[transcoder.PresetFast],
 				Valid:  true,
@@ -231,6 +230,7 @@ func (s *TrackService) GetMeta(
 		AlbumId:             trackInfo.AlbumID,
 		CoverUrl:            &trackCoverURL,
 		Name:                trackInfo.Name,
+		DurationMs:          trackInfo.DurationMs.Int32,
 		TrackFastPreset:     fastPreset,
 		TrackStandardPreset: standardPreset,
 		TrackHighPreset:     highPreset,
@@ -248,6 +248,7 @@ func (s *TrackService) GetUserTracks(ctx context.Context, userID int32) ([]api.T
 		ret[i] = api.TrackMetadata{
 			ArtistId:            track.ArtistID,
 			Name:                track.Name,
+			DurationMs:          track.DurationMs.Int32,
 			TrackId:             track.ID,
 			TrackFastPreset:     &track.FastPresetFname.String,
 			TrackStandardPreset: &track.StandardPresetFname.String,

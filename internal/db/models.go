@@ -28,7 +28,7 @@ type Playlist struct {
 type Track struct {
 	ID                  int32
 	Name                string
-	Duration            pgtype.Int4
+	DurationMs          pgtype.Int4
 	Url                 pgtype.Text
 	FastPresetFname     pgtype.Text
 	StandardPresetFname pgtype.Text

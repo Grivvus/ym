@@ -1278,6 +1278,7 @@ components:
         - name
         - artist_id
         - album_id
+        - duration_ms
       properties:
         track_id:
           type: integer
@@ -1292,6 +1293,9 @@ components:
           format: int32
         cover_url:
           type: string
+        duration_ms:
+          type: integer
+          format: int32
         track_fast_preset:
           type: string
         track_standard_preset:

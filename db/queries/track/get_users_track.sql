@@ -1,5 +1,5 @@
 -- name: GetUserTracks :many
-SELECT t.id, t.name, t.artist_id,
+SELECT t.id, t.name, t.artist_id, duration_ms,
 t.fast_preset_fname, t.standard_preset_fname,
 t.high_preset_fname, t.lossless_preset_fname
     FROM "track" AS t

@@ -1,7 +1,7 @@
 CREATE TABLE track (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
-    duration INTEGER,
+    duration_ms INTEGER,
     url TEXT UNIQUE,
     fast_preset_fname TEXT,
     standard_preset_fname TEXT,

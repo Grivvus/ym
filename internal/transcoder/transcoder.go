@@ -5,8 +5,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -131,6 +133,34 @@ func TranscodeConcurrent(
 			return nil, fmt.Errorf("context was canceled with err: %w", err)
 		}
 	}
+}
+
+func ProbeDurationMs(ctx context.Context, fname string) (int, error) {
+	cmd := exec.CommandContext(ctx,
+		"ffprobe",
+		"-v", "error",
+		"-show_entries", "format=duration",
+		"-of", "default=noprint_wrappers=1:nokey=1",
+		fname,
+	)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return 0, fmt.Errorf(
+			"ffprobe failed: %w: %s", err, strings.TrimSpace(stderr.String()),
+		)
+	}
+
+	seconds, err := strconv.ParseFloat(strings.TrimSpace(stdout.String()), 64)
+	if err != nil {
+		return 0, fmt.Errorf("can't parse duration: %w", err)
+	}
+
+	return int(math.Round(seconds * 1000)), nil
 }
 
 func removeTmpFiles(fname string, logger *slog.Logger) {

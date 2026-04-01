@@ -11,27 +11,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addTrackPresets = `-- name: AddTrackPresets :one
+const addPostTranscodingInfo = `-- name: AddPostTranscodingInfo :one
 UPDATE "track" SET
-    fast_preset_fname = $2,
-    standard_preset_fname = $3,
-    high_preset_fname = $4,
-    lossless_preset_fname = $5
+    duration_ms = $2,
+    fast_preset_fname = $3,
+    standard_preset_fname = $4,
+    high_preset_fname = $5,
+    lossless_preset_fname = $6
 WHERE id = $1
-RETURNING id, name, duration, url, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, is_globally_available, artist_id, upload_by_user
+RETURNING id, name, duration_ms, url, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, is_globally_available, artist_id, upload_by_user
 `
 
-type AddTrackPresetsParams struct {
+type AddPostTranscodingInfoParams struct {
 	ID                  int32
+	DurationMs          pgtype.Int4
 	FastPresetFname     pgtype.Text
 	StandardPresetFname pgtype.Text
 	HighPresetFname     pgtype.Text
 	LosslessPresetFname pgtype.Text
 }
 
-func (q *Queries) AddTrackPresets(ctx context.Context, arg AddTrackPresetsParams) (Track, error) {
-	row := q.db.QueryRow(ctx, addTrackPresets,
+func (q *Queries) AddPostTranscodingInfo(ctx context.Context, arg AddPostTranscodingInfoParams) (Track, error) {
+	row := q.db.QueryRow(ctx, addPostTranscodingInfo,
 		arg.ID,
+		arg.DurationMs,
 		arg.FastPresetFname,
 		arg.StandardPresetFname,
 		arg.HighPresetFname,
@@ -41,7 +44,7 @@ func (q *Queries) AddTrackPresets(ctx context.Context, arg AddTrackPresetsParams
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.Duration,
+		&i.DurationMs,
 		&i.Url,
 		&i.FastPresetFname,
 		&i.StandardPresetFname,
