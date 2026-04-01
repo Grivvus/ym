@@ -500,6 +500,17 @@ paths:
     get:
       summary: get list of all artists
       operationId: getAllArtists
+      parameters:
+        - in: query
+          name: starts_with
+          schema:
+            type: string
+          description: query parameter for searching/filtering artists
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: limit on a number of artists
       responses:
         200:
           description: success

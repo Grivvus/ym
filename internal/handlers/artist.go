@@ -10,6 +10,8 @@ import (
 	"github.com/Grivvus/ym/internal/service"
 )
 
+const defaultArtistLimit = 5
+
 type ArtistHandlers struct {
 	artistService service.ArtistService
 	logger        *slog.Logger
@@ -39,8 +41,20 @@ func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h ArtistHandlers) GetAllArtists(w http.ResponseWriter, r *http.Request) {
-	artists, err := h.artistService.GetAll(r.Context())
+func (h ArtistHandlers) GetAllArtists(
+	w http.ResponseWriter, r *http.Request, params api.GetAllArtistsParams,
+) {
+	var artists []api.ArtistInfoResponse
+	var err error
+	if params.StartsWith == nil {
+		artists, err = h.artistService.GetAll(r.Context())
+	} else {
+		limit := defaultArtistLimit
+		if params.Limit != nil {
+			limit = *params.Limit
+		}
+		artist, err = h.artistService.GetWithFilters(r.Context(), *params.StartsWith, limit)
+	}
 	if err != nil {
 		_ = writeError(w, http.StatusInternalServerError, err)
 	}

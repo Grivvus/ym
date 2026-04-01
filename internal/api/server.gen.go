@@ -191,6 +191,15 @@ type UserUpdate struct {
 	NewUsername string `json:"new_username"`
 }
 
+// GetAllArtistsParams defines parameters for GetAllArtists.
+type GetAllArtistsParams struct {
+	// StartsWith query parameter for searching/filtering artists
+	StartsWith *string `form:"starts_with,omitempty" json:"starts_with,omitempty"`
+
+	// Limit limit on a number of artists
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // AddTrackToPlaylistJSONBody defines parameters for AddTrackToPlaylist.
 type AddTrackToPlaylistJSONBody struct {
 	TrackId int32 `json:"track_id"`
@@ -261,7 +270,7 @@ type ServerInterface interface {
 	UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32)
 	// get list of all artists
 	// (GET /artists)
-	GetAllArtists(w http.ResponseWriter, r *http.Request)
+	GetAllArtists(w http.ResponseWriter, r *http.Request, params GetAllArtistsParams)
 	// creates new artist
 	// (POST /artists)
 	CreateArtist(w http.ResponseWriter, r *http.Request)
@@ -396,7 +405,7 @@ func (_ Unimplemented) UploadAlbumCover(w http.ResponseWriter, r *http.Request, 
 
 // get list of all artists
 // (GET /artists)
-func (_ Unimplemented) GetAllArtists(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GetAllArtists(w http.ResponseWriter, r *http.Request, params GetAllArtistsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -767,14 +776,35 @@ func (siw *ServerInterfaceWrapper) UploadAlbumCover(w http.ResponseWriter, r *ht
 // GetAllArtists operation middleware
 func (siw *ServerInterfaceWrapper) GetAllArtists(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAllArtistsParams
+
+	// ------------- Optional query parameter "starts_with" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "starts_with", r.URL.Query(), &params.StartsWith)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "starts_with", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetAllArtists(w, r)
+		siw.Handler.GetAllArtists(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {

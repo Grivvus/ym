@@ -13,6 +13,7 @@ import (
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ArtistService struct {
@@ -80,6 +81,27 @@ func (s *ArtistService) Get(ctx context.Context, id int32) (api.ArtistInfoRespon
 
 func (s *ArtistService) GetAll(ctx context.Context) ([]api.ArtistInfoResponse, error) {
 	dbArtists, err := s.queries.GetAllArtists(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unknown db error: %w", err)
+	}
+	artists := make([]api.ArtistInfoResponse, len(dbArtists))
+	for i, artist := range dbArtists {
+		artists[i] = api.ArtistInfoResponse{
+			ArtistId:     artist.ID,
+			ArtistName:   artist.Name,
+			ArtistAlbums: []int32{},
+		}
+	}
+	return artists, nil
+}
+
+func (s *ArtistService) GetWithFilters(
+	ctx context.Context, nameStartsWith string, limit int,
+) ([]api.ArtistInfoResponse, error) {
+	dbArtists, err := s.queries.GetArtistsWithFilter(ctx, db.GetArtistsWithFilterParams{
+		Column1: pgtype.Text{Valid: true, String: nameStartsWith},
+		Limit:   int32(limit),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("unknown db error: %w", err)
 	}
