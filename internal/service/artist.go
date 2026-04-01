@@ -86,8 +86,9 @@ func (s *ArtistService) GetAll(ctx context.Context) ([]api.ArtistInfoResponse, e
 	artists := make([]api.ArtistInfoResponse, len(dbArtists))
 	for i, artist := range dbArtists {
 		artists[i] = api.ArtistInfoResponse{
-			ArtistId:   artist.ID,
-			ArtistName: artist.Name,
+			ArtistId:     artist.ID,
+			ArtistName:   artist.Name,
+			ArtistAlbums: []int32{},
 		}
 	}
 	return artists, nil

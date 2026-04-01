@@ -300,9 +300,9 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/TrackUploadRequest'
-            encoding:
-              track:
-                contentType: audio/*
+            # encoding:
+            #   track:
+            #     contentType: audio/*
       responses:
         '200':
           description: Track uploaded and processed successfully
