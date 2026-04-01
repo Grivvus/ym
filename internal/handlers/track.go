@@ -3,10 +3,10 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/service"
@@ -111,21 +111,20 @@ func (h TrackHandlers) StreamTrack(
 	w http.ResponseWriter, r *http.Request,
 	trackId int32, params api.StreamTrackParams,
 ) {
-
-	rangeHeader := r.Header.Get("Range")
-	if rangeHeader != "" {
-		w.WriteHeader(http.StatusNotImplemented)
-		return
-	}
-
 	var quality string
 	if params.Quality == nil {
 		quality = "standard"
 	} else {
 		quality = *params.Quality
 	}
+	h.serveTrack(w, r, trackId, quality)
+}
 
-	meta, err := h.trackService.GetStreamMeta(r.Context(), trackId, quality)
+func (h TrackHandlers) serveTrack(
+	w http.ResponseWriter, r *http.Request,
+	trackId int32, quality string,
+) {
+	stream, err := h.trackService.GetStream(r.Context(), trackId, quality)
 	if err != nil {
 		if errors.Is(err, service.ErrPresetCantBeSelected) {
 			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("%w. Probably wrong name", err))
@@ -136,20 +135,13 @@ func (h TrackHandlers) StreamTrack(
 		}
 		return
 	}
+	defer func() { _ = stream.Reader.Close() }()
 
-	stream, err := h.trackService.GetStream(r.Context(), trackId, quality)
-	if err != nil {
-		_ = writeError(w, http.StatusInternalServerError, err)
-		return
+	if stream.ContentType != "" && stream.ContentType != "application/octet-stream" {
+		w.Header().Set("Content-Type", stream.ContentType)
 	}
 
-	_, err = io.Copy(w, stream)
-	if err != nil {
-		h.logger.Error("can't write stream to response", "err", err)
-		_ = writeError(w, http.StatusInternalServerError, err)
-	}
-	w.Header().Set("Content-Type", meta.ContentType)
-	w.Header().Set("Content-Length", strconv.Itoa(int(meta.ContentLength)))
+	http.ServeContent(w, r, stream.Name, time.Time{}, stream.Reader)
 }
 
 func (h TrackHandlers) StreamTrackHead(
@@ -162,20 +154,7 @@ func (h TrackHandlers) StreamTrackHead(
 	} else {
 		quality = *params.Quality
 	}
-
-	meta, err := h.trackService.GetStreamMeta(r.Context(), trackId, quality)
-	if err != nil {
-		if errors.Is(err, service.ErrPresetCantBeSelected) {
-			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("%w. Probably wrong name", err))
-		} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusNotFound, err)
-		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
-		}
-		return
-	}
-	w.Header().Set("Content-Type", meta.ContentType)
-	w.Header().Set("Content-Length", strconv.Itoa(int(meta.ContentLength)))
+	h.serveTrack(w, r, trackId, quality)
 }
 
 func formValueToBool(val string) bool {

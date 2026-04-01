@@ -35,6 +35,12 @@ type StreamMeta struct {
 	ContentType   string
 }
 
+type TrackStream struct {
+	Name        string
+	ContentType string
+	Reader      io.ReadSeekCloser
+}
+
 type TrackService struct {
 	queries *db.Queries
 	st      storage.Storage
@@ -279,25 +285,40 @@ func (s *TrackService) GetStreamMeta(
 
 func (s *TrackService) GetStream(
 	ctx context.Context, trackID int32, trackQuality string,
-) (io.ReadCloser, error) {
+) (TrackStream, error) {
 	preset, err := transcoder.PresetFromString(trackQuality)
 	if err != nil {
-		return nil, fmt.Errorf("invalid name of trackQuality: %v", trackQuality)
+		return TrackStream{}, fmt.Errorf("invalid name of trackQuality: %v", trackQuality)
 	}
 	track, trackExist, err := s.trackExists(ctx, trackID)
 	if err != nil {
-		return nil, err
+		return TrackStream{}, err
 	}
 	if !trackExist {
-		return nil, fmt.Errorf("track doesn't exist")
+		return TrackStream{}, NewErrNotFound("track", trackID)
 	}
 	preset, err = s.findClosestExistingPreset(track, preset)
 	if err != nil {
-		return nil, err
+		return TrackStream{}, err
 	}
 
 	fullTrackName := transcoder.TranscodedName(s.tmpFileName(trackID), preset)
-	return s.st.GetTrack(ctx, fullTrackName)
+	stream, err := s.st.GetTrack(ctx, fullTrackName)
+	if err != nil {
+		return TrackStream{}, fmt.Errorf("can't get track stream: %w", err)
+	}
+
+	_, ctype, err := s.st.GetTrackInfo(ctx, fullTrackName)
+	if err != nil {
+		_ = stream.Close()
+		return TrackStream{}, fmt.Errorf("can't fetch track info: %w", err)
+	}
+
+	return TrackStream{
+		Name:        fullTrackName,
+		ContentType: ctype,
+		Reader:      stream,
+	}, nil
 }
 
 func (s *TrackService) trackExists(
