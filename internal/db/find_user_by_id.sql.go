@@ -7,24 +7,33 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, email, password, salt, created_at, updated_at FROM "user"
-WHERE id = $1
+SELECT id, username, email, password, salt 
+    FROM "user"
+    WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id int32) (User, error) {
+type GetUserByIDRow struct {
+	ID       int32
+	Username string
+	Email    pgtype.Text
+	Password []byte
+	Salt     []byte
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id int32) (GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
-	var i User
+	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
 		&i.Email,
 		&i.Password,
 		&i.Salt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }

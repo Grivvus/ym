@@ -7,33 +7,45 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getUserTracks = `-- name: GetUserTracks :many
-SELECT id, name, duration, url, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, is_globally_available, artist_id, upload_by_user FROM "track"
+SELECT t.id, t.name, t.artist_id,
+t.fast_preset_fname, t.standard_preset_fname,
+t.high_preset_fname, t.lossless_preset_fname
+    FROM "track" AS t
+    WHERE t.is_globally_available OR t.upload_by_user = $1
 `
 
-func (q *Queries) GetUserTracks(ctx context.Context) ([]Track, error) {
-	rows, err := q.db.Query(ctx, getUserTracks)
+type GetUserTracksRow struct {
+	ID                  int32
+	Name                string
+	ArtistID            int32
+	FastPresetFname     pgtype.Text
+	StandardPresetFname pgtype.Text
+	HighPresetFname     pgtype.Text
+	LosslessPresetFname pgtype.Text
+}
+
+func (q *Queries) GetUserTracks(ctx context.Context, uploadByUser pgtype.Int4) ([]GetUserTracksRow, error) {
+	rows, err := q.db.Query(ctx, getUserTracks, uploadByUser)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Track
+	var items []GetUserTracksRow
 	for rows.Next() {
-		var i Track
+		var i GetUserTracksRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.Duration,
-			&i.Url,
+			&i.ArtistID,
 			&i.FastPresetFname,
 			&i.StandardPresetFname,
 			&i.HighPresetFname,
 			&i.LosslessPresetFname,
-			&i.IsGloballyAvailable,
-			&i.ArtistID,
-			&i.UploadByUser,
 		); err != nil {
 			return nil, err
 		}

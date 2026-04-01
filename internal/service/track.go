@@ -239,7 +239,7 @@ func (s *TrackService) GetMeta(
 }
 
 func (s *TrackService) GetUserTracks(ctx context.Context, userID int32) ([]api.TrackMetadata, error) {
-	tracks, err := s.queries.GetUserTracks(ctx)
+	tracks, err := s.queries.GetUserTracks(ctx, pgtype.Int4{Int32: userID, Valid: true})
 	if err != nil {
 		return nil, fmt.Errorf("can't fetch track info: %w", err)
 	}

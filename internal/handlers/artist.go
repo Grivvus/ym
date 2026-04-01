@@ -53,7 +53,7 @@ func (h ArtistHandlers) GetAllArtists(
 		if params.Limit != nil {
 			limit = *params.Limit
 		}
-		artist, err = h.artistService.GetWithFilters(r.Context(), *params.StartsWith, limit)
+		artists, err = h.artistService.GetWithFilters(r.Context(), *params.StartsWith, limit)
 	}
 	if err != nil {
 		_ = writeError(w, http.StatusInternalServerError, err)

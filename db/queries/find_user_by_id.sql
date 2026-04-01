@@ -1,3 +1,4 @@
 -- name: GetUserByID :one
-SELECT * FROM "user"
-WHERE id = $1;
+SELECT id, username, email, password, salt 
+    FROM "user"
+    WHERE id = $1;
