@@ -52,7 +52,7 @@ func (p Preset) String() string {
 	}
 }
 
-const TimeoutPerPreset = 60 * time.Second
+const TranscodingTimeout = 60 * time.Second
 
 var presetArgs = map[Preset][]string{
 	PresetFast:     {"-vn", "-c:a", "libopus", "-b:a", "48k", "-vbr", "on", "-ac", "2", "-ar", "48000", "-f", "opus"},
@@ -93,10 +93,9 @@ func TranscodeConcurrent(
 	presets := []Preset{PresetFast, PresetStandard, PresetHigh, PresetLossless}
 	transcodedFiles := make(map[Preset]string, 4)
 	c := make(chan Preset)
-	dctx := ctx
-	// dctx, cancel := context.WithDeadline(ctx, time.Now().Add(TimeoutPerPreset))
+	dctx, cancel := context.WithDeadline(ctx, time.Now().Add(TranscodingTimeout))
 	pctx, cancelIfErr := context.WithCancelCause(dctx)
-	// defer cancel()
+	defer cancel()
 	defer cancelIfErr(nil)
 
 	for _, p := range presets {
