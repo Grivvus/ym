@@ -15,9 +15,9 @@ type minioStorage struct {
 }
 
 func (m minioStorage) PutTrack(
-	ctx context.Context, id string, r io.Reader,
+	ctx context.Context, id string, r io.Reader, objSize int64,
 ) error {
-	return m.put(ctx, "tracks", id, r, minio.PutObjectOptions{})
+	return m.put(ctx, "tracks", id, objSize, r, minio.PutObjectOptions{})
 }
 
 func (m minioStorage) GetTrackInfo(
@@ -43,7 +43,7 @@ func (m minioStorage) RemoveTrack(ctx context.Context, trackID string) error {
 func (m minioStorage) PutImage(
 	ctx context.Context, id string, r io.Reader,
 ) error {
-	return m.put(ctx, "images", id, r, minio.PutObjectOptions{})
+	return m.put(ctx, "images", id, -1, r, minio.PutObjectOptions{})
 }
 
 func (m minioStorage) GetImage(
@@ -73,10 +73,10 @@ func (m minioStorage) get(
 }
 
 func (m minioStorage) put(
-	ctx context.Context, bucketName, objectID string,
+	ctx context.Context, bucketName, objectID string, objSize int64,
 	r io.Reader, opts minio.PutObjectOptions,
 ) error {
-	uinfo, err := m.client.PutObject(ctx, bucketName, objectID, r, -1, opts)
+	uinfo, err := m.client.PutObject(ctx, bucketName, objectID, r, objSize, opts)
 	_ = uinfo
 	return err
 }

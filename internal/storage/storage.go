@@ -16,7 +16,7 @@ import (
 // All implementations (Minio, file-system) will respect this interface.
 type Storage interface {
 	/* may return some other type, represents info */
-	PutTrack(ctx context.Context, trackID string, r io.Reader) error
+	PutTrack(ctx context.Context, trackID string, r io.Reader, objSize int64) error
 	// may return some type, that represents more info about object and implements io.Reader
 	GetTrack(ctx context.Context, trackID string) (io.ReadSeekCloser, error)
 	GetTrackInfo(ctx context.Context, trackID string) (clen uint, ctype string, err error)

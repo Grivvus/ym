@@ -134,10 +134,18 @@ func (s *TrackService) UploadTrack(
 		s.logger.Warn("defer inside loop")
 		defer func() {
 			_ = f.Close()
-			_ = os.Remove(v)
+			err := os.Remove(v)
+			if err != nil {
+				s.logger.Warn("can't remove tmp file", "file", v, "err", err)
+			}
 		}()
 
-		err = s.st.PutTrack(ctx, v, f)
+		finfo, err := f.Stat()
+		objSize := int64(-1)
+		if err == nil {
+			objSize = finfo.Size()
+		}
+		err = s.st.PutTrack(ctx, v, f, objSize)
 		if err != nil {
 			return ret, fmt.Errorf("can't save transcoded sample: %w", err)
 		}

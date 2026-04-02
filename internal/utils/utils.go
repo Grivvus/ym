@@ -137,10 +137,6 @@ func deriveTokenSecret(secret []byte, tokenKind string) []byte {
 }
 
 func SaveAsFile(f io.Reader, fname string) (err error) {
-	content, err := io.ReadAll(f)
-	if err != nil {
-		return fmt.Errorf("read error: %w", err)
-	}
 	fd, err := os.Create(fname)
 	if err != nil {
 		return fmt.Errorf("can't create file: %w", err)
@@ -151,7 +147,7 @@ func SaveAsFile(f io.Reader, fname string) (err error) {
 			slog.Error("can't close resource", "err", err)
 		}
 	}()
-	_, err = fd.Write(content)
+	_, err = io.Copy(fd, f)
 	if err != nil {
 		return fmt.Errorf("can't write to file: %w", err)
 	}
