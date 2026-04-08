@@ -304,8 +304,8 @@ paths:
             #   track:
             #     contentType: audio/*
       responses:
-        '200':
-          description: Track uploaded and processed successfully
+        '202':
+          description: Track uploaded and accepted into the transcoding queue
           content:
             application/json:
               schema:

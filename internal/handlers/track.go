@@ -65,7 +65,7 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	err = writeJSON(w, http.StatusCreated, resp)
+	err = writeJSON(w, http.StatusAccepted, resp)
 	if err != nil {
 		slog.Error("Trackhandlers.UploadTrack, can't encode response", "err", err)
 	}

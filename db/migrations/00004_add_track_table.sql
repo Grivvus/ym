@@ -11,7 +11,7 @@ CREATE TABLE track (
     lossless_preset_fname TEXT,
     is_globally_available BOOLEAN NOT NULL,
     artist_id INTEGER NOT NULL,
-    FOREIGN KEY (artist_id) REFERENCES artist (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES "artist" (id) ON DELETE CASCADE,
     upload_by_user INTEGER,
     FOREIGN KEY (upload_by_user) REFERENCES "user" (id) ON DELETE SET NULL
 );

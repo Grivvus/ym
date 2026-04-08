@@ -49,6 +49,15 @@ type TrackPlaylist struct {
 	PlaylistID int32
 }
 
+type TranscodingQueue struct {
+	ID                    int32
+	AddedAt               pgtype.Timestamp
+	TrackOriginalFileName string
+	TrackID               int32
+	WasFailed             bool
+	ErrorMsg              pgtype.Text
+}
+
 type User struct {
 	ID        int32
 	Username  string

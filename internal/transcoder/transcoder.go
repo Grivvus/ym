@@ -4,99 +4,190 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
+
+	"github.com/Grivvus/ym/internal/audio"
+	"github.com/Grivvus/ym/internal/db"
+	"github.com/Grivvus/ym/internal/repository"
+	"github.com/Grivvus/ym/internal/storage"
 )
 
-type Preset int
+var presetArgs = map[audio.Preset][]string{
+	audio.PresetFast:     {"-vn", "-c:a", "libopus", "-b:a", "48k", "-vbr", "on", "-ac", "2", "-ar", "48000", "-f", "opus"},
+	audio.PresetStandard: {"-vn", "-c:a", "libopus", "-b:a", "112k", "-vbr", "on", "-ac", "2", "-ar", "48000", "-f", "opus"},
+	audio.PresetHigh:     {"-vn", "-c:a", "aac", "-b:a", "256k", "-ar", "44100", "-ac", "2", "-movflags", "+faststart", "-f", "mov"},
+	audio.PresetLossless: {"-vn", "-c:a", "flac", "-compression_level", "5", "-f", "flac"},
+}
 
-const (
-	PresetFast Preset = iota + 1
-	PresetStandard
-	PresetHigh
-	PresetLossless
-)
+const perPresetTimeout = 60 * time.Second
 
-func PresetFromString(s string) (Preset, error) {
-	switch s {
-	case "fast":
-		return PresetFast, nil
-	case "standard":
-		return PresetStandard, nil
-	case "high":
-		return PresetHigh, nil
-	case "lossless":
-		return PresetLossless, nil
-	default:
-		return Preset(0), fmt.Errorf("this preset didn't match to any of existing one")
+type Transcoder struct {
+	logger            *slog.Logger
+	storage           storage.Storage
+	repo              *repository.TranscodingQueueRepository
+	transcodingSignal <-chan struct{}
+	isWorkerStarted   atomic.Bool
+}
+
+func NewTranscoder(
+	logger *slog.Logger,
+	storage storage.Storage,
+	repo *repository.TranscodingQueueRepository,
+	transcodingQueue <-chan struct{},
+) *Transcoder {
+	return &Transcoder{
+		logger:            logger,
+		storage:           storage,
+		repo:              repo,
+		transcodingSignal: transcodingQueue,
+		isWorkerStarted:   atomic.Bool{},
 	}
 }
 
-func (p Preset) String() string {
-	switch p {
-	case PresetFast:
-		return "fast"
-	case PresetStandard:
-		return "standard"
-	case PresetHigh:
-		return "high"
-	case PresetLossless:
-		return "lossless"
-	default:
-		return "unknown preset"
-	}
-}
-
-const TranscodingTimeout = 60 * time.Second
-
-var presetArgs = map[Preset][]string{
-	PresetFast:     {"-vn", "-c:a", "libopus", "-b:a", "48k", "-vbr", "on", "-ac", "2", "-ar", "48000", "-f", "opus"},
-	PresetStandard: {"-vn", "-c:a", "libopus", "-b:a", "112k", "-vbr", "on", "-ac", "2", "-ar", "48000", "-f", "opus"},
-	PresetHigh:     {"-vn", "-c:a", "aac", "-b:a", "256k", "-ar", "44100", "-ac", "2", "-movflags", "+faststart", "-f", "mov"},
-	PresetLossless: {"-vn", "-c:a", "flac", "-compression_level", "5", "-f", "flac"},
-}
-
-func Transcode(ctx context.Context, fname string) (map[Preset]string, error) {
-	presets := []Preset{PresetFast, PresetStandard, PresetHigh, PresetLossless}
-	transcodedFiles := make(map[Preset]string, 4)
-	for _, p := range presets {
-		newName := TranscodedName(fname, p)
-		allArgs := []string{"-y", "-i", fname}
-		allArgs = append(allArgs, presetArgs[p]...)
-		allArgs = append(allArgs, newName)
-
-		cmd := exec.CommandContext(ctx, "ffmpeg", allArgs...)
-		var buf bytes.Buffer
-		cmd.Stderr = &buf
-		cmd.Stdout = &buf
-
-		if err := cmd.Run(); err != nil {
-			// if we're exiting with error, we should remove all transcoded files
-			// or we could create some worker, that remove all files,
-			// that are older than some time, 30 mins for example
-			fmt.Print(buf.String())
-			panic(err)
+func (t *Transcoder) StartListener(ctx context.Context) {
+	go func() {
+		for {
+			select {
+			case <-t.transcodingSignal:
+				if !t.isWorkerStarted.Load() {
+					t.isWorkerStarted.Store(true)
+					go t.startWorker(ctx)
+				}
+			case <-ctx.Done():
+				return
+			}
 		}
-		transcodedFiles[p] = newName
-	}
-	return transcodedFiles, nil
+	}()
 }
 
-func TranscodeConcurrent(
-	ctx context.Context, fname string, logger *slog.Logger,
-) (map[Preset]string, error) {
-	presets := []Preset{PresetFast, PresetStandard, PresetHigh, PresetLossless}
-	transcodedFiles := make(map[Preset]string, 4)
-	c := make(chan Preset)
-	dctx, cancel := context.WithDeadline(ctx, time.Now().Add(TranscodingTimeout))
-	pctx, cancelIfErr := context.WithCancelCause(dctx)
+func (t *Transcoder) startWorker(ctx context.Context) {
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		queue, errs := t.repo.GetTranscodingQueue(ctx)
+		go func() {
+			for err := range errs {
+				t.logger.Error("failed to get queue", "err", err.Error())
+			}
+		}()
+		for transcodingInfo := range queue {
+			t.job(ctx, transcodingInfo)
+		}
+	})
+	wg.Wait()
+	t.isWorkerStarted.Store(false)
+}
+
+func (t *Transcoder) job(ctx context.Context, transcodingInfo db.GetTranscodingQueueRow) {
+	presets := []audio.Preset{
+		audio.PresetFast, audio.PresetStandard, audio.PresetHigh,
+	}
+	presetsToName := make(map[audio.Preset]string)
+	for _, p := range presets {
+		presetsToName[p] = TranscodedName(transcodingInfo.TrackOriginalFileName, p)
+	}
+	err := t.writeTrackToTmpFile(ctx, transcodingInfo)
+	defer func() {
+		go t.removeTmpFiles(transcodingInfo.TrackOriginalFileName)
+	}()
+	if err != nil {
+		t.logger.Error("failed to write track to tmp file", "err", err.Error())
+		return
+	}
+	transcodingCtx, cancel := context.WithTimeout(ctx, perPresetTimeout)
 	defer cancel()
-	defer cancelIfErr(nil)
+	err = t.transcodeConcurrent(transcodingCtx, transcodingInfo.TrackOriginalFileName, presets)
+	if err != nil {
+		t.logger.Error("can't transcode track", "error", err)
+		_ = t.repo.OnFailedTranscoding(ctx, transcodingInfo.ID, err)
+		return
+	}
+	t.logger.Info(
+		"track transcoded successfully",
+		"track", transcodingInfo.TrackOriginalFileName,
+	)
+	duration, err := t.probeDurationMs(ctx, transcodingInfo.TrackOriginalFileName)
+	if err != nil {
+		t.logger.Error("can't probe duration", "error", err)
+		return
+	}
+	err = t.uploadTmpFilesToStorage(ctx, presetsToName)
+	if err != nil {
+		t.logger.Error("can't upload tmp files", "error", err)
+		return
+	}
+	err = t.repo.RemoveFromQueueAndUpdateTrack(
+		ctx, transcodingInfo.ID, duration, presetsToName,
+	)
+	if err != nil {
+		t.logger.Error(
+			"can't update db after successful transcoding",
+			"error", err,
+		)
+	}
+}
+
+func (t *Transcoder) uploadTmpFilesToStorage(
+	ctx context.Context, presetsToName map[audio.Preset]string,
+) error {
+	for _, presetFname := range presetsToName {
+		f, err := os.Open(presetFname)
+		if err != nil {
+			t.logger.Error("can't open transcoded file", "err", err.Error())
+			return err
+		}
+		fstat, err := f.Stat()
+		if err != nil {
+			t.logger.Error("can't stat transcoded file", "err", err.Error())
+			return err
+		}
+		defer func() { _ = f.Close() }()
+		err = t.storage.PutTrack(
+			ctx,
+			presetFname,
+			f,
+			fstat.Size(),
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *Transcoder) writeTrackToTmpFile(
+	ctx context.Context, transcodingInfo db.GetTranscodingQueueRow,
+) error {
+	trackData, err := t.storage.GetTrack(ctx, transcodingInfo.TrackOriginalFileName)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = trackData.Close() }()
+	f, err := os.Create(transcodingInfo.TrackOriginalFileName)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	_, err = io.Copy(f, trackData)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Transcoder) transcodeConcurrent(
+	ctx context.Context, fname string, presets []audio.Preset,
+) error {
+	transcodedFiles := make(map[audio.Preset]string, 4)
+	c := make(chan audio.Preset)
 
 	for _, p := range presets {
 		currentPreset := p
@@ -106,14 +197,16 @@ func TranscodeConcurrent(
 			allArgs = append(allArgs, presetArgs[currentPreset]...)
 			allArgs = append(allArgs, newName)
 
-			cmd := exec.CommandContext(pctx, "ffmpeg", allArgs...)
+			cmd := exec.CommandContext(ctx, "ffmpeg", allArgs...)
 			var buf bytes.Buffer
 			cmd.Stderr = &buf
 			cmd.Stdout = &buf
 
 			if err := cmd.Run(); err != nil {
-				fmt.Println(buf.String())
-				cancelIfErr(err)
+				t.logger.Error(
+					"transcoding ended with an error",
+					"buffer output", buf.String(),
+				)
 			}
 			c <- currentPreset
 		}()
@@ -125,17 +218,16 @@ func TranscodeConcurrent(
 			transcodedFiles[p] = TranscodedName(fname, p)
 			done++
 			if done == len(presets) {
-				return transcodedFiles, nil
+				return nil
 			}
-		case <-pctx.Done():
-			err := pctx.Err()
-			go removeTmpFiles(fname, logger)
-			return nil, fmt.Errorf("context was canceled with err: %w", err)
+		case <-ctx.Done():
+			err := ctx.Err()
+			return fmt.Errorf("context was canceled with err: %w", err)
 		}
 	}
 }
 
-func ProbeDurationMs(ctx context.Context, fname string) (int, error) {
+func (t *Transcoder) probeDurationMs(ctx context.Context, fname string) (int32, error) {
 	cmd := exec.CommandContext(ctx,
 		"ffprobe",
 		"-v", "error",
@@ -160,25 +252,28 @@ func ProbeDurationMs(ctx context.Context, fname string) (int, error) {
 		return 0, fmt.Errorf("can't parse duration: %w", err)
 	}
 
-	return int(math.Round(seconds * 1000)), nil
+	return int32(math.Round(seconds * 1000)), nil
 }
 
-func removeTmpFiles(fname string, logger *slog.Logger) {
+func (t *Transcoder) removeTmpFiles(fname string) {
 	err := os.Remove(fname)
 	if err != nil {
-		logger.Error("error on removing tmp", "err", err)
+		t.logger.Error("error on removing tmp", "err", err)
 	}
-	presets := []Preset{PresetFast, PresetStandard, PresetHigh, PresetLossless}
+	presets := []audio.Preset{
+		audio.PresetFast, audio.PresetStandard,
+		audio.PresetHigh, audio.PresetLossless,
+	}
 	for _, p := range presets {
 		tmp := TranscodedName(fname, p)
 		err := os.Remove(tmp)
 		if err != nil {
-			logger.Error("error on removing tmp", "err", err)
+			t.logger.Error("error on removing tmp", "err", err)
 		}
 	}
 }
 
-func TranscodedName(fname string, preset Preset) string {
+func TranscodedName(fname string, preset audio.Preset) string {
 	var b strings.Builder
 	// skip .extension part if exist
 	if !strings.Contains(fname, ".") {
