@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/Grivvus/ym/internal/api"
@@ -30,7 +31,10 @@ func main() {
 	defer func() {
 		os.Exit(exitCode)
 	}()
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	ctx, cancel := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt, os.Kill, syscall.SIGTERM,
+	)
 	defer cancel()
 
 	logger := slog.New(slog.NewTextHandler(
@@ -51,7 +55,7 @@ func main() {
 		return
 	}
 
-	pool, err := pgxpool.New(context.Background(), cfg.DBConnString())
+	pool, err := pgxpool.New(ctx, cfg.DBConnString())
 	if err != nil {
 		logger.Error("Can't create connection pool to a database", "err", err)
 		exitCode = 1
@@ -59,7 +63,7 @@ func main() {
 	}
 	logger.Info("connection pool to the database was created")
 
-	storageClient, err := storage.New(context.Background(), *cfg, logger)
+	storageClient, err := storage.New(ctx, *cfg, logger)
 	if err != nil {
 		logger.Error("Can't create connection to a storage", "err", err)
 		exitCode = 1
