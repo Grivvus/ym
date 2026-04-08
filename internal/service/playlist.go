@@ -54,8 +54,9 @@ func (s *PlaylistService) Create(
 		return ret, fmt.Errorf("%w: album with this name already exists", ErrEntityAlreadyExists)
 	}
 	playlist, err := s.queries.CreatePlaylist(ctx, db.CreatePlaylistParams{
-		Name:    playlistInfo.Name,
-		OwnerID: pgtype.Int4{Int32: playlistInfo.OwnerID, Valid: true},
+		Name:     playlistInfo.Name,
+		OwnerID:  pgtype.Int4{Int32: playlistInfo.OwnerID, Valid: true},
+		IsPublic: false,
 	})
 	if err != nil {
 		return ret, fmt.Errorf("can't create playlist: %w", err)

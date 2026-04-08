@@ -43,18 +43,19 @@ func (q *Queries) CreateArtist(ctx context.Context, name string) (Artist, error)
 }
 
 const createPlaylist = `-- name: CreatePlaylist :one
-INSERT into "playlist" (name, owner_id)
-VALUES ($1, $2)
+INSERT into "playlist" (name, owner_id, is_public)
+VALUES ($1, $2, $3)
 RETURNING id, name, is_public, owner_id
 `
 
 type CreatePlaylistParams struct {
-	Name    string
-	OwnerID pgtype.Int4
+	Name     string
+	OwnerID  pgtype.Int4
+	IsPublic bool
 }
 
 func (q *Queries) CreatePlaylist(ctx context.Context, arg CreatePlaylistParams) (Playlist, error) {
-	row := q.db.QueryRow(ctx, createPlaylist, arg.Name, arg.OwnerID)
+	row := q.db.QueryRow(ctx, createPlaylist, arg.Name, arg.OwnerID, arg.IsPublic)
 	var i Playlist
 	err := row.Scan(
 		&i.ID,
