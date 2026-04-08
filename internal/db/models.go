@@ -17,12 +17,14 @@ type Album struct {
 type Artist struct {
 	ID   int32
 	Name string
+	Url  pgtype.Text
 }
 
 type Playlist struct {
-	ID      int32
-	Name    string
-	OwnerID pgtype.Int4
+	ID       int32
+	Name     string
+	IsPublic bool
+	OwnerID  pgtype.Int4
 }
 
 type Track struct {
@@ -59,11 +61,12 @@ type TranscodingQueue struct {
 }
 
 type User struct {
-	ID        int32
-	Username  string
-	Email     pgtype.Text
-	Password  []byte
-	Salt      []byte
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	ID          int32
+	Username    string
+	IsSuperuser bool
+	Email       pgtype.Text
+	Password    []byte
+	Salt        []byte
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }

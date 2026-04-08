@@ -3,6 +3,7 @@
 CREATE TABLE "user" (
     id SERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
+    is_superuser BOOLEAN NOT NULL DEFAULT FALSE,
     email VARCHAR(318) UNIQUE,
     password bytea NOT NULL,
     salt bytea NOT NULL,

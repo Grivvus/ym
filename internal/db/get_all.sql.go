@@ -13,15 +13,20 @@ const getAllArtists = `-- name: GetAllArtists :many
 SELECT "id", "name" FROM artist
 `
 
-func (q *Queries) GetAllArtists(ctx context.Context) ([]Artist, error) {
+type GetAllArtistsRow struct {
+	ID   int32
+	Name string
+}
+
+func (q *Queries) GetAllArtists(ctx context.Context) ([]GetAllArtistsRow, error) {
 	rows, err := q.db.Query(ctx, getAllArtists)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Artist
+	var items []GetAllArtistsRow
 	for rows.Next() {
-		var i Artist
+		var i GetAllArtistsRow
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}

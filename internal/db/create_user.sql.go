@@ -12,16 +12,17 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO "user" (username, email, password, salt, created_at, updated_at)
-values ($1, $2, $3, $4, now(), now())
-RETURNING id, username, email, password, salt, created_at, updated_at
+INSERT INTO "user" (username, email, password, salt, is_superuser, created_at, updated_at)
+values ($1, $2, $3, $4, $5, now(), now())
+RETURNING id, username, is_superuser, email, password, salt, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	Username string
-	Email    pgtype.Text
-	Password []byte
-	Salt     []byte
+	Username    string
+	Email       pgtype.Text
+	Password    []byte
+	Salt        []byte
+	IsSuperuser bool
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -30,11 +31,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Email,
 		arg.Password,
 		arg.Salt,
+		arg.IsSuperuser,
 	)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
+		&i.IsSuperuser,
 		&i.Email,
 		&i.Password,
 		&i.Salt,

@@ -32,20 +32,20 @@ func (q *Queries) CreateAlbum(ctx context.Context, arg CreateAlbumParams) (Album
 const createArtist = `-- name: CreateArtist :one
 INSERT INTO "artist" (name)
 values ($1)
-RETURNING id, name
+RETURNING id, name, url
 `
 
 func (q *Queries) CreateArtist(ctx context.Context, name string) (Artist, error) {
 	row := q.db.QueryRow(ctx, createArtist, name)
 	var i Artist
-	err := row.Scan(&i.ID, &i.Name)
+	err := row.Scan(&i.ID, &i.Name, &i.Url)
 	return i, err
 }
 
 const createPlaylist = `-- name: CreatePlaylist :one
 INSERT into "playlist" (name, owner_id)
 VALUES ($1, $2)
-RETURNING id, name, owner_id
+RETURNING id, name, is_public, owner_id
 `
 
 type CreatePlaylistParams struct {
@@ -56,7 +56,12 @@ type CreatePlaylistParams struct {
 func (q *Queries) CreatePlaylist(ctx context.Context, arg CreatePlaylistParams) (Playlist, error) {
 	row := q.db.QueryRow(ctx, createPlaylist, arg.Name, arg.OwnerID)
 	var i Playlist
-	err := row.Scan(&i.ID, &i.Name, &i.OwnerID)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.IsPublic,
+		&i.OwnerID,
+	)
 	return i, err
 }
 

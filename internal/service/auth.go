@@ -41,12 +41,21 @@ func NewAuthService(q *db.Queries, logger *slog.Logger, cfg *utils.Config) AuthS
 func (a AuthService) Register(
 	ctx context.Context, user api.UserAuth,
 ) (api.TokenResponse, error) {
+	usersCnt, err := a.queries.GetUserCount(ctx)
+	if err != nil {
+		return api.TokenResponse{}, fmt.Errorf("unknown db error: %w", err)
+	}
+	isSuperuser := false
+	if usersCnt == 0 {
+		isSuperuser = true
+	}
 	hashed, salt := utils.HashPassword(user.Password)
 	arg := db.CreateUserParams{
-		Username: user.Username,
-		Email:    pgtype.Text{Valid: false},
-		Password: hashed,
-		Salt:     salt,
+		Username:    user.Username,
+		Email:       pgtype.Text{Valid: false},
+		Password:    hashed,
+		Salt:        salt,
+		IsSuperuser: isSuperuser,
 	}
 	createdUser, err := a.queries.CreateUser(ctx, arg)
 	if err != nil {

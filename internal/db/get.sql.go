@@ -35,9 +35,14 @@ SELECT "artist".id, "artist".name
 where "artist".id = $1
 `
 
-func (q *Queries) GetArtist(ctx context.Context, id int32) (Artist, error) {
+type GetArtistRow struct {
+	ID   int32
+	Name string
+}
+
+func (q *Queries) GetArtist(ctx context.Context, id int32) (GetArtistRow, error) {
 	row := q.db.QueryRow(ctx, getArtist, id)
-	var i Artist
+	var i GetArtistRow
 	err := row.Scan(&i.ID, &i.Name)
 	return i, err
 }

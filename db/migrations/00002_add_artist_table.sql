@@ -2,7 +2,8 @@
 -- +goose StatementBegin
 CREATE TABLE artist (
     id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE
+    name TEXT NOT NULL UNIQUE,
+    url TEXT
 );
 -- +goose StatementEnd
 

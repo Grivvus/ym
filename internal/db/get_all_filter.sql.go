@@ -23,15 +23,20 @@ type GetArtistsWithFilterParams struct {
 	Limit   int32
 }
 
-func (q *Queries) GetArtistsWithFilter(ctx context.Context, arg GetArtistsWithFilterParams) ([]Artist, error) {
+type GetArtistsWithFilterRow struct {
+	ID   int32
+	Name string
+}
+
+func (q *Queries) GetArtistsWithFilter(ctx context.Context, arg GetArtistsWithFilterParams) ([]GetArtistsWithFilterRow, error) {
 	rows, err := q.db.Query(ctx, getArtistsWithFilter, arg.Column1, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Artist
+	var items []GetArtistsWithFilterRow
 	for rows.Next() {
-		var i Artist
+		var i GetArtistsWithFilterRow
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}
