@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 
@@ -17,25 +18,11 @@ type AlbumHandlers struct {
 }
 
 func (h AlbumHandlers) CreateAlbum(w http.ResponseWriter, r *http.Request) {
-	_, fileHeader, _ := r.FormFile("album_cover")
-	artist := r.FormValue("artist_id")
-	name := r.FormValue("album_name")
-	if name == "" || artist == "" {
-		_ = writeError(
-			w, http.StatusBadRequest, fmt.Errorf("form fields are not set or empty"),
-		)
-		return
-	}
-	artistID, err := strconv.Atoi(artist)
+	params, fileHeader, err := h.parsePostForm(r)
 	if err != nil {
-		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("artist_id must be int"))
+		_ = writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	var params = service.AlbumCreateParams{
-		ArtistID: int32(artistID),
-		Name:     name,
-	}
-
 	albumResponse, err := h.albumService.Create(r.Context(), params, fileHeader)
 	if err != nil {
 		_ = writeError(
@@ -128,4 +115,24 @@ func (h AlbumHandlers) UploadAlbumCover(w http.ResponseWriter, r *http.Request, 
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
+}
+
+func (h AlbumHandlers) parsePostForm(
+	r *http.Request,
+) (service.AlbumCreateParams, *multipart.FileHeader, error) {
+	_, fileHeader, _ := r.FormFile("album_cover")
+	artist := r.FormValue("artist_id")
+	name := r.FormValue("album_name")
+	if name == "" || artist == "" {
+		return service.AlbumCreateParams{}, nil, fmt.Errorf("form fields are not set or empty")
+	}
+	artistID, err := strconv.Atoi(artist)
+	if err != nil {
+		return service.AlbumCreateParams{}, nil, fmt.Errorf("artist_id must be int")
+	}
+	var params = service.AlbumCreateParams{
+		ArtistID: int32(artistID),
+		Name:     name,
+	}
+	return params, fileHeader, nil
 }

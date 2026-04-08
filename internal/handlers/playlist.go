@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/Grivvus/ym/internal/api"
@@ -17,21 +18,15 @@ type PlaylistHandlers struct {
 }
 
 func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request) {
-	_, coverFileHeader, _ := r.FormFile("playlist_cover")
 	userID, ok := requireAuthenticatedUserID(w, r)
 	if !ok {
 		return
 	}
-
-	var params service.PlaylistCreateParams
-	playlistName := r.FormValue("playlist_name")
-	if playlistName == "" {
-		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("playlist_name is required"))
+	params, coverFileHeader, err := h.parsePostParams(r, userID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	params.Name = playlistName
-	params.OwnerID = userID
-
 	playlistResponse, err := h.playlistService.Create(r.Context(), params, coverFileHeader)
 	if err != nil {
 		if errors.Is(err, service.ErrEntityAlreadyExists) {
@@ -51,7 +46,7 @@ func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request)
 }
 
 func (h PlaylistHandlers) UpdatePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	panic("implement me")
+	w.WriteHeader(http.StatusNotImplemented)
 }
 
 func (h PlaylistHandlers) DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
@@ -160,4 +155,23 @@ func (h PlaylistHandlers) UploadPlaylistCover(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
+}
+
+func (h PlaylistHandlers) parsePostParams(
+	r *http.Request, userID int32,
+) (service.PlaylistCreateParams, *multipart.FileHeader, error) {
+	_, coverFileHeader, _ := r.FormFile("playlist_cover")
+
+	playlistName := r.FormValue("playlist_name")
+	isPublic := r.FormValue("is_public")
+	if playlistName == "" {
+		return service.PlaylistCreateParams{}, nil, fmt.Errorf("playlist_name is required")
+	}
+	params := service.PlaylistCreateParams{
+		OwnerID:  userID,
+		IsPublic: formValueToBool(isPublic),
+		Name:     playlistName,
+	}
+
+	return params, coverFileHeader, nil
 }

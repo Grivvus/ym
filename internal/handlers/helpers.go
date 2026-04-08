@@ -18,3 +18,7 @@ func writeError(w http.ResponseWriter, status int, err error) error {
 		Error: err.Error(),
 	})
 }
+
+func formValueToBool(val string) bool {
+	return val == "true" || val == "True"
+}

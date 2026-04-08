@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"time"
@@ -22,44 +23,11 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	_, header, err := r.FormFile("track")
-	if err != nil || header == nil {
-		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("form must include track file"))
-		return
-	}
-	name := r.FormValue("name")
-	album := r.FormValue("album_id")
-	artist := r.FormValue("artist_id")
-	isGloballyAvailable := r.FormValue("is_globally_available")
-	isSingle := r.FormValue("is_single")
-	if name == "" || artist == "" {
-		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("track name and artist are required"))
-		return
-	}
-	artistID, err := strconv.Atoi(artist)
+	uploadParams, header, err := h.parsePostParams(r, userID)
 	if err != nil {
-		_ = writeError(w, http.StatusBadRequest, fmt.Errorf("artist_id must be valid int"))
+		_ = writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	var albumID *int32
-	if album != "" {
-		albumIDInt, err := strconv.Atoi(album)
-		if err != nil {
-			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("album_id must be valid int"))
-			return
-		}
-		albumID32 := int32(albumIDInt)
-		albumID = &albumID32
-	}
-	var uploadParams = service.TrackUploadParams{
-		ArtistID:            int32(artistID),
-		AlbumID:             albumID,
-		Name:                name,
-		UploadBy:            &userID,
-		IsGloballyAvailable: formValueToBool(isGloballyAvailable),
-		IsSingle:            formValueToBool(isSingle),
-	}
-
 	resp, err := h.trackService.UploadTrack(r.Context(), uploadParams, header)
 	if err != nil {
 		_ = writeError(w, http.StatusInternalServerError, err)
@@ -157,6 +125,42 @@ func (h TrackHandlers) StreamTrackHead(
 	h.serveTrack(w, r, trackId, quality)
 }
 
-func formValueToBool(val string) bool {
-	return val == "true" || val == "True"
+func (h TrackHandlers) parsePostParams(
+	r *http.Request, userID int32,
+) (service.TrackUploadParams, *multipart.FileHeader, error) {
+	_, header, err := r.FormFile("track")
+	if err != nil || header == nil {
+		return service.TrackUploadParams{}, nil, fmt.Errorf("form must include track file")
+	}
+	name := r.FormValue("name")
+	album := r.FormValue("album_id")
+	artist := r.FormValue("artist_id")
+	isGloballyAvailable := r.FormValue("is_globally_available")
+	isSingle := r.FormValue("is_single")
+	if name == "" || artist == "" {
+		return service.TrackUploadParams{}, nil, fmt.Errorf("track name and artist are required")
+	}
+	artistID, err := strconv.Atoi(artist)
+	if err != nil {
+		return service.TrackUploadParams{}, nil, fmt.Errorf("artist_id must be valid int")
+	}
+	var albumID *int32
+	if album != "" {
+		albumIDInt, err := strconv.Atoi(album)
+		if err != nil {
+			return service.TrackUploadParams{}, nil, fmt.Errorf("album_id must be valid int")
+		}
+		albumID32 := int32(albumIDInt)
+		albumID = &albumID32
+	}
+	var uploadParams = service.TrackUploadParams{
+		ArtistID:            int32(artistID),
+		AlbumID:             albumID,
+		Name:                name,
+		UploadBy:            &userID,
+		IsGloballyAvailable: formValueToBool(isGloballyAvailable),
+		IsSingle:            formValueToBool(isSingle),
+	}
+
+	return uploadParams, header, nil
 }

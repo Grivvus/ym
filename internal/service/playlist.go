@@ -19,8 +19,9 @@ import (
 var ErrEntityAlreadyExists = errors.New("conflict: entity already exists")
 
 type PlaylistCreateParams struct {
-	OwnerID int32
-	Name    string
+	OwnerID  int32
+	Name     string
+	IsPublic bool
 }
 
 type PlaylistService struct {
