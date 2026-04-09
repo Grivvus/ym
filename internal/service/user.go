@@ -10,24 +10,45 @@ import (
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
-	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/Grivvus/ym/internal/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type UserService struct {
-	queries *db.Queries
-	st      storage.Storage
-	logger  *slog.Logger
+	queries        *db.Queries
+	st             storage.Storage
+	logger         *slog.Logger
+	artworkService ArtworkManager
 }
 
 func NewUserService(q *db.Queries, st storage.Storage, logger *slog.Logger) UserService {
-	return UserService{
+	svc := UserService{
 		queries: q,
 		st:      st,
 		logger:  logger,
 	}
+
+	svc.artworkService = NewArtworkManager(st, svc.loadArtworkOwner, logger)
+
+	return svc
+}
+
+func (u *UserService) loadArtworkOwner(
+	ctx context.Context, ownerID int32,
+) (ArtworkOwner, error) {
+	user, err := u.GetUserByID(ctx, ownerID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ArtworkOwner{}, NewErrNotFound("user", ownerID)
+		}
+		return ArtworkOwner{}, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
+	}
+	return ArtworkOwner{
+		ID:   user.Id,
+		Name: user.Username,
+		Kind: "user",
+	}, nil
 }
 
 func (u *UserService) GetUserByID(
@@ -123,43 +144,15 @@ func (u *UserService) ChangePassword(
 func (u *UserService) UploadAvatar(
 	ctx context.Context, userID int32, avatar io.Reader,
 ) error {
-	rcTranscoded, err := transcoder.ToWebp(avatar)
-	if err != nil {
-		return fmt.Errorf("can't transcode image: %w", err)
-	}
-	defer func() { _ = rcTranscoded.Close() }()
-
-	err = u.st.PutImage(ctx, ImageID("user", int(userID), ""), rcTranscoded)
-	if err != nil {
-		return fmt.Errorf("can't upload avatar: %w", err)
-	}
-	return nil
+	return u.artworkService.Upload(ctx, userID, avatar)
 }
 
 func (u *UserService) GetAvatar(ctx context.Context, userID int32) ([]byte, error) {
-	user, err := u.queries.GetUserByID(ctx, userID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, NewErrNotFound("user", userID)
-		}
-		return nil, fmt.Errorf("unknown server error: %w", err)
-	}
-	bimage, err := u.st.GetImage(ctx, ImageID("user", int(user.ID), ""))
-	if err != nil {
-		return nil, fmt.Errorf("unknown server error: %w", err)
-	}
-	return bimage, nil
+	return u.artworkService.Get(ctx, userID)
 }
 
 func (u *UserService) DeleteAvatar(
 	ctx context.Context, userID int32,
 ) error {
-	err := u.st.RemoveImage(ctx, ImageID("user", int(userID), ""))
-	if err != nil {
-		// no switch on error, if i want to distinguish errors
-		// i should create my own on a storage level, so they
-		// will be indepentent from a concrete storage (i.e. minio, fs)
-		return fmt.Errorf("storage error: %w", err)
-	}
-	return nil
+	return u.artworkService.Delete(ctx, userID)
 }

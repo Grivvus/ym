@@ -11,23 +11,44 @@ import (
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
-	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ArtistService struct {
-	queries *db.Queries
-	st      storage.Storage
-	logger  *slog.Logger
+	queries        *db.Queries
+	st             storage.Storage
+	logger         *slog.Logger
+	artworkService ArtworkManager
 }
 
 func NewArtistService(q *db.Queries, st storage.Storage, logger *slog.Logger) ArtistService {
-	return ArtistService{
+	svc := ArtistService{
 		queries: q,
 		st:      st,
 		logger:  logger,
 	}
+
+	svc.artworkService = NewArtworkManager(st, svc.loadArtworkOwner, logger)
+
+	return svc
+}
+
+func (s *ArtistService) loadArtworkOwner(
+	ctx context.Context, artistID int32,
+) (ArtworkOwner, error) {
+	artist, err := s.queries.GetArtist(ctx, artistID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ArtworkOwner{}, NewErrNotFound("artist", artistID)
+		}
+		return ArtworkOwner{}, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
+	}
+	return ArtworkOwner{
+		ID:   artist.ID,
+		Name: artist.Name,
+		Kind: "artist",
+	}, nil
 }
 
 func (s *ArtistService) Get(ctx context.Context, id int32) (api.ArtistInfoResponse, error) {
@@ -65,15 +86,6 @@ func (s *ArtistService) Get(ctx context.Context, id int32) (api.ArtistInfoRespon
 
 	ret.ArtistId = artistID
 	ret.ArtistName = artistName
-
-	artistImageID := ImageID("artist", int(artistID), artistName)
-	if s.st.ImageExist(ctx, artistImageID) {
-		url := fmt.Sprintf("http://my_url/?type=image,id=%v", artistImageID)
-		ret.ArtistCoverUrl = &url
-	} else {
-		ret.ArtistCoverUrl = nil
-	}
-
 	ret.ArtistAlbums = albums
 
 	return ret, nil
@@ -118,22 +130,20 @@ func (s *ArtistService) GetWithFilters(
 
 func (s *ArtistService) Delete(ctx context.Context, id int32) (api.ArtistDeleteResponse, error) {
 	ret := api.ArtistDeleteResponse{ArtistId: id}
-	artist, err := s.queries.GetArtist(ctx, id)
+	_, err := s.queries.GetArtist(ctx, id)
 	if err != nil {
-		// delete artist's, that doesn't exist is noop
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, nil
 		}
-		return ret, fmt.Errorf("unknown server error: %w", err)
+		return ret, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
 	}
-	/* could i make this 2 ops transactional? */
-	err = s.st.RemoveImage(ctx, ImageID("artist", int(artist.ID), artist.Name))
+	err = s.artworkService.Delete(ctx, id)
 	if err != nil {
-		return ret, fmt.Errorf("can't delete artist image: %w", err)
+		return ret, nil
 	}
 	err = s.queries.DeleteArtist(ctx, id)
 	if err != nil {
-		return ret, fmt.Errorf("unknown server error: %w", err)
+		return ret, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
 	}
 	return ret, nil
 }
@@ -172,59 +182,17 @@ func (s *ArtistService) Create(
 func (s *ArtistService) UploadImage(
 	ctx context.Context, artistID int32, file io.Reader,
 ) error {
-	artist, err := s.queries.GetArtist(ctx, artistID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		}
-		return fmt.Errorf("can't upload image, cause: %w", err)
-	}
-	rcTranscoded, err := transcoder.ToWebp(file)
-	if err != nil {
-		return fmt.Errorf("can't upload image, cause: %w", err)
-	}
-	defer func() { _ = rcTranscoded.Close() }()
-
-	err = s.st.PutImage(ctx, ImageID("artist", int(artist.ID), artist.Name), rcTranscoded)
-	if err != nil {
-		return fmt.Errorf("can't upload image, cause: %w", err)
-	}
-	return nil
+	return s.artworkService.Upload(ctx, artistID, file)
 }
 
 func (s *ArtistService) DeleteImage(
 	ctx context.Context, artistID int32,
 ) error {
-	artist, err := s.queries.GetArtist(ctx, artistID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return NewErrNotFound("artist", artistID)
-		}
-		return fmt.Errorf("can't delete image, cause: %w", err)
-	}
-	err = s.st.RemoveImage(ctx, ImageID("artist", int(artistID), artist.Name))
-	if err != nil {
-		return fmt.Errorf("can't delete image, cause: %w", err)
-	}
-	return nil
+	return s.artworkService.Delete(ctx, artistID)
 }
 
 func (s *ArtistService) GetImage(
 	ctx context.Context, artistID int32,
 ) ([]byte, error) {
-	artist, err := s.queries.GetArtist(ctx, artistID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, NewErrNotFound("artist", artistID)
-		}
-		return nil, fmt.Errorf("unknown server error: %w", err)
-	}
-	bimage, err := s.st.GetImage(ctx, ImageID("artist", int(artist.ID), artist.Name))
-	if err != nil {
-		if err.Error() == "The specified key does not exist." {
-			return nil, NewErrNotFound("artistImage", artistID)
-		}
-		return nil, fmt.Errorf("unknown server error: %w", err)
-	}
-	return bimage, nil
+	return s.artworkService.Get(ctx, artistID)
 }

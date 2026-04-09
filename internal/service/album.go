@@ -11,7 +11,6 @@ import (
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
-	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -21,17 +20,34 @@ type AlbumCreateParams struct {
 }
 
 type AlbumService struct {
-	queries *db.Queries
-	st      storage.Storage
-	logger  *slog.Logger
+	queries        *db.Queries
+	st             storage.Storage
+	logger         *slog.Logger
+	artworkService ArtworkManager
 }
 
 func NewAlbumService(q *db.Queries, st storage.Storage, logger *slog.Logger) AlbumService {
-	return AlbumService{
+	svc := AlbumService{
 		queries: q,
 		st:      st,
 		logger:  logger,
 	}
+	svc.artworkService = NewArtworkManager(st, svc.loadArtworkOwner, logger)
+
+	return svc
+}
+
+func (s *AlbumService) loadArtworkOwner(
+	ctx context.Context, albumID int32,
+) (ArtworkOwner, error) {
+	album, err := s.queries.GetAlbum(ctx, albumID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ArtworkOwner{}, NewErrNotFound("album", albumID)
+		}
+		return ArtworkOwner{}, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
+	}
+	return ArtworkOwner{ID: album.ID, Name: album.Name, Kind: "album"}, nil
 }
 
 func (s *AlbumService) Create(
@@ -94,19 +110,16 @@ func (s *AlbumService) Delete(
 	ctx context.Context, albumID int32,
 ) (api.AlbumDeleteResponse, error) {
 	var ret = api.AlbumDeleteResponse{AlbumId: albumID}
-	album, err := s.queries.GetAlbum(ctx, albumID)
+	err := s.artworkService.Delete(ctx, albumID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ret, nil
-		}
-	}
-	err = s.st.RemoveImage(ctx, ImageID("album", int(album.ID), album.Name))
-	if err != nil {
-		return ret, fmt.Errorf("can't delete image: %w", err)
+		return ret, err
 	}
 	err = s.queries.DeleteAlbum(ctx, albumID)
 	if err != nil {
-		return ret, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ret, NewErrNotFound("album", albumID)
+		}
+		return ret, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
 	}
 	return ret, nil
 }
@@ -114,56 +127,17 @@ func (s *AlbumService) Delete(
 func (s *AlbumService) DeleteCover(
 	ctx context.Context, albumID int32,
 ) error {
-	album, err := s.queries.GetAlbum(ctx, albumID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		}
-		return fmt.Errorf("can't delete image, cause: %w", err)
-	}
-	err = s.st.RemoveImage(ctx, ImageID("album", int(albumID), album.Name))
-	if err != nil {
-		return fmt.Errorf("can't delete image, cause: %w", err)
-	}
-	return nil
+	return s.artworkService.Delete(ctx, albumID)
 }
 
 func (s *AlbumService) UploadCover(
 	ctx context.Context, albumID int32, cover io.Reader,
 ) error {
-	album, err := s.queries.GetAlbum(ctx, albumID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		}
-		return fmt.Errorf("can't upload image, cause: %w", err)
-	}
-	rcTranscoded, err := transcoder.ToWebp(cover)
-	if err != nil {
-		return fmt.Errorf("can't upload image, cause: %w", err)
-	}
-	defer func() { _ = rcTranscoded.Close() }()
-
-	err = s.st.PutImage(ctx, ImageID("album", int(album.ID), album.Name), rcTranscoded)
-	if err != nil {
-		return fmt.Errorf("can't upload image, cause: %w", err)
-	}
-	return nil
+	return s.artworkService.Upload(ctx, albumID, cover)
 }
 
 func (s *AlbumService) GetCover(
 	ctx context.Context, albumID int32,
 ) ([]byte, error) {
-	album, err := s.queries.GetAlbum(ctx, albumID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, NewErrNotFound("album", albumID)
-		}
-		return nil, fmt.Errorf("unknown server error: %w", err)
-	}
-	bimage, err := s.st.GetImage(ctx, ImageID("album", int(album.ID), album.Name))
-	if err != nil {
-		return nil, fmt.Errorf("unknown server error: %w", err)
-	}
-	return bimage, nil
+	return s.artworkService.Get(ctx, albumID)
 }

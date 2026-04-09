@@ -11,7 +11,6 @@ import (
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
-	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -25,17 +24,39 @@ type PlaylistCreateParams struct {
 }
 
 type PlaylistService struct {
-	queries *db.Queries
-	st      storage.Storage
-	logger  *slog.Logger
+	queries        *db.Queries
+	st             storage.Storage
+	logger         *slog.Logger
+	artworkService ArtworkManager
 }
 
 func NewPlaylistService(q *db.Queries, st storage.Storage, logger *slog.Logger) PlaylistService {
-	return PlaylistService{
+	svc := PlaylistService{
 		queries: q,
 		st:      st,
 		logger:  logger,
 	}
+
+	svc.artworkService = NewArtworkManager(st, svc.loadArtworkOwner, logger)
+
+	return svc
+}
+
+func (s *PlaylistService) loadArtworkOwner(
+	ctx context.Context, id int32,
+) (ArtworkOwner, error) {
+	playlist, err := s.queries.GetPlaylist(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ArtworkOwner{}, NewErrNotFound("playlist", id)
+		}
+		return ArtworkOwner{}, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
+	}
+	return ArtworkOwner{
+		ID:   playlist.ID,
+		Name: playlist.Name,
+		Kind: "playlist",
+	}, nil
 }
 
 func (s *PlaylistService) Create(
@@ -149,56 +170,17 @@ func (s *PlaylistService) GetUserPlaylists(ctx context.Context, userID int32) (a
 func (s *PlaylistService) UploadCover(
 	ctx context.Context, playlistID int32, cover io.Reader,
 ) error {
-	playlist, err := s.queries.GetPlaylist(ctx, playlistID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		}
-		return fmt.Errorf("can't upload image, cause: %w", err)
-	}
-	rcTranscoded, err := transcoder.ToWebp(cover)
-	if err != nil {
-		return fmt.Errorf("can't upload image, cause: %w", err)
-	}
-	defer func() { _ = rcTranscoded.Close() }()
-
-	err = s.st.PutImage(ctx, ImageID("playlist", int(playlist.ID), playlist.Name), rcTranscoded)
-	if err != nil {
-		return fmt.Errorf("can't upload image, cause: %w", err)
-	}
-	return nil
+	return s.artworkService.Upload(ctx, playlistID, cover)
 }
 
 func (s *PlaylistService) DeleteCover(
 	ctx context.Context, playlistID int32,
 ) error {
-	playlist, err := s.queries.GetPlaylist(ctx, playlistID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		}
-		return fmt.Errorf("can't delete image, cause: %w", err)
-	}
-	err = s.st.RemoveImage(ctx, ImageID("playlist", int(playlistID), playlist.Name))
-	if err != nil {
-		return fmt.Errorf("can't delete image, cause: %w", err)
-	}
-	return nil
+	return s.artworkService.Delete(ctx, playlistID)
 }
 
 func (s *PlaylistService) GetCover(
 	ctx context.Context, playlistID int32,
 ) ([]byte, error) {
-	playlist, err := s.queries.GetPlaylist(ctx, playlistID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, NewErrNotFound("playlist", playlistID)
-		}
-		return nil, fmt.Errorf("unknown server error: %w", err)
-	}
-	bimage, err := s.st.GetImage(ctx, ImageID("playlist", int(playlist.ID), playlist.Name))
-	if err != nil {
-		return nil, fmt.Errorf("unknown server error: %w", err)
-	}
-	return bimage, nil
+	return s.artworkService.Get(ctx, playlistID)
 }

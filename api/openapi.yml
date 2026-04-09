@@ -1337,8 +1337,6 @@ components:
           format: int32
         artist_name:
           type: string
-        artist_cover_url:
-          type: string
         artist_albums:
           type: array
           items:

@@ -70,10 +70,9 @@ type ArtistImageResponse struct {
 
 // ArtistInfoResponse defines model for ArtistInfoResponse.
 type ArtistInfoResponse struct {
-	ArtistAlbums   []int32 `json:"artist_albums"`
-	ArtistCoverUrl *string `json:"artist_cover_url,omitempty"`
-	ArtistId       int32   `json:"artist_id"`
-	ArtistName     string  `json:"artist_name"`
+	ArtistAlbums []int32 `json:"artist_albums"`
+	ArtistId     int32   `json:"artist_id"`
+	ArtistName   string  `json:"artist_name"`
 }
 
 // ErrorResponse defines model for ErrorResponse.
@@ -93,6 +92,7 @@ type PlaylistCoverResponse struct {
 
 // PlaylistCreateRequest defines model for PlaylistCreateRequest.
 type PlaylistCreateRequest struct {
+	IsPublic      bool                `json:"is_public"`
 	OwnerId       int32               `json:"owner_id"`
 	PlaylistCover *openapi_types.File `json:"playlist_cover,omitempty"`
 	PlaylistName  string              `json:"playlist_name"`
