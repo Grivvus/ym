@@ -32,6 +32,7 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, service.ErrBadParams) {
 			_ = writeError(w, http.StatusBadRequest, err)
+			return
 		}
 		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
 			_ = writeError(w, http.StatusConflict, err)

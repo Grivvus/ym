@@ -78,7 +78,7 @@ func (m minioStorage) get(
 ) (io.ReadSeekCloser, error) {
 	obj, err := m.client.GetObject(ctx, bucketName, objectID, opts)
 	if err != nil {
-		if e, ok := errors.AsType[minio.ErrorResponse](err); !ok && e.Code == minio.NoSuchKey {
+		if e, ok := errors.AsType[minio.ErrorResponse](err); ok && e.Code == minio.NoSuchKey {
 			return nil, fmt.Errorf("%w: no such key %v", ErrObjectNotFound, objectID)
 		}
 		return nil, fmt.Errorf("%w caused by: %w", InternalStorageError, err)
@@ -92,7 +92,7 @@ func (m minioStorage) put(
 ) error {
 	_, err := m.client.PutObject(ctx, bucketName, objectID, r, objSize, opts)
 	if err != nil {
-		if e, ok := errors.AsType[minio.ErrorResponse](err); !ok {
+		if e, ok := errors.AsType[minio.ErrorResponse](err); ok {
 			if e.Code == minio.EntityTooSmall || e.Code == minio.EntityTooLarge {
 				return fmt.Errorf(
 					"%w: size of the object is bad, %w",
@@ -113,7 +113,7 @@ func (m minioStorage) remove(
 ) error {
 	err := m.client.RemoveObject(ctx, bucketName, id, opts)
 	if err != nil {
-		if e, ok := errors.AsType[minio.ErrorResponse](err); !ok && e.Code == minio.NoSuchKey {
+		if e, ok := errors.AsType[minio.ErrorResponse](err); ok && e.Code == minio.NoSuchKey {
 			return fmt.Errorf("%w: no such key %v", ErrObjectNotFound, id)
 		}
 		return fmt.Errorf("%w caused by: %w", InternalStorageError, err)

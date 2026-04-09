@@ -39,10 +39,7 @@ func (u *UserService) loadArtworkOwner(
 ) (ArtworkOwner, error) {
 	user, err := u.GetUserByID(ctx, ownerID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ArtworkOwner{}, NewErrNotFound("user", ownerID)
-		}
-		return ArtworkOwner{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		return ArtworkOwner{}, err
 	}
 	return ArtworkOwner{
 		ID:   user.Id,
@@ -56,7 +53,7 @@ func (u *UserService) GetUserByID(
 ) (api.UserReturn, error) {
 	var ret api.UserReturn
 
-	user, err := u.queries.GetUserByID(ctx, int32(userID))
+	user, err := u.queries.GetUserByID(ctx, userID)
 	if err != nil {
 		slog.Error("Get-userByID", "err", err)
 		if errors.Is(err, pgx.ErrNoRows) {

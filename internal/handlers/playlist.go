@@ -118,7 +118,7 @@ func (h PlaylistHandlers) AddTrackToPlaylist(
 }
 
 func (h PlaylistHandlers) DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	err := h.playlistService.Delete(r.Context(), playlistId)
+	err := h.playlistService.DeleteCover(r.Context(), playlistId)
 	if err != nil {
 		_ = writeError(
 			w, http.StatusInternalServerError,
@@ -149,6 +149,10 @@ func (h PlaylistHandlers) GetPlaylistCover(w http.ResponseWriter, r *http.Reques
 func (h PlaylistHandlers) UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	err := h.playlistService.UploadCover(r.Context(), playlistId, r.Body)
 	if err != nil {
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, err)
+			return
+		}
 		if errors.Is(err, service.ErrBadParams) {
 			_ = writeError(w, http.StatusBadRequest, err)
 			return
