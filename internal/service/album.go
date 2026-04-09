@@ -55,7 +55,7 @@ func (s *AlbumService) Create(
 
 	rc, err := coverFileHeader.Open()
 	if err != nil {
-		panic(err)
+		return ret, fmt.Errorf("%w: assertion, must be nil", err)
 	}
 	defer func() { _ = rc.Close() }()
 

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -59,7 +60,13 @@ func (m minioStorage) GetImage(
 
 func (m minioStorage) ImageExist(ctx context.Context, id string) bool {
 	_, err := m.get(ctx, "images", id, minio.GetObjectOptions{})
-	return err != nil
+	if err == nil {
+		return false
+	}
+	if errResp, ok := errors.AsType[minio.ErrorResponse](err); ok {
+		return errResp.Code == minio.NoSuchKey
+	}
+	return false
 }
 
 func (m minioStorage) RemoveImage(ctx context.Context, id string) error {

@@ -155,8 +155,7 @@ func (s *ArtistService) Create(
 
 	rc, err := artistImage.Open()
 	if err != nil {
-		// assertion
-		panic(err)
+		return ret, fmt.Errorf("%w: assertion, must be nil", err)
 	}
 	defer func() { _ = rc.Close() }()
 

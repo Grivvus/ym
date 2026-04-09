@@ -70,7 +70,7 @@ func (s *PlaylistService) Create(
 
 	f, err := coverFileHeader.Open()
 	if err != nil {
-		panic(err)
+		return ret, fmt.Errorf("%w: assertion, must be nil", err)
 	}
 	defer func() { _ = f.Close() }()
 

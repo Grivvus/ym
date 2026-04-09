@@ -141,5 +141,5 @@ func (a AuthService) UpdateTokens(
 }
 
 func (a AuthService) RevokeTokens(ctx context.Context) error {
-	panic("not implemented")
+	return fmt.Errorf("not implemented")
 }

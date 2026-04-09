@@ -24,7 +24,7 @@ func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request)
 	}
 	params, coverFileHeader, err := h.parsePostParams(r, userID)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
+		_ = writeError(w, http.StatusBadRequest, err)
 		return
 	}
 	playlistResponse, err := h.playlistService.Create(r.Context(), params, coverFileHeader)
