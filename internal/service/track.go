@@ -15,6 +15,7 @@ import (
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -75,7 +76,7 @@ func (s *TrackService) UploadTrack(
 		UploadByUser:        pgtype.Int4{Valid: params.UploadBy != nil, Int32: userID},
 	})
 	if err != nil {
-		return ret, fmt.Errorf("can't create new record in db: %w", err)
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	ret.TrackId = track.ID
@@ -87,12 +88,20 @@ func (s *TrackService) UploadTrack(
 			ArtistID: track.ArtistID,
 		})
 		if err != nil {
-			return ret, fmt.Errorf("can't create single album for the track: %w", err)
+			if e, ok := errors.AsType[*pgconn.PgError](err); ok && e.Code == "23505" {
+				return ret, fmt.Errorf(
+					"%w: album with this name already exists",
+					NewErrAlreadyExists("album", track.Name),
+				)
+			}
+			return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 		}
 		albumID = single.ID
 	} else {
 		if params.AlbumID == nil {
-			return ret, fmt.Errorf("albumID is required if track is not a single")
+			return ret, fmt.Errorf(
+				"%w: albumID is required if track is not a single", ErrBadParams,
+			)
 		}
 		albumID = *params.AlbumID
 	}
@@ -102,19 +111,26 @@ func (s *TrackService) UploadTrack(
 		AlbumID: albumID,
 	})
 	if err != nil {
-		return ret, fmt.Errorf("can't add this track to album: %w", err)
+		if e, ok := errors.AsType[*pgconn.PgError](err); ok && e.Code == "23505" {
+			return ret, fmt.Errorf(
+				"%w: album already has this track",
+				NewErrAlreadyExists("track", track.ID),
+			)
+		}
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	rc, err := trackFileHeader.Open()
 	if err != nil {
-		return ret, fmt.Errorf("should never happen: %w", err)
+		return ret, fmt.Errorf("assertion, should never happen: %w", err)
 	}
 	defer func() { _ = rc.Close() }()
 
 	tmpFname := s.tmpFileName(track.ID)
 	err = s.st.PutTrack(ctx, tmpFname, rc, trackFileHeader.Size)
 	if err != nil {
-		return ret, fmt.Errorf("can't save received file: %w", err)
+		s.logger.Warn("error mapping should be more precise")
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	_, err = s.queries.AddToTranscodingQueue(
@@ -123,7 +139,7 @@ func (s *TrackService) UploadTrack(
 			TrackOriginalFileName: tmpFname,
 		})
 	if err != nil {
-		return ret, fmt.Errorf("can't add to transcoding queue: %w", err)
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	s.transcodingQueueSignal <- struct{}{}
@@ -134,7 +150,7 @@ func (s *TrackService) UploadTrack(
 func (s *TrackService) DeleteTrack(ctx context.Context, trackID int32) error {
 	metadata, err := s.GetMeta(ctx, trackID)
 	if err != nil {
-		return fmt.Errorf("can't fetch track metadata: %w", err)
+		return err
 	}
 	errs := make([]error, 0, 4)
 	if metadata.TrackFastPreset != nil {
@@ -154,9 +170,9 @@ func (s *TrackService) DeleteTrack(ctx context.Context, trackID int32) error {
 			return fmt.Errorf("can't remove track file: %w", err)
 		}
 	}
-	err = s.queries.DeleteTrack(ctx, int32(trackID))
+	err = s.queries.DeleteTrack(ctx, trackID)
 	if err != nil {
-		return fmt.Errorf("can't remove track record: %w", err)
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return nil
 }
@@ -166,7 +182,10 @@ func (s *TrackService) GetMeta(
 ) (api.TrackMetadata, error) {
 	trackInfo, err := s.queries.GetTrack(ctx, trackID)
 	if err != nil {
-		return api.TrackMetadata{}, fmt.Errorf("can't fetch info about track: %w", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.TrackMetadata{}, NewErrNotFound("track", trackID)
+		}
+		return api.TrackMetadata{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	var (
@@ -207,7 +226,7 @@ func (s *TrackService) GetMeta(
 func (s *TrackService) GetUserTracks(ctx context.Context, userID int32) ([]api.TrackMetadata, error) {
 	tracks, err := s.queries.GetUserTracks(ctx, pgtype.Int4{Int32: userID, Valid: true})
 	if err != nil {
-		return nil, fmt.Errorf("can't fetch track info: %w", err)
+		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	ret := make([]api.TrackMetadata, len(tracks))
 	for i, track := range tracks {
@@ -230,7 +249,7 @@ func (s *TrackService) GetStreamMeta(
 ) (StreamMeta, error) {
 	preset, err := audio.PresetFromString(trackQuality)
 	if err != nil {
-		return StreamMeta{}, fmt.Errorf("invalid name of trackQuality: %v", trackQuality)
+		return StreamMeta{}, fmt.Errorf("%w: invalid name of trackQuality: %v", ErrBadParams, trackQuality)
 	}
 	fullTrackName := transcoder.TranscodedName(s.tmpFileName(trackId), preset)
 	clen, ctype, err := s.st.GetTrackInfo(ctx, fullTrackName)
@@ -248,7 +267,7 @@ func (s *TrackService) GetStream(
 ) (TrackStream, error) {
 	preset, err := audio.PresetFromString(trackQuality)
 	if err != nil {
-		return TrackStream{}, fmt.Errorf("invalid name of trackQuality: %v", trackQuality)
+		return TrackStream{}, fmt.Errorf("%w: invalid name of trackQuality: %v", ErrBadParams, trackQuality)
 	}
 	track, trackExist, err := s.trackExists(ctx, trackID)
 	if err != nil {
@@ -289,7 +308,7 @@ func (s *TrackService) trackExists(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return track, false, nil
 		}
-		return track, false, fmt.Errorf("unexpected db error: %w", err)
+		return track, false, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return track, true, nil
 }

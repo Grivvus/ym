@@ -25,6 +25,12 @@ func (h AlbumHandlers) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 	}
 	albumResponse, err := h.albumService.Create(r.Context(), params, fileHeader)
 	if err != nil {
+		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
+			_ = writeError(w, http.StatusConflict, fmt.Errorf(
+				"%w: this artist already has album with this name", err,
+			))
+			return
+		}
 		_ = writeError(
 			w, http.StatusInternalServerError,
 			fmt.Errorf("can't create album, cause: %w ", err),
@@ -68,6 +74,13 @@ func (h AlbumHandlers) DeleteAlbum(w http.ResponseWriter, r *http.Request, album
 func (h AlbumHandlers) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	err := h.albumService.DeleteCover(r.Context(), albumId)
 	if err != nil {
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, err)
+			return
+		} else if errors.Is(err, service.ErrBadParams) {
+			_ = writeError(w, http.StatusBadRequest, err)
+			return
+		}
 		_ = writeError(
 			w, http.StatusInternalServerError,
 			fmt.Errorf("can't delete cover: %w", err),
@@ -106,6 +119,8 @@ func (h AlbumHandlers) UploadAlbumCover(w http.ResponseWriter, r *http.Request, 
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = writeError(w, http.StatusNotFound, fmt.Errorf("no album with this id was found"))
+		} else if errors.Is(err, service.ErrBadParams) {
+			_ = writeError(w, http.StatusBadRequest, err)
 		} else {
 			_ = writeError(w, http.StatusInternalServerError, err)
 		}

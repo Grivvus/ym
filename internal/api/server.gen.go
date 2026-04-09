@@ -31,7 +31,8 @@ type AlbumCreateRequest struct {
 
 // AlbumCreateResponse defines model for AlbumCreateResponse.
 type AlbumCreateResponse struct {
-	AlbumId int32 `json:"album_id"`
+	AlbumId       int32 `json:"album_id"`
+	CoverUploaded bool  `json:"cover_uploaded"`
 }
 
 // AlbumDeleteResponse defines model for AlbumDeleteResponse.
@@ -55,7 +56,8 @@ type ArtistCreateRequest struct {
 
 // ArtistCreateResponse defines model for ArtistCreateResponse.
 type ArtistCreateResponse struct {
-	ArtistId int32 `json:"artist_id"`
+	ArtistId      int32 `json:"artist_id"`
+	CoverUploaded bool  `json:"cover_uploaded"`
 }
 
 // ArtistDeleteResponse defines model for ArtistDeleteResponse.
@@ -100,7 +102,8 @@ type PlaylistCreateRequest struct {
 
 // PlaylistCreateResponse defines model for PlaylistCreateResponse.
 type PlaylistCreateResponse struct {
-	PlaylistId int32 `json:"playlist_id"`
+	CoverUploaded bool  `json:"cover_uploaded"`
+	PlaylistId    int32 `json:"playlist_id"`
 }
 
 // PlaylistDeleteResponse defines model for PlaylistDeleteResponse.

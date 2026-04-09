@@ -30,6 +30,13 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := h.trackService.UploadTrack(r.Context(), uploadParams, header)
 	if err != nil {
+		if errors.Is(err, service.ErrBadParams) {
+			_ = writeError(w, http.StatusBadRequest, err)
+		}
+		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
+			_ = writeError(w, http.StatusConflict, err)
+			return
+		}
 		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -50,6 +57,10 @@ func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, track
 func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32) {
 	metadata, err := h.trackService.GetMeta(r.Context(), trackId)
 	if err != nil {
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, err)
+			return
+		}
 		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -94,7 +105,9 @@ func (h TrackHandlers) serveTrack(
 ) {
 	stream, err := h.trackService.GetStream(r.Context(), trackId, quality)
 	if err != nil {
-		if errors.Is(err, service.ErrPresetCantBeSelected) {
+		if errors.Is(err, service.ErrBadParams) {
+			_ = writeError(w, http.StatusBadRequest, err)
+		} else if errors.Is(err, service.ErrPresetCantBeSelected) {
 			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("%w. Probably wrong name", err))
 		} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = writeError(w, http.StatusNotFound, err)

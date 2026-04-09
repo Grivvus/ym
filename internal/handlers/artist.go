@@ -28,6 +28,10 @@ func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
 
 	artistResponse, err := h.artistService.Create(r.Context(), artistName, fileHeader)
 	if err != nil {
+		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
+			_ = writeError(w, http.StatusConflict, err)
+			return
+		}
 		_ = writeError(
 			w, http.StatusInternalServerError,
 			fmt.Errorf("can't create new artist: %w", err),
@@ -123,6 +127,14 @@ func (h ArtistHandlers) DeleteArtistImage(w http.ResponseWriter, r *http.Request
 func (h ArtistHandlers) UploadArtistImage(w http.ResponseWriter, r *http.Request, artistID int32) {
 	err := h.artistService.UploadImage(r.Context(), artistID, r.Body)
 	if err != nil {
+		if errors.Is(err, service.ErrBadParams) {
+			_ = writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, err)
+			return
+		}
 		_ = writeError(
 			w, http.StatusInternalServerError,
 			fmt.Errorf("can't upload artist image: %w", err),

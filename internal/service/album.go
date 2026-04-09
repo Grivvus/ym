@@ -12,6 +12,7 @@ import (
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type AlbumCreateParams struct {
@@ -45,7 +46,7 @@ func (s *AlbumService) loadArtworkOwner(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ArtworkOwner{}, NewErrNotFound("album", albumID)
 		}
-		return ArtworkOwner{}, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
+		return ArtworkOwner{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return ArtworkOwner{ID: album.ID, Name: album.Name, Kind: "album"}, nil
 }
@@ -61,9 +62,13 @@ func (s *AlbumService) Create(
 	}
 	albumRet, err := s.queries.CreateAlbum(ctx, album)
 	if err != nil {
-		return ret, fmt.Errorf("unknown server error: %w", err)
+		if e, ok := errors.AsType[*pgconn.PgError](err); ok && e.Code == "23505" {
+			return ret, NewErrAlreadyExists("album", albumInfo.Name)
+		}
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	ret.AlbumId = albumRet.ID
+	ret.CoverUploaded = coverFileHeader != nil
 
 	if coverFileHeader == nil {
 		return ret, nil
@@ -77,10 +82,7 @@ func (s *AlbumService) Create(
 
 	err = s.UploadCover(ctx, albumRet.ID, rc)
 	if err != nil {
-		go func() {
-			_ = s.queries.DeleteAlbum(ctx, int32(ret.AlbumId))
-		}()
-		return ret, fmt.Errorf("error while uploading album cover: %w", err)
+		ret.CoverUploaded = false
 	}
 	return ret, nil
 }
@@ -96,7 +98,7 @@ func (s *AlbumService) Get(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("album", albumID)
 		}
-		return ret, fmt.Errorf("unknown server error: %w", err)
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	ret.AlbumId = albumID
 	ret.AlbumName = albumTracks[0].Name
@@ -112,14 +114,13 @@ func (s *AlbumService) Delete(
 	var ret = api.AlbumDeleteResponse{AlbumId: albumID}
 	err := s.artworkService.Delete(ctx, albumID)
 	if err != nil {
-		return ret, err
+		if _, ok := errors.AsType[ErrNotFound](err); !ok {
+			return ret, err
+		}
 	}
 	err = s.queries.DeleteAlbum(ctx, albumID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ret, NewErrNotFound("album", albumID)
-		}
-		return ret, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return ret, nil
 }

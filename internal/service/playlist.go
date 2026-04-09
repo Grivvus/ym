@@ -12,6 +12,7 @@ import (
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -50,7 +51,7 @@ func (s *PlaylistService) loadArtworkOwner(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ArtworkOwner{}, NewErrNotFound("playlist", id)
 		}
-		return ArtworkOwner{}, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
+		return ArtworkOwner{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return ArtworkOwner{
 		ID:   playlist.ID,
@@ -64,27 +65,23 @@ func (s *PlaylistService) Create(
 	coverFileHeader *multipart.FileHeader,
 ) (api.PlaylistCreateResponse, error) {
 	var ret api.PlaylistCreateResponse
-	_, err := s.queries.FindUsersPlaylistByName(ctx, db.FindUsersPlaylistByNameParams{
-		OwnerID: pgtype.Int4{Valid: true, Int32: playlistInfo.OwnerID},
-		Name:    playlistInfo.Name,
-	})
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return ret, fmt.Errorf("can't create playlist: %w", err)
-	}
-	// err == nil, so playlist was found
-	if err == nil {
-		return ret, fmt.Errorf("%w: album with this name already exists", ErrEntityAlreadyExists)
-	}
 	playlist, err := s.queries.CreatePlaylist(ctx, db.CreatePlaylistParams{
 		Name:     playlistInfo.Name,
 		OwnerID:  pgtype.Int4{Int32: playlistInfo.OwnerID, Valid: true},
-		IsPublic: false,
+		IsPublic: playlistInfo.IsPublic,
 	})
 	if err != nil {
-		return ret, fmt.Errorf("can't create playlist: %w", err)
+		if e, ok := errors.AsType[*pgconn.PgError](err); ok && e.Code == "23505" {
+			return ret, fmt.Errorf(
+				"%w: user already has playlist with this name",
+				NewErrAlreadyExists("playlist", playlistInfo.Name),
+			)
+		}
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	ret.PlaylistId = playlist.ID
-	// no cover was provided
+	ret.CoverUploaded = coverFileHeader != nil
+
 	if coverFileHeader == nil {
 		return ret, nil
 	}
@@ -97,10 +94,7 @@ func (s *PlaylistService) Create(
 
 	err = s.UploadCover(ctx, ret.PlaylistId, f)
 	if err != nil {
-		go func() {
-			_ = s.DeleteCover(ctx, ret.PlaylistId)
-		}()
-		return ret, err
+		ret.CoverUploaded = false
 	}
 
 	return ret, nil
@@ -111,15 +105,30 @@ func (s *PlaylistService) AddTrack(ctx context.Context, playlistID, trackID int3
 		TrackID:    trackID,
 		PlaylistID: playlistID,
 	})
-	return err
+	if err != nil {
+		if e, ok := errors.AsType[*pgconn.PgError](err); ok && e.Code == "23505" {
+			return fmt.Errorf(
+				"%w: album already has a track",
+				NewErrAlreadyExists("playlist", playlistID),
+			)
+		}
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	return nil
 }
 
 func (s *PlaylistService) Delete(
 	ctx context.Context, playlistID int32,
 ) error {
-	err := s.queries.DeletePlaylist(ctx, playlistID)
+	err := s.artworkService.Delete(ctx, playlistID)
 	if err != nil {
-		return fmt.Errorf("can't delete playlist: %w", err)
+		if _, ok := errors.AsType[ErrNotFound](err); !ok {
+			return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		}
+	}
+	err = s.queries.DeletePlaylist(ctx, playlistID)
+	if err != nil {
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return nil
 }
@@ -133,7 +142,7 @@ func (s *PlaylistService) Get(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("playlist", playlistID)
 		}
-		return ret, fmt.Errorf("unknown server error: %w", err)
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	ret.PlaylistId = playlist.ID
 	ret.PlaylistName = playlist.Name
@@ -143,7 +152,7 @@ func (s *PlaylistService) Get(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("playlist", playlistID)
 		}
-		return ret, fmt.Errorf("unknown server error: %w", err)
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	for _, track := range playlistTracks {
@@ -155,7 +164,7 @@ func (s *PlaylistService) Get(
 func (s *PlaylistService) GetUserPlaylists(ctx context.Context, userID int32) (api.Playlists, error) {
 	playlists, err := s.queries.GetUserPlaylists(ctx, pgtype.Int4{Int32: userID, Valid: true})
 	if err != nil {
-		return nil, fmt.Errorf("unknown server error: %w", err)
+		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	ret := make(api.Playlists, len(playlists))
 	for i, playlist := range playlists {

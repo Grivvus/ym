@@ -28,17 +28,19 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.Login(r.Context(), user)
 	if err != nil {
-		if err.Error() == "wrong password" {
+		if errors.Is(err, service.ErrUnauthorized) {
 			_ = writeError(
 				w, http.StatusUnauthorized, fmt.Errorf("invalid credentials"),
 			)
-		} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(
-				w, http.StatusUnauthorized, fmt.Errorf("invalid credentials"),
-			)
-		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
+			return
 		}
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(
+				w, http.StatusUnauthorized, fmt.Errorf("invalid credentials"),
+			)
+			return
+		}
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -60,7 +62,7 @@ func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.Register(r.Context(), user)
 	if err != nil {
-		if _, ok := errors.AsType[service.ErrUserAlreadyExists](err); ok {
+		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
 			_ = writeError(w, http.StatusConflict, fmt.Errorf("user already exists"))
 		} else {
 			_ = writeError(w, http.StatusInternalServerError, err)

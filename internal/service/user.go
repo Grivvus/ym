@@ -42,7 +42,7 @@ func (u *UserService) loadArtworkOwner(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ArtworkOwner{}, NewErrNotFound("user", ownerID)
 		}
-		return ArtworkOwner{}, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
+		return ArtworkOwner{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return ArtworkOwner{
 		ID:   user.Id,
@@ -62,7 +62,7 @@ func (u *UserService) GetUserByID(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("user", userID)
 		}
-		return ret, fmt.Errorf("unknown server error: %w", err)
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	ret.Username = user.Username
@@ -102,7 +102,7 @@ func (u *UserService) ChangeUser(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("user", userID)
 		}
-		return ret, fmt.Errorf("unknown db error: %w", err)
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	ret.Username = updatedUser.Username
@@ -124,10 +124,10 @@ func (u *UserService) ChangePassword(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return NewErrNotFound("user", userID)
 		}
-		return fmt.Errorf("unknown db error: %w", err)
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	if !utils.VerifyPassword(newPasswordParams.OldPassword, user.Salt, user.Password) {
-		return fmt.Errorf("wrong password")
+		return fmt.Errorf("%w: old password is wrong", ErrBadParams)
 	}
 	newHashed, newSalt := utils.HashPassword(newPasswordParams.NewPassword)
 	err = u.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
@@ -136,7 +136,7 @@ func (u *UserService) ChangePassword(
 		Salt:     newSalt,
 	})
 	if err != nil {
-		return fmt.Errorf("unknown db error: %w", err)
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return nil
 }

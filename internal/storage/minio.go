@@ -64,7 +64,7 @@ func (m minioStorage) ImageExist(ctx context.Context, id string) bool {
 		return false
 	}
 	if errResp, ok := errors.AsType[minio.ErrorResponse](err); ok {
-		return errResp.Code == minio.NoSuchKey
+		return errResp.Code != minio.NoSuchKey
 	}
 	return false
 }
@@ -76,16 +76,34 @@ func (m minioStorage) RemoveImage(ctx context.Context, id string) error {
 func (m minioStorage) get(
 	ctx context.Context, bucketName, objectID string, opts minio.GetObjectOptions,
 ) (io.ReadSeekCloser, error) {
-	return m.client.GetObject(ctx, bucketName, objectID, opts)
+	obj, err := m.client.GetObject(ctx, bucketName, objectID, opts)
+	if err != nil {
+		if e, ok := errors.AsType[minio.ErrorResponse](err); !ok && e.Code == minio.NoSuchKey {
+			return nil, fmt.Errorf("%w: no such key %v", ErrObjectNotFound, objectID)
+		}
+		return nil, fmt.Errorf("%w caused by: %w", InternalStorageError, err)
+	}
+	return obj, nil
 }
 
 func (m minioStorage) put(
 	ctx context.Context, bucketName, objectID string, objSize int64,
 	r io.Reader, opts minio.PutObjectOptions,
 ) error {
-	uinfo, err := m.client.PutObject(ctx, bucketName, objectID, r, objSize, opts)
-	_ = uinfo
-	return err
+	_, err := m.client.PutObject(ctx, bucketName, objectID, r, objSize, opts)
+	if err != nil {
+		if e, ok := errors.AsType[minio.ErrorResponse](err); !ok {
+			if e.Code == minio.EntityTooSmall || e.Code == minio.EntityTooLarge {
+				return fmt.Errorf(
+					"%w: size of the object is bad, %w",
+					ErrBadObject, err,
+				)
+			}
+			return fmt.Errorf("%w caused by: %w", InternalStorageError, err)
+		}
+		return fmt.Errorf("%w caused by: %w", InternalStorageError, err)
+	}
+	return nil
 }
 
 func (m minioStorage) remove(
@@ -93,12 +111,17 @@ func (m minioStorage) remove(
 	bucketName, id string,
 	opts minio.RemoveObjectOptions,
 ) error {
-	return m.client.RemoveObject(ctx, bucketName, id, opts)
+	err := m.client.RemoveObject(ctx, bucketName, id, opts)
+	if err != nil {
+		if e, ok := errors.AsType[minio.ErrorResponse](err); !ok && e.Code == minio.NoSuchKey {
+			return fmt.Errorf("%w: no such key %v", ErrObjectNotFound, id)
+		}
+		return fmt.Errorf("%w caused by: %w", InternalStorageError, err)
+	}
+	return nil
 }
 
 func (m minioStorage) createBucketsIfNotExists(ctx context.Context) error {
-	// this could be a concurrent checks
-	// will see on a benchmarks if it's needed
 	for _, bucketName := range []string{"images", "tracks"} {
 		found, err := m.client.BucketExists(ctx, bucketName)
 		if err != nil {

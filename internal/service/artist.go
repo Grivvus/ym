@@ -12,6 +12,7 @@ import (
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -42,7 +43,7 @@ func (s *ArtistService) loadArtworkOwner(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ArtworkOwner{}, NewErrNotFound("artist", artistID)
 		}
-		return ArtworkOwner{}, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
+		return ArtworkOwner{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return ArtworkOwner{
 		ID:   artist.ID,
@@ -66,12 +67,12 @@ func (s *ArtistService) Get(ctx context.Context, id int32) (api.ArtistInfoRespon
 			if errors.Is(err, pgx.ErrNoRows) {
 				return ret, NewErrNotFound("artist", id)
 			}
-			return ret, fmt.Errorf("unknown server error: %w", err)
+			return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 		}
 		artistID = artist.ID
 		artistName = artist.Name
 	} else if err != nil {
-		return ret, fmt.Errorf("unknown server error: %w", err)
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	albums := make([]int32, len(artistWithAlbums))
@@ -94,7 +95,7 @@ func (s *ArtistService) Get(ctx context.Context, id int32) (api.ArtistInfoRespon
 func (s *ArtistService) GetAll(ctx context.Context) ([]api.ArtistInfoResponse, error) {
 	dbArtists, err := s.queries.GetAllArtists(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unknown db error: %w", err)
+		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	artists := make([]api.ArtistInfoResponse, len(dbArtists))
 	for i, artist := range dbArtists {
@@ -115,7 +116,7 @@ func (s *ArtistService) GetWithFilters(
 		Limit:   int32(limit),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("unknown db error: %w", err)
+		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	artists := make([]api.ArtistInfoResponse, len(dbArtists))
 	for i, artist := range dbArtists {
@@ -130,20 +131,15 @@ func (s *ArtistService) GetWithFilters(
 
 func (s *ArtistService) Delete(ctx context.Context, id int32) (api.ArtistDeleteResponse, error) {
 	ret := api.ArtistDeleteResponse{ArtistId: id}
-	_, err := s.queries.GetArtist(ctx, id)
+	err := s.artworkService.Delete(ctx, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ret, nil
+		if _, ok := errors.AsType[ErrNotFound](err); !ok {
+			return ret, err
 		}
-		return ret, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
-	}
-	err = s.artworkService.Delete(ctx, id)
-	if err != nil {
-		return ret, nil
 	}
 	err = s.queries.DeleteArtist(ctx, id)
 	if err != nil {
-		return ret, fmt.Errorf("%w, cause: %w", ErrUnknownDBError, err)
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return ret, nil
 }
@@ -155,10 +151,14 @@ func (s *ArtistService) Create(
 	var ret api.ArtistCreateResponse
 	artist, err := s.queries.CreateArtist(ctx, artistName)
 	if err != nil {
-		return ret, fmt.Errorf("unknown server error: %w", err)
+		if e, ok := errors.AsType[*pgconn.PgError](err); ok && e.Code == "23505" {
+			return ret, NewErrAlreadyExists("artist", artistName)
+		}
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	ret.ArtistId = artist.ID
+	ret.CoverUploaded = artistImage != nil
 	if artistImage == nil {
 		return ret, nil
 	}
@@ -171,10 +171,7 @@ func (s *ArtistService) Create(
 
 	err = s.UploadImage(ctx, ret.ArtistId, rc)
 	if err != nil {
-		go func() {
-			_ = s.queries.DeleteArtist(ctx, ret.ArtistId)
-		}()
-		return ret, err
+		ret.CoverUploaded = false
 	}
 	return ret, nil
 }

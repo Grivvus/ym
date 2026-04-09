@@ -29,14 +29,14 @@ func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request)
 	}
 	playlistResponse, err := h.playlistService.Create(r.Context(), params, coverFileHeader)
 	if err != nil {
-		if errors.Is(err, service.ErrEntityAlreadyExists) {
+		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
 			_ = writeError(w, http.StatusConflict, fmt.Errorf("playlist with this name already exists"))
-		} else {
-			_ = writeError(
-				w, http.StatusInternalServerError,
-				fmt.Errorf("can't create playlist: %w", err),
-			)
+			return
 		}
+		_ = writeError(
+			w, http.StatusInternalServerError,
+			fmt.Errorf("can't create playlist: %w", err),
+		)
 		return
 	}
 	err = writeJSON(w, http.StatusCreated, playlistResponse)
@@ -108,6 +108,10 @@ func (h PlaylistHandlers) AddTrackToPlaylist(
 	}
 	err = h.playlistService.AddTrack(r.Context(), playlistID, body.TrackId)
 	if err != nil {
+		if e, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
+			_ = writeError(w, http.StatusConflict, e)
+			return
+		}
 		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -145,6 +149,10 @@ func (h PlaylistHandlers) GetPlaylistCover(w http.ResponseWriter, r *http.Reques
 func (h PlaylistHandlers) UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	err := h.playlistService.UploadCover(r.Context(), playlistId, r.Body)
 	if err != nil {
+		if errors.Is(err, service.ErrBadParams) {
+			_ = writeError(w, http.StatusBadRequest, err)
+			return
+		}
 		_ = writeError(
 			w, http.StatusInternalServerError,
 			fmt.Errorf("can't upload image: %w", err),

@@ -14,15 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type ErrUserAlreadyExists struct {
-	Username string
-}
-
 var ErrUnauthorized = errors.New("unauthorized")
-
-func (e ErrUserAlreadyExists) Error() string {
-	return fmt.Sprintf("User '%v' already exists", e.Username)
-}
 
 type AuthService struct {
 	queries   *db.Queries
@@ -43,7 +35,7 @@ func (a AuthService) Register(
 ) (api.TokenResponse, error) {
 	usersCnt, err := a.queries.GetUserCount(ctx)
 	if err != nil {
-		return api.TokenResponse{}, fmt.Errorf("unknown db error: %w", err)
+		return api.TokenResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	isSuperuser := false
 	if usersCnt == 0 {
@@ -60,18 +52,10 @@ func (a AuthService) Register(
 	createdUser, err := a.queries.CreateUser(ctx, arg)
 	if err != nil {
 		a.logger.Error("can't create user", "error", err)
-		var retErr error
-		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
-			// duplicate key value violates unique constraint
-			if pgErr.SQLState() == "23505" {
-				retErr = ErrUserAlreadyExists{Username: user.Username}
-			} else {
-				retErr = fmt.Errorf("unknown db error: %w", err)
-			}
-		} else {
-			retErr = fmt.Errorf("unknown error: %w", err)
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+			return api.TokenResponse{}, NewErrAlreadyExists("user", user.Username)
 		}
-		return api.TokenResponse{}, retErr
+		return api.TokenResponse{}, fmt.Errorf("%w cause: %w", ErrUnknownDBError, err)
 	}
 
 	accessToken, refreshToken, err := utils.CreateTokens(int(createdUser.ID), a.jwtSecret)
@@ -93,11 +77,11 @@ func (a AuthService) Login(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return api.TokenResponse{}, NewErrNotFound("user", user.Username)
 		}
-		return api.TokenResponse{}, fmt.Errorf("unknown error: %w", err)
+		return api.TokenResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	if !utils.VerifyPassword(user.Password, dbuser.Salt, dbuser.Password) {
-		return api.TokenResponse{}, fmt.Errorf("wrong password")
+		return api.TokenResponse{}, ErrUnauthorized
 	}
 
 	accessToken, refreshToken, err := utils.CreateTokens(int(dbuser.ID), a.jwtSecret)
@@ -124,7 +108,7 @@ func (a AuthService) UpdateTokens(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return api.TokenResponse{}, ErrUnauthorized
 		}
-		return api.TokenResponse{}, fmt.Errorf("unknown error: %w", err)
+		return api.TokenResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	accessToken, newRefreshToken, err := utils.CreateTokens(int(dbuser.ID), a.jwtSecret)

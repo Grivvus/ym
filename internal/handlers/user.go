@@ -53,10 +53,10 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 	resp, err := u.userService.ChangeUser(r.Context(), userId, toUpdate)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("no such user"))
-		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
+			_ = writeError(w, http.StatusNotFound, fmt.Errorf("no such user"))
+			return
 		}
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -81,11 +81,15 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 	err = u.userService.ChangePassword(r.Context(), userId, updatePassword)
 	if err != nil {
 		u.logger.Error("can't change password", "err", err)
-		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("old password is wrong"))
-		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
+		if errors.Is(err, service.ErrBadParams) {
+			_ = writeError(w, http.StatusBadRequest, err)
+			return
 		}
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = writeError(w, http.StatusNotFound, err)
+			return
+		}
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -96,11 +100,15 @@ func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, u
 	}
 	err := u.userService.UploadAvatar(r.Context(), userId, r.Body)
 	if err != nil {
+		if errors.Is(err, service.ErrBadParams) {
+			_ = writeError(w, http.StatusBadRequest, err)
+			return
+		}
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = writeError(w, http.StatusNotFound, fmt.Errorf("no such user"))
-		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
+			return
 		}
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 	err = writeJSON(w, http.StatusCreated, api.MessageResponse{Msg: "avatar was uploaded"})
@@ -135,11 +143,7 @@ func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, u
 	}
 	err := u.userService.DeleteAvatar(r.Context(), userId)
 	if err != nil {
-		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusNotFound, fmt.Errorf("no such user"))
-		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
-		}
+		_ = writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 	err = writeJSON(w, http.StatusOK, api.MessageResponse{Msg: "avatar was deleted"})

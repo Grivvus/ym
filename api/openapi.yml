@@ -153,6 +153,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /users/{userId}/avatar:
     get:
@@ -497,6 +503,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: conflict, artist already exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
       summary: get list of all artists
       operationId: getAllArtists
@@ -576,12 +588,6 @@ paths:
                 $ref: '#/components/schemas/ArtistDeleteResponse'
         '401':
           description: unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: no artist was found
           content:
             application/json:
               schema:
@@ -857,12 +863,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: no playlist found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /playlists/{playlistId}/cover:
     post:
@@ -982,6 +982,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: conflict, artist already has album with this name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /albums/{albumId}:
     get:
@@ -1032,12 +1038,6 @@ paths:
                 $ref: '#/components/schemas/AlbumDeleteResponse'
         '401':
           description: unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: no album found
           content:
             application/json:
               schema:
@@ -1320,10 +1320,13 @@ components:
       type: object
       required:
         - artist_id
+        - cover_uploaded
       properties:
         artist_id:
           type: integer
           format: int32
+        cover_uploaded:
+          type: boolean
 
     ArtistInfoResponse:
       type: object
@@ -1383,10 +1386,13 @@ components:
       type: object
       required:
         - playlist_id
+        - cover_uploaded
       properties:
         playlist_id:
           type: integer
           format: int32
+        cover_uploaded:
+          type: boolean
 
     PlaylistWithTracksResponse:
       type: object
@@ -1461,10 +1467,13 @@ components:
       type: object
       required:
         - album_id
+        - cover_uploaded
       properties:
         album_id:
           type: integer
           format: int32
+        cover_uploaded:
+          type: boolean
 
     AlbumInfoResponse:
       type: object

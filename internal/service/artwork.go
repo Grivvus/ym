@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -53,8 +54,10 @@ func (m ArtworkManager) Upload(ctx context.Context, id int32, src io.Reader) err
 	defer func() { _ = rc.Close() }()
 	err = m.storage.PutImage(ctx, owner.Key(), rc)
 	if err != nil {
-		m.logger.Warn("make error mapping")
-		return err
+		if errors.Is(err, storage.ErrBadObject) {
+			return fmt.Errorf("%w file is too large or too small: %w", ErrBadParams, err)
+		}
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return nil
 }
@@ -66,8 +69,10 @@ func (m ArtworkManager) Get(ctx context.Context, id int32) ([]byte, error) {
 	}
 	img, err := m.storage.GetImage(ctx, owner.Key())
 	if err != nil {
-		m.logger.Warn("make error mapping")
-		return nil, err
+		if errors.Is(err, storage.ErrObjectNotFound) {
+			return nil, NewErrNotFound(owner.Kind, owner.ID)
+		}
+		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return img, nil
 }
@@ -79,8 +84,11 @@ func (m ArtworkManager) Delete(ctx context.Context, id int32) error {
 	}
 	err = m.storage.RemoveImage(ctx, owner.Key())
 	if err != nil {
-		m.logger.Warn("make error mapping")
-		return err
+		if errors.Is(err, storage.ErrObjectNotFound) {
+			// nop
+			return nil
+		}
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return nil
 }
