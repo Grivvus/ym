@@ -1368,12 +1368,15 @@ components:
       required:
         - owner_id
         - playlist_name
+        - is_public
       properties:
         owner_id:
           type: integer
           format: int32
         playlist_name:
           type: string
+        is_public:
+          type: boolean
         playlist_cover:
           type: string
           format: binary
