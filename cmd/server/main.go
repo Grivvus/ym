@@ -120,7 +120,13 @@ func main() {
 	logger.Info("server was started on", "port", cfg.Port)
 
 	go func() {
-		if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		var err error
+		if cfg.TLSCertFile != "" && cfg.TLSKeyFile != "" {
+			err = s.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile)
+		} else {
+			err = s.ListenAndServe()
+		}
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("listen failed", "err", err)
 		}
 	}()

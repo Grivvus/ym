@@ -24,6 +24,10 @@ test:
 	@echo "testing"
 	@go test -shuffle=on -race -coverprofile=coverage.txt ./... -v
 
+test_unit:
+	@echo "run unit tests"
+	@go test -shuffle=on -race -coverprofile=coverage.txt ./internal/... -v
+
 .PHONY: lint
 lint:
 	@echo "starting golangci-lint in docker"

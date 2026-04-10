@@ -36,6 +36,7 @@ type Transcoder struct {
 	repo              *repository.TranscodingQueueRepository
 	transcodingSignal <-chan struct{}
 	isWorkerStarted   atomic.Bool
+	tickerChan        <-chan time.Time
 }
 
 func NewTranscoder(
@@ -50,6 +51,7 @@ func NewTranscoder(
 		repo:              repo,
 		transcodingSignal: transcodingQueue,
 		isWorkerStarted:   atomic.Bool{},
+		tickerChan:        time.Tick(5 * time.Second),
 	}
 }
 
@@ -58,15 +60,20 @@ func (t *Transcoder) StartListener(ctx context.Context) {
 		for {
 			select {
 			case <-t.transcodingSignal:
-				if !t.isWorkerStarted.Load() {
-					t.isWorkerStarted.Store(true)
-					go t.startWorker(ctx)
-				}
+				t.checkAndLaunchWorker(ctx)
+			case <-t.tickerChan:
+				t.checkAndLaunchWorker(ctx)
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
+}
+
+func (t *Transcoder) checkAndLaunchWorker(ctx context.Context) {
+	if t.isWorkerStarted.CompareAndSwap(false, true) {
+		go t.startWorker(ctx)
+	}
 }
 
 func (t *Transcoder) startWorker(ctx context.Context) {

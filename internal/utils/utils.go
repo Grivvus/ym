@@ -5,9 +5,6 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"io"
-	"log/slog"
-	"os"
 	"runtime"
 	"strconv"
 	"time"
@@ -134,22 +131,4 @@ func deriveTokenSecret(secret []byte, tokenKind string) []byte {
 	derived = append(derived, ':')
 	derived = append(derived, tokenKind...)
 	return derived
-}
-
-func SaveAsFile(f io.Reader, fname string) (err error) {
-	fd, err := os.Create(fname)
-	if err != nil {
-		return fmt.Errorf("can't create file: %w", err)
-	}
-	defer func() {
-		err := fd.Close()
-		if err != nil {
-			slog.Error("can't close resource", "err", err)
-		}
-	}()
-	_, err = io.Copy(fd, f)
-	if err != nil {
-		return fmt.Errorf("can't write to file: %w", err)
-	}
-	return nil
 }
