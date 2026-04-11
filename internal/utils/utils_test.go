@@ -52,34 +52,70 @@ func TestCreateTokens(t *testing.T) {
 	assert.NotEqual(t, access, refresh)
 }
 
-// must clarify behavior
+func TestCreateTokens_EmptySecret(t *testing.T) {
+	t.Parallel()
+	const userID = 11
+	secret := []byte("")
+	access, refresh, err := utils.CreateTokens(userID, secret)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, access)
+	assert.NotEmpty(t, refresh)
+	assert.NotEqual(t, access, refresh)
+}
 
-//func TestCreateTokens_EmptySecret(t *testing.T) {
-//	t.Parallel()
-//	const userID = 11
-//	secret := []byte("")
-//	access, refresh, err := utils.CreateTokens(userID, secret)
-//	assert.NoError(t, err)
-//	assert.NotEmpty(t, access)
-//	assert.NotEmpty(t, refresh)
-//	assert.NotEqual(t, access, refresh)
-//}
-//
-//func TestCreateTokens_NilSecret(t *testing.T) {
-//	t.Parallel()
-//	const userID = 11
-//	var secret []byte
-//	access, refresh, err := utils.CreateTokens(userID, secret)
-//	assert.NoError(t, err)
-//	assert.NotEmpty(t, access)
-//	assert.NotEmpty(t, refresh)
-//	assert.NotEqual(t, access, refresh)
-//}
+func TestCreateTokens_NilSecret(t *testing.T) {
+	t.Parallel()
+	const userID = 11
+	var secret []byte
+	access, refresh, err := utils.CreateTokens(userID, secret)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, access)
+	assert.NotEmpty(t, refresh)
+	assert.NotEqual(t, access, refresh)
+}
 
-func TestParseAccessToken_ParseWithValidSecret(t *testing.T) {}
+func TestParseAccessToken_ParseWithValidSecret(t *testing.T) {
+	t.Parallel()
+	const userID = 13
+	secret := []byte("secret")
+	access, _, err := utils.CreateTokens(userID, secret)
+	require.NoError(t, err)
+	parsedID, err := utils.ParseAccessToken(access, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, int32(userID), parsedID)
+}
 
-func TestParseAccessToken_ParseWithInvalidSecret(t *testing.T) {}
+func TestParseAccessToken_ParseWithInvalidSecret(t *testing.T) {
+	t.Parallel()
+	const userID = 13
+	secret := []byte("secret")
+	wrongSecret := []byte("wrongSecret")
+	access, _, err := utils.CreateTokens(userID, secret)
+	require.NoError(t, err)
+	parsedID, err := utils.ParseAccessToken(access, wrongSecret)
+	assert.Error(t, err)
+	assert.NotEqual(t, int32(userID), parsedID)
+}
 
-func TestParseRefreshToken_ParseWithValidSecret(t *testing.T) {}
+func TestParseRefreshToken_ParseWithValidSecret(t *testing.T) {
+	t.Parallel()
+	const userID = 13
+	secret := []byte("secret")
+	_, refresh, err := utils.CreateTokens(userID, secret)
+	require.NoError(t, err)
+	parsedID, err := utils.ParseRefreshToken(refresh, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, int32(userID), parsedID)
+}
 
-func TestParseRefreshToken_ParseWithInvalidSecret(t *testing.T) {}
+func TestParseRefreshToken_ParseWithInvalidSecret(t *testing.T) {
+	t.Parallel()
+	const userID = 13
+	secret := []byte("secret")
+	wrongSecret := []byte("wrongSecret")
+	_, refresh, err := utils.CreateTokens(userID, secret)
+	require.NoError(t, err)
+	parsedID, err := utils.ParseRefreshToken(refresh, wrongSecret)
+	assert.Error(t, err)
+	assert.NotEqual(t, int32(userID), parsedID)
+}
