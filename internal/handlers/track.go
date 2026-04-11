@@ -25,23 +25,23 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	}
 	uploadParams, header, err := h.parsePostParams(r, userID)
 	if err != nil {
-		_ = writeError(w, http.StatusBadRequest, err)
+		_ = WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 	resp, err := h.trackService.UploadTrack(r.Context(), uploadParams, header)
 	if err != nil {
 		if errors.Is(err, service.ErrBadParams) {
-			_ = writeError(w, http.StatusBadRequest, err)
+			_ = WriteError(w, http.StatusBadRequest, err)
 			return
 		}
 		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
-			_ = writeError(w, http.StatusConflict, err)
+			_ = WriteError(w, http.StatusConflict, err)
 			return
 		}
-		_ = writeError(w, http.StatusInternalServerError, err)
+		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	err = writeJSON(w, http.StatusAccepted, resp)
+	err = WriteJSON(w, http.StatusAccepted, resp)
 	if err != nil {
 		slog.Error("Trackhandlers.UploadTrack, can't encode response", "err", err)
 	}
@@ -50,7 +50,7 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int32) {
 	err := h.trackService.DeleteTrack(r.Context(), trackId)
 	if err != nil {
-		_ = writeError(w, http.StatusInternalServerError, err)
+		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -59,13 +59,13 @@ func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trac
 	metadata, err := h.trackService.GetMeta(r.Context(), trackId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusNotFound, err)
+			_ = WriteError(w, http.StatusNotFound, err)
 			return
 		}
-		_ = writeError(w, http.StatusInternalServerError, err)
+		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	err = writeJSON(w, http.StatusOK, metadata)
+	err = WriteJSON(w, http.StatusOK, metadata)
 	if err != nil {
 		slog.Error("TrackHandlers.GetTrackMeta, can't encode response", "err", err)
 	}
@@ -78,10 +78,10 @@ func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request) {
 	}
 	tracks, err := h.trackService.GetUserTracks(r.Context(), userID)
 	if err != nil {
-		_ = writeError(w, http.StatusInternalServerError, err)
+		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	err = writeJSON(w, http.StatusOK, tracks)
+	err = WriteJSON(w, http.StatusOK, tracks)
 	if err != nil {
 		slog.Error("can't encode response", "err", err)
 	}
@@ -107,13 +107,13 @@ func (h TrackHandlers) serveTrack(
 	stream, err := h.trackService.GetStream(r.Context(), trackId, quality)
 	if err != nil {
 		if errors.Is(err, service.ErrBadParams) {
-			_ = writeError(w, http.StatusBadRequest, err)
+			_ = WriteError(w, http.StatusBadRequest, err)
 		} else if errors.Is(err, service.ErrPresetCantBeSelected) {
-			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("%w. Probably wrong name", err))
+			_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("%w. Probably wrong name", err))
 		} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusNotFound, err)
+			_ = WriteError(w, http.StatusNotFound, err)
 		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
+			_ = WriteError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -172,8 +172,8 @@ func (h TrackHandlers) parsePostParams(
 		AlbumID:             albumID,
 		Name:                name,
 		UploadBy:            &userID,
-		IsGloballyAvailable: formValueToBool(isGloballyAvailable),
-		IsSingle:            formValueToBool(isSingle),
+		IsGloballyAvailable: FormValueToBool(isGloballyAvailable),
+		IsSingle:            FormValueToBool(isSingle),
 	}
 
 	return uploadParams, header, nil

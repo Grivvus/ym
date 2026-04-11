@@ -22,24 +22,24 @@ func (h ArtistHandlers) CreateArtist(w http.ResponseWriter, r *http.Request) {
 	_, fileHeader, _ := r.FormFile("artist_image")
 	artistName := r.FormValue("artist_name")
 	if artistName == "" {
-		_ = writeError(w, http.StatusBadRequest, errors.New("artist name is required"))
+		_ = WriteError(w, http.StatusBadRequest, errors.New("artist name is required"))
 		return
 	}
 
 	artistResponse, err := h.artistService.Create(r.Context(), artistName, fileHeader)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
-			_ = writeError(w, http.StatusConflict, err)
+			_ = WriteError(w, http.StatusConflict, err)
 			return
 		}
-		_ = writeError(
+		_ = WriteError(
 			w, http.StatusInternalServerError,
 			fmt.Errorf("can't create new artist: %w", err),
 		)
 		return
 	}
 
-	err = writeJSON(w, http.StatusCreated, artistResponse)
+	err = WriteJSON(w, http.StatusCreated, artistResponse)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -60,9 +60,9 @@ func (h ArtistHandlers) GetAllArtists(
 		artists, err = h.artistService.GetWithFilters(r.Context(), *params.StartsWith, limit)
 	}
 	if err != nil {
-		_ = writeError(w, http.StatusInternalServerError, err)
+		_ = WriteError(w, http.StatusInternalServerError, err)
 	}
-	err = writeJSON(w, http.StatusOK, artists)
+	err = WriteJSON(w, http.StatusOK, artists)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -71,13 +71,13 @@ func (h ArtistHandlers) GetAllArtists(
 func (h ArtistHandlers) DeleteArtist(w http.ResponseWriter, r *http.Request, artistID int32) {
 	response, err := h.artistService.Delete(r.Context(), artistID)
 	if err != nil {
-		_ = writeError(
+		_ = WriteError(
 			w, http.StatusInternalServerError,
 			fmt.Errorf("can't delete artist: %w", err),
 		)
 		return
 	}
-	err = writeJSON(w, http.StatusOK, response)
+	err = WriteJSON(w, http.StatusOK, response)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -87,16 +87,16 @@ func (h ArtistHandlers) GetArtist(w http.ResponseWriter, r *http.Request, artist
 	response, err := h.artistService.Get(r.Context(), artistID)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(
+			_ = WriteError(
 				w, http.StatusNotFound,
 				fmt.Errorf("can't find artist with this id: %w", err),
 			)
 		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
+			_ = WriteError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
-	err = writeJSON(w, http.StatusOK, response)
+	err = WriteJSON(w, http.StatusOK, response)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -106,19 +106,19 @@ func (h ArtistHandlers) DeleteArtistImage(w http.ResponseWriter, r *http.Request
 	err := h.artistService.DeleteImage(r.Context(), artistID)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(
+			_ = WriteError(
 				w, http.StatusNotFound,
 				fmt.Errorf("can't find artist with this id: %w", err),
 			)
 		} else {
-			_ = writeError(
+			_ = WriteError(
 				w, http.StatusInternalServerError,
 				fmt.Errorf("can't delete artist image: %w", err),
 			)
 		}
 		return
 	}
-	err = writeJSON(w, http.StatusOK, api.ArtistImageResponse{ArtistId: artistID})
+	err = WriteJSON(w, http.StatusOK, api.ArtistImageResponse{ArtistId: artistID})
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -128,20 +128,20 @@ func (h ArtistHandlers) UploadArtistImage(w http.ResponseWriter, r *http.Request
 	err := h.artistService.UploadImage(r.Context(), artistID, r.Body)
 	if err != nil {
 		if errors.Is(err, service.ErrBadParams) {
-			_ = writeError(w, http.StatusBadRequest, err)
+			_ = WriteError(w, http.StatusBadRequest, err)
 			return
 		}
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusNotFound, err)
+			_ = WriteError(w, http.StatusNotFound, err)
 			return
 		}
-		_ = writeError(
+		_ = WriteError(
 			w, http.StatusInternalServerError,
 			fmt.Errorf("can't upload artist image: %w", err),
 		)
 		return
 	}
-	err = writeJSON(w, http.StatusCreated, api.ArtistImageResponse{ArtistId: artistID})
+	err = WriteJSON(w, http.StatusCreated, api.ArtistImageResponse{ArtistId: artistID})
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -151,12 +151,12 @@ func (h ArtistHandlers) GetArtistImage(w http.ResponseWriter, r *http.Request, a
 	bimage, err := h.artistService.GetImage(r.Context(), artistID)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(
+			_ = WriteError(
 				w, http.StatusNotFound,
 				fmt.Errorf("artist image not found or artist doesn't exist: %w", err),
 			)
 		} else {
-			_ = writeError(
+			_ = WriteError(
 				w, http.StatusInternalServerError,
 				fmt.Errorf("can't get artist image: %w", err),
 			)

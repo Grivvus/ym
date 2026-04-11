@@ -25,14 +25,14 @@ func (u UserHandlers) GetUserById(
 	user, err := u.userService.GetUserByID(r.Context(), userId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusBadRequest, fmt.Errorf("can't find user with this id"))
+			_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("can't find user with this id"))
 		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
+			_ = WriteError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
 
-	err = writeJSON(w, http.StatusOK, user)
+	err = WriteJSON(w, http.StatusOK, user)
 	if err != nil {
 		u.logger.Error("can't encode response", "err", err)
 	}
@@ -45,7 +45,7 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 	var toUpdate api.UserUpdate
 	err := json.NewDecoder(r.Body).Decode(&toUpdate)
 	if err != nil {
-		_ = writeError(
+		_ = WriteError(
 			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
 		)
 		return
@@ -53,14 +53,14 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 	resp, err := u.userService.ChangeUser(r.Context(), userId, toUpdate)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusNotFound, fmt.Errorf("no such user"))
+			_ = WriteError(w, http.StatusNotFound, fmt.Errorf("no such user"))
 			return
 		}
-		_ = writeError(w, http.StatusInternalServerError, err)
+		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	err = writeJSON(w, http.StatusOK, resp)
+	err = WriteJSON(w, http.StatusOK, resp)
 	if err != nil {
 		u.logger.Error("unexpected error", "err", err)
 	}
@@ -73,7 +73,7 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 	var updatePassword api.UserChangePassword
 	err := json.NewDecoder(r.Body).Decode(&updatePassword)
 	if err != nil {
-		_ = writeError(
+		_ = WriteError(
 			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
 		)
 		return
@@ -82,14 +82,14 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 	if err != nil {
 		u.logger.Error("can't change password", "err", err)
 		if errors.Is(err, service.ErrBadParams) {
-			_ = writeError(w, http.StatusBadRequest, err)
+			_ = WriteError(w, http.StatusBadRequest, err)
 			return
 		}
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusNotFound, err)
+			_ = WriteError(w, http.StatusNotFound, err)
 			return
 		}
-		_ = writeError(w, http.StatusInternalServerError, err)
+		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -101,17 +101,17 @@ func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, u
 	err := u.userService.UploadAvatar(r.Context(), userId, r.Body)
 	if err != nil {
 		if errors.Is(err, service.ErrBadParams) {
-			_ = writeError(w, http.StatusBadRequest, err)
+			_ = WriteError(w, http.StatusBadRequest, err)
 			return
 		}
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusNotFound, fmt.Errorf("no such user"))
+			_ = WriteError(w, http.StatusNotFound, fmt.Errorf("no such user"))
 			return
 		}
-		_ = writeError(w, http.StatusInternalServerError, err)
+		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	err = writeJSON(w, http.StatusCreated, api.MessageResponse{Msg: "avatar was uploaded"})
+	err = WriteJSON(w, http.StatusCreated, api.MessageResponse{Msg: "avatar was uploaded"})
 	if err != nil {
 		u.logger.Error("can't encode json", "err", err)
 	}
@@ -124,9 +124,9 @@ func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, user
 	img, err := u.userService.GetAvatar(r.Context(), userId)
 	if err != nil {
 		if _, t := errors.AsType[service.ErrNotFound](err); t {
-			_ = writeError(w, http.StatusNotFound, fmt.Errorf("user not found or no avatar"))
+			_ = WriteError(w, http.StatusNotFound, fmt.Errorf("user not found or no avatar"))
 		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
+			_ = WriteError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -143,10 +143,10 @@ func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, u
 	}
 	err := u.userService.DeleteAvatar(r.Context(), userId)
 	if err != nil {
-		_ = writeError(w, http.StatusInternalServerError, err)
+		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	err = writeJSON(w, http.StatusOK, api.MessageResponse{Msg: "avatar was deleted"})
+	err = WriteJSON(w, http.StatusOK, api.MessageResponse{Msg: "avatar was deleted"})
 	if err != nil {
 		u.logger.Error("can't encode json", "err", err)
 	}

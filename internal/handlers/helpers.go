@@ -7,18 +7,18 @@ import (
 	"github.com/Grivvus/ym/internal/api"
 )
 
-func writeJSON(w http.ResponseWriter, status int, v any) error {
+func WriteJSON(w http.ResponseWriter, status int, v any) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(v)
 }
 
-func writeError(w http.ResponseWriter, status int, err error) error {
-	return writeJSON(w, status, api.ErrorResponse{
+func WriteError(w http.ResponseWriter, status int, err error) error {
+	return WriteJSON(w, status, api.ErrorResponse{
 		Error: err.Error(),
 	})
 }
 
-func formValueToBool(val string) bool {
+func FormValueToBool(val string) bool {
 	return val == "true" || val == "True"
 }

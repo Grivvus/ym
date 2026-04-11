@@ -20,7 +20,7 @@ func authenticatedUserID(ctx context.Context) (int32, bool) {
 func requireAuthenticatedUserID(w http.ResponseWriter, r *http.Request) (int32, bool) {
 	userID, ok := authenticatedUserID(r.Context())
 	if !ok {
-		_ = writeError(
+		_ = WriteError(
 			w, http.StatusUnauthorized,
 			fmt.Errorf("authenticated user id not found"),
 		)
@@ -35,7 +35,7 @@ func requireCurrentUser(w http.ResponseWriter, r *http.Request, targetUserID int
 		return false
 	}
 	if userID != targetUserID {
-		_ = writeError(
+		_ = WriteError(
 			w, http.StatusUnauthorized,
 			fmt.Errorf("user is not allowed to access this resource"),
 		)

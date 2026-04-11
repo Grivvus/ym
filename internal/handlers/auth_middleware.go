@@ -19,14 +19,14 @@ func AuthMiddleware(logger *slog.Logger, jwtSecret []byte) func(http.Handler) ht
 
 			token, err := bearerTokenFromHeader(r.Header.Get("Authorization"))
 			if err != nil {
-				_ = writeError(w, http.StatusUnauthorized, err)
+				_ = WriteError(w, http.StatusUnauthorized, err)
 				return
 			}
 
 			userID, err := utils.ParseAccessToken(token, jwtSecret)
 			if err != nil {
 				logger.Warn("access token validation failed", "err", err)
-				_ = writeError(
+				_ = WriteError(
 					w, http.StatusUnauthorized,
 					fmt.Errorf("invalid access token"),
 				)

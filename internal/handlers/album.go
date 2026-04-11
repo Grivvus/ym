@@ -20,24 +20,24 @@ type AlbumHandlers struct {
 func (h AlbumHandlers) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 	params, fileHeader, err := h.parsePostForm(r)
 	if err != nil {
-		_ = writeError(w, http.StatusBadRequest, err)
+		_ = WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 	albumResponse, err := h.albumService.Create(r.Context(), params, fileHeader)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
-			_ = writeError(w, http.StatusConflict, fmt.Errorf(
+			_ = WriteError(w, http.StatusConflict, fmt.Errorf(
 				"%w: this artist already has album with this name", err,
 			))
 			return
 		}
-		_ = writeError(
+		_ = WriteError(
 			w, http.StatusInternalServerError,
 			fmt.Errorf("can't create album, cause: %w ", err),
 		)
 		return
 	}
-	err = writeJSON(w, http.StatusCreated, albumResponse)
+	err = WriteJSON(w, http.StatusCreated, albumResponse)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -47,13 +47,13 @@ func (h AlbumHandlers) GetAlbum(w http.ResponseWriter, r *http.Request, albumId 
 	albumResp, err := h.albumService.Get(r.Context(), albumId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusNotFound, fmt.Errorf("can't find album with this id: %w", err))
+			_ = WriteError(w, http.StatusNotFound, fmt.Errorf("can't find album with this id: %w", err))
 		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
+			_ = WriteError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
-	err = writeJSON(w, http.StatusOK, albumResp)
+	err = WriteJSON(w, http.StatusOK, albumResp)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -62,10 +62,10 @@ func (h AlbumHandlers) GetAlbum(w http.ResponseWriter, r *http.Request, albumId 
 func (h AlbumHandlers) DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
 	albumResp, err := h.albumService.Delete(r.Context(), albumId)
 	if err != nil {
-		_ = writeError(w, http.StatusInternalServerError, err)
+		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	err = writeJSON(w, http.StatusOK, albumResp)
+	err = WriteJSON(w, http.StatusOK, albumResp)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -75,19 +75,19 @@ func (h AlbumHandlers) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, 
 	err := h.albumService.DeleteCover(r.Context(), albumId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusNotFound, err)
+			_ = WriteError(w, http.StatusNotFound, err)
 			return
 		} else if errors.Is(err, service.ErrBadParams) {
-			_ = writeError(w, http.StatusBadRequest, err)
+			_ = WriteError(w, http.StatusBadRequest, err)
 			return
 		}
-		_ = writeError(
+		_ = WriteError(
 			w, http.StatusInternalServerError,
 			fmt.Errorf("can't delete cover: %w", err),
 		)
 		return
 	}
-	err = writeJSON(w, http.StatusOK, api.AlbumCoverResponse{AlbumId: albumId})
+	err = WriteJSON(w, http.StatusOK, api.AlbumCoverResponse{AlbumId: albumId})
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
@@ -98,12 +98,12 @@ func (h AlbumHandlers) GetAlbumCover(w http.ResponseWriter, r *http.Request, alb
 	bimage, err := h.albumService.GetCover(r.Context(), albumId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(
+			_ = WriteError(
 				w, http.StatusNotFound,
 				fmt.Errorf("no album with this id was found: %w", err),
 			)
 		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
+			_ = WriteError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
@@ -118,15 +118,15 @@ func (h AlbumHandlers) UploadAlbumCover(w http.ResponseWriter, r *http.Request, 
 	err := h.albumService.UploadCover(r.Context(), albumId, r.Body)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = writeError(w, http.StatusNotFound, fmt.Errorf("no album with this id was found"))
+			_ = WriteError(w, http.StatusNotFound, fmt.Errorf("no album with this id was found"))
 		} else if errors.Is(err, service.ErrBadParams) {
-			_ = writeError(w, http.StatusBadRequest, err)
+			_ = WriteError(w, http.StatusBadRequest, err)
 		} else {
-			_ = writeError(w, http.StatusInternalServerError, err)
+			_ = WriteError(w, http.StatusInternalServerError, err)
 		}
 		return
 	}
-	err = writeJSON(w, http.StatusCreated, api.AlbumCoverResponse{AlbumId: albumId})
+	err = WriteJSON(w, http.StatusCreated, api.AlbumCoverResponse{AlbumId: albumId})
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)
 	}
