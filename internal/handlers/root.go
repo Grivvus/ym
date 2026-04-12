@@ -31,7 +31,10 @@ func NewRootHandler(
 		AlbumHandlers:    AlbumHandlers{albumService: album, logger: logger},
 		TrackHandlers:    TrackHandlers{trackService: track, logger: logger},
 		PlaylistHandlers: PlaylistHandlers{playlistService: playlist, logger: logger},
-		BackupHandlers:   BackupHandlers{logger: logger, backupService: backup},
+		BackupHandlers: BackupHandlers{
+			logger: logger, backupService: backup,
+			authService: auth,
+		},
 	}
 }
 

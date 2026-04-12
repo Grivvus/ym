@@ -19,10 +19,10 @@ const (
 
 // Defines values for RestoreStatusResponseStatus.
 const (
-	Failed    RestoreStatusResponseStatus = "failed"
-	Pending   RestoreStatusResponseStatus = "pending"
-	Running   RestoreStatusResponseStatus = "running"
-	Succeeded RestoreStatusResponseStatus = "succeeded"
+	Error    RestoreStatusResponseStatus = "error"
+	Finished RestoreStatusResponseStatus = "finished"
+	Pending  RestoreStatusResponseStatus = "pending"
+	Started  RestoreStatusResponseStatus = "started"
 )
 
 // AlbumCoverResponse defines model for AlbumCoverResponse.
@@ -139,7 +139,6 @@ type Playlists = []PlaylistResponse
 // RestoreStatusResponse defines model for RestoreStatusResponse.
 type RestoreStatusResponse struct {
 	Error     *string                     `json:"error"`
-	Phase     *string                     `json:"phase"`
 	RestoreId string                      `json:"restore_id"`
 	Status    RestoreStatusResponseStatus `json:"status"`
 }

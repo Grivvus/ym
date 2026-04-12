@@ -12,17 +12,18 @@ import (
 )
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, email, password, salt 
+SELECT id, username, email, password, salt, is_superuser
     FROM "user"
     WHERE id = $1
 `
 
 type GetUserByIDRow struct {
-	ID       int32
-	Username string
-	Email    pgtype.Text
-	Password []byte
-	Salt     []byte
+	ID          int32
+	Username    string
+	Email       pgtype.Text
+	Password    []byte
+	Salt        []byte
+	IsSuperuser bool
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id int32) (GetUserByIDRow, error) {
@@ -34,6 +35,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (GetUserByIDRow, er
 		&i.Email,
 		&i.Password,
 		&i.Salt,
+		&i.IsSuperuser,
 	)
 	return i, err
 }

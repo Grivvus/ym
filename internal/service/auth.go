@@ -15,6 +15,7 @@ import (
 )
 
 var ErrUnauthorized = errors.New("unauthorized")
+var ErrSuperuserRequired = errors.New("forbidden: required superuser rights")
 
 type AuthService struct {
 	queries   *db.Queries
@@ -126,4 +127,15 @@ func (a AuthService) UpdateTokens(
 
 func (a AuthService) RevokeTokens(ctx context.Context) error {
 	return fmt.Errorf("not implemented")
+}
+
+func (a AuthService) AuthorizeSuperuser(ctx context.Context, userID int32) error {
+	user, err := a.queries.GetUserByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	if !user.IsSuperuser {
+		return ErrSuperuserRequired
+	}
+	return nil
 }
