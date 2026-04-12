@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TYPE status as ENUM ('pending', 'started', 'finished', 'error')
+CREATE TYPE status as ENUM ('pending', 'started', 'finished', 'error');
 CREATE TABLE restore_status(
     id TEXT PRIMARY KEY,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
