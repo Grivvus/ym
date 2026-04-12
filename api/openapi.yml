@@ -1139,6 +1139,120 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /backup:
+    get:
+      description: download full application backup
+      operationId: backup
+      parameters:
+        - in: query
+          name: include_images
+          schema:
+            type: boolean
+        - in: query
+          name: include_transcoded_tracks
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: backup received
+          headers:
+            Content-Disposition:
+              description: attachment filename
+              schema:
+                type: string
+                example: attachment; filename="ym-backup-2026-04-12T10-00-00Z.zip"
+            Cache-Control:
+              description: prevent backup archive caching
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Superuser access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /restore:
+    post:
+      description: Restore application data from the backup
+      operationId: restore
+      requestBody:
+        required: true
+        content:
+          application/zip:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '202':
+          description: archive received and validated
+        '400':
+          description: invalid archive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: superuser access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /restore/{restoreId}:
+    get:
+      description: Get restore operation status
+      operationId: getRestoreStatus
+      parameters:
+        - in: path
+          name: restoreId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: restore status fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreStatusResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: superuser access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: restore operation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1147,6 +1261,28 @@ components:
       bearerFormat: JWT
 
   schemas:
+    RestoreStatusResponse:
+      type: object
+      required:
+        - restore_id
+        - status
+      properties:
+        restore_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - running
+            - succeeded
+            - failed
+        phase:
+          type: string
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
     UserAuth:
       type: object
       required:

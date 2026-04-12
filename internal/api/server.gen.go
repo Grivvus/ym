@@ -17,6 +17,14 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for RestoreStatusResponseStatus.
+const (
+	Failed    RestoreStatusResponseStatus = "failed"
+	Pending   RestoreStatusResponseStatus = "pending"
+	Running   RestoreStatusResponseStatus = "running"
+	Succeeded RestoreStatusResponseStatus = "succeeded"
+)
+
 // AlbumCoverResponse defines model for AlbumCoverResponse.
 type AlbumCoverResponse struct {
 	AlbumId int32 `json:"album_id"`
@@ -128,6 +136,17 @@ type PlaylistWithTracksResponse struct {
 // Playlists defines model for Playlists.
 type Playlists = []PlaylistResponse
 
+// RestoreStatusResponse defines model for RestoreStatusResponse.
+type RestoreStatusResponse struct {
+	Error     *string                     `json:"error"`
+	Phase     *string                     `json:"phase"`
+	RestoreId string                      `json:"restore_id"`
+	Status    RestoreStatusResponseStatus `json:"status"`
+}
+
+// RestoreStatusResponseStatus defines model for RestoreStatusResponse.Status.
+type RestoreStatusResponseStatus string
+
 // TokenResponse defines model for TokenResponse.
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
@@ -202,6 +221,12 @@ type GetAllArtistsParams struct {
 
 	// Limit limit on a number of artists
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// BackupParams defines parameters for Backup.
+type BackupParams struct {
+	IncludeImages           *bool `form:"include_images,omitempty" json:"include_images,omitempty"`
+	IncludeTranscodedTracks *bool `form:"include_transcoded_tracks,omitempty" json:"include_transcoded_tracks,omitempty"`
 }
 
 // AddTrackToPlaylistJSONBody defines parameters for AddTrackToPlaylist.
@@ -302,6 +327,9 @@ type ServerInterface interface {
 	// register new user
 	// (POST /auth/register)
 	Register(w http.ResponseWriter, r *http.Request)
+
+	// (GET /backup)
+	Backup(w http.ResponseWriter, r *http.Request, params BackupParams)
 	// route to test, that server is alive
 	// (GET /ping)
 	Ping(w http.ResponseWriter, r *http.Request)
@@ -332,6 +360,12 @@ type ServerInterface interface {
 
 	// (POST /playlists/{playlistId}/cover)
 	UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32)
+
+	// (POST /restore)
+	Restore(w http.ResponseWriter, r *http.Request)
+
+	// (GET /restore/{restoreId})
+	GetRestoreStatus(w http.ResponseWriter, r *http.Request, restoreId string)
 	// get all uploaded tracks meta
 	// (GET /tracks)
 	GetTracks(w http.ResponseWriter, r *http.Request)
@@ -464,6 +498,11 @@ func (_ Unimplemented) Register(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (GET /backup)
+func (_ Unimplemented) Backup(w http.ResponseWriter, r *http.Request, params BackupParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // route to test, that server is alive
 // (GET /ping)
 func (_ Unimplemented) Ping(w http.ResponseWriter, r *http.Request) {
@@ -518,6 +557,16 @@ func (_ Unimplemented) GetPlaylistCover(w http.ResponseWriter, r *http.Request, 
 
 // (POST /playlists/{playlistId}/cover)
 func (_ Unimplemented) UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /restore)
+func (_ Unimplemented) Restore(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /restore/{restoreId})
+func (_ Unimplemented) GetRestoreStatus(w http.ResponseWriter, r *http.Request, restoreId string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1035,6 +1084,47 @@ func (siw *ServerInterfaceWrapper) Register(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r)
 }
 
+// Backup operation middleware
+func (siw *ServerInterfaceWrapper) Backup(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params BackupParams
+
+	// ------------- Optional query parameter "include_images" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include_images", r.URL.Query(), &params.IncludeImages)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include_images", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "include_transcoded_tracks" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include_transcoded_tracks", r.URL.Query(), &params.IncludeTranscodedTracks)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include_transcoded_tracks", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Backup(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // Ping operation middleware
 func (siw *ServerInterfaceWrapper) Ping(w http.ResponseWriter, r *http.Request) {
 
@@ -1297,6 +1387,57 @@ func (siw *ServerInterfaceWrapper) UploadPlaylistCover(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UploadPlaylistCover(w, r, playlistId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Restore operation middleware
+func (siw *ServerInterfaceWrapper) Restore(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Restore(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRestoreStatus operation middleware
+func (siw *ServerInterfaceWrapper) GetRestoreStatus(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "restoreId" -------------
+	var restoreId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "restoreId", chi.URLParam(r, "restoreId"), &restoreId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "restoreId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRestoreStatus(w, r, restoreId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1840,6 +1981,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/auth/register", wrapper.Register)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/backup", wrapper.Backup)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/ping", wrapper.Ping)
 	})
 	r.Group(func(r chi.Router) {
@@ -1868,6 +2012,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/playlists/{playlistId}/cover", wrapper.UploadPlaylistCover)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/restore", wrapper.Restore)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/restore/{restoreId}", wrapper.GetRestoreStatus)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/tracks", wrapper.GetTracks)

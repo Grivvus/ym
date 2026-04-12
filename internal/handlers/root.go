@@ -14,6 +14,7 @@ type RootHandler struct {
 	ArtistHandlers
 	TrackHandlers
 	PlaylistHandlers
+	BackupHandlers
 }
 
 func NewRootHandler(
@@ -21,6 +22,7 @@ func NewRootHandler(
 	auth service.AuthService, user service.UserService,
 	album service.AlbumService, artist service.ArtistService,
 	track service.TrackService, playlist service.PlaylistService,
+	backup service.BackupService,
 ) RootHandler {
 	return RootHandler{
 		AuthHandlers:     AuthHandlers{service: auth, logger: logger},
@@ -29,6 +31,7 @@ func NewRootHandler(
 		AlbumHandlers:    AlbumHandlers{albumService: album, logger: logger},
 		TrackHandlers:    TrackHandlers{trackService: track, logger: logger},
 		PlaylistHandlers: PlaylistHandlers{playlistService: playlist, logger: logger},
+		BackupHandlers:   BackupHandlers{logger: logger, backupService: backup},
 	}
 }
 

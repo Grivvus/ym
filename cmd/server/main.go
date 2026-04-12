@@ -87,12 +87,14 @@ func main() {
 	playlistService := service.NewPlaylistService(dbInst, storageClient, logger)
 	trackService := service.NewTrackService(dbInst, storageClient, logger, queueNotificationChan)
 	artistService := service.NewArtistService(dbInst, storageClient, logger)
+	backupService := service.NewBackupService(logger)
 
 	var server api.ServerInterface = handlers.NewRootHandler(
 		logger,
 		authService, userService,
 		albumService, artistService,
 		trackService, playlistService,
+		backupService,
 	)
 
 	r := chi.NewMux()
