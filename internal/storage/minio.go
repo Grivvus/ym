@@ -26,7 +26,7 @@ func (m minioStorage) GetTrackInfo(
 ) (uint, string, error) {
 	info, err := m.client.StatObject(ctx, "tracks", id, minio.StatObjectOptions{})
 	if err != nil {
-		return 0, "", err
+		return 0, "", wrapStorageError(err, id)
 	}
 	return uint(info.Size), info.ContentType, nil
 }
@@ -55,13 +55,17 @@ func (m minioStorage) GetImage(
 		return nil, err
 	}
 	defer func() { _ = rsc.Close() }()
-	return io.ReadAll(rsc)
+	data, err := io.ReadAll(rsc)
+	if err != nil {
+		return nil, wrapStorageError(err, id)
+	}
+	return data, nil
 }
 
 func (m minioStorage) ImageExist(ctx context.Context, id string) bool {
-	_, err := m.get(ctx, "images", id, minio.GetObjectOptions{})
+	_, err := m.client.StatObject(ctx, "images", id, minio.StatObjectOptions{})
 	if err == nil {
-		return false
+		return true
 	}
 	if errResp, ok := errors.AsType[minio.ErrorResponse](err); ok {
 		return errResp.Code != minio.NoSuchKey
@@ -78,10 +82,11 @@ func (m minioStorage) get(
 ) (io.ReadSeekCloser, error) {
 	obj, err := m.client.GetObject(ctx, bucketName, objectID, opts)
 	if err != nil {
-		if e, ok := errors.AsType[minio.ErrorResponse](err); ok && e.Code == minio.NoSuchKey {
-			return nil, fmt.Errorf("%w: no such key %v", ErrObjectNotFound, objectID)
-		}
-		return nil, fmt.Errorf("%w caused by: %w", InternalStorageError, err)
+		return nil, wrapStorageError(err, objectID)
+	}
+	if _, err := obj.Stat(); err != nil {
+		_ = obj.Close()
+		return nil, wrapStorageError(err, objectID)
 	}
 	return obj, nil
 }
@@ -136,4 +141,14 @@ func (m minioStorage) createBucketsIfNotExists(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func wrapStorageError(err error, objectID string) error {
+	if e, ok := errors.AsType[minio.ErrorResponse](err); ok {
+		if e.Code == minio.NoSuchKey {
+			return fmt.Errorf("%w: no such key %v", ErrObjectNotFound, objectID)
+		}
+		return fmt.Errorf("%w caused by: %w", InternalStorageError, err)
+	}
+	return fmt.Errorf("%w caused by: %w", InternalStorageError, err)
 }

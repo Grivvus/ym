@@ -14,10 +14,17 @@ import (
 const errorRestoring = `-- name: ErrorRestoring :exec
 UPDATE public."restore_status" SET
     status = 'error',
-    error = $1
+    error = $2,
+    finished_at = now()
+WHERE id = $1
 `
 
-func (q *Queries) ErrorRestoring(ctx context.Context, error pgtype.Text) error {
-	_, err := q.db.Exec(ctx, errorRestoring, error)
+type ErrorRestoringParams struct {
+	ID    string
+	Error pgtype.Text
+}
+
+func (q *Queries) ErrorRestoring(ctx context.Context, arg ErrorRestoringParams) error {
+	_, err := q.db.Exec(ctx, errorRestoring, arg.ID, arg.Error)
 	return err
 }

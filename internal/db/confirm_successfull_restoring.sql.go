@@ -12,10 +12,12 @@ import (
 const confirmRestoring = `-- name: ConfirmRestoring :exec
 UPDATE public."restore_status" SET
     status = 'finished',
+    error = NULL,
     finished_at = now()
+WHERE id = $1
 `
 
-func (q *Queries) ConfirmRestoring(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, confirmRestoring)
+func (q *Queries) ConfirmRestoring(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, confirmRestoring, id)
 	return err
 }
