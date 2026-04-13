@@ -64,6 +64,7 @@ func (u *UserService) GetUserByID(
 
 	ret.Username = user.Username
 	ret.Id = user.ID
+	ret.IsSuperuser = user.IsSuperuser
 	if user.Email.Valid {
 		ret.Email = &user.Email.String
 	} else {

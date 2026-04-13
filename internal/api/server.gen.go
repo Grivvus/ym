@@ -202,9 +202,10 @@ type UserChangePassword struct {
 
 // UserReturn defines model for UserReturn.
 type UserReturn struct {
-	Email    *string `json:"email"`
-	Id       int32   `json:"id"`
-	Username string  `json:"username"`
+	Email       *string `json:"email"`
+	Id          int32   `json:"id"`
+	IsSuperuser bool    `json:"is_superuser"`
+	Username    string  `json:"username"`
 }
 
 // UserUpdate defines model for UserUpdate.

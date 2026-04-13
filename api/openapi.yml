@@ -1308,12 +1308,15 @@ components:
         - username
         - email
         - id
+        - is_superuser
       properties:
         id:
           type: integer
           format: int32
         username:
           type: string
+        is_superuser:
+          type: boolean
         email:
           type: string
           nullable: true
