@@ -106,6 +106,7 @@ func (h TrackHandlers) serveTrack(
 ) {
 	stream, err := h.trackService.GetStream(r.Context(), trackId, quality)
 	if err != nil {
+		h.logger.Error("can't stream track:", "err", err)
 		if errors.Is(err, service.ErrBadParams) {
 			_ = WriteError(w, http.StatusBadRequest, err)
 		} else if errors.Is(err, service.ErrPresetCantBeSelected) {
