@@ -91,17 +91,22 @@ func (s *AlbumService) Get(
 	ctx context.Context, albumID int32,
 ) (api.AlbumInfoResponse, error) {
 	var ret api.AlbumInfoResponse
-	albumTracks, err := s.queries.GetAlbumWithTracks(ctx, albumID)
+
+	// check if album exists
+	album, err := s.queries.GetAlbum(ctx, albumID)
 	if err != nil {
-		// no tracks in album, but album exists
-		// could be valid state
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ret, NewErrNotFound("album", albumID)
 		}
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
-	ret.AlbumId = albumID
-	ret.AlbumName = albumTracks[0].Name
+
+	albumTracks, err := s.queries.GetAlbumWithTracks(ctx, albumID)
+	if err != nil {
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	ret.AlbumId = album.ID
+	ret.AlbumName = album.Name
 	for _, t := range albumTracks {
 		ret.Tracks = append(ret.Tracks, t.TrackID)
 	}
