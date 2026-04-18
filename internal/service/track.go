@@ -152,7 +152,7 @@ func (s *TrackService) DeleteTrack(ctx context.Context, trackID int32) error {
 	if err != nil {
 		return err
 	}
-	errs := make([]error, 0, 4)
+	errs := make([]error, 0, 5)
 	if metadata.TrackFastPreset != nil {
 		errs = append(errs, s.st.RemoveTrack(ctx, *metadata.TrackFastPreset))
 	}
@@ -165,12 +165,13 @@ func (s *TrackService) DeleteTrack(ctx context.Context, trackID int32) error {
 	if metadata.TrackLosslessPreset != nil {
 		errs = append(errs, s.st.RemoveTrack(ctx, *metadata.TrackLosslessPreset))
 	}
+	errs = append(errs, s.st.RemoveTrack(ctx, metadata.Name))
 	for _, err := range errs {
 		if err != nil {
 			return fmt.Errorf("can't remove track file: %w", err)
 		}
 	}
-	err = s.queries.DeleteTrack(ctx, trackID)
+	err = s.st.RemoveTrack(ctx, s.tmpFileName(metadata.TrackId))
 	if err != nil {
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
