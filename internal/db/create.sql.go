@@ -12,20 +12,33 @@ import (
 )
 
 const createAlbum = `-- name: CreateAlbum :one
-INSERT INTO "album" (name, artist_id)
-    VALUES ($1, $2)
-    RETURNING id, name, artist_id
+INSERT INTO "album" (name, artist_id, release_year, release_full_date)
+    VALUES ($1, $2, $3, $4)
+    RETURNING id, name, release_year, release_full_date, artist_id
 `
 
 type CreateAlbumParams struct {
-	Name     string
-	ArtistID int32
+	Name            string
+	ArtistID        int32
+	ReleaseYear     pgtype.Int4
+	ReleaseFullDate pgtype.Date
 }
 
 func (q *Queries) CreateAlbum(ctx context.Context, arg CreateAlbumParams) (Album, error) {
-	row := q.db.QueryRow(ctx, createAlbum, arg.Name, arg.ArtistID)
+	row := q.db.QueryRow(ctx, createAlbum,
+		arg.Name,
+		arg.ArtistID,
+		arg.ReleaseYear,
+		arg.ReleaseFullDate,
+	)
 	var i Album
-	err := row.Scan(&i.ID, &i.Name, &i.ArtistID)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ReleaseYear,
+		&i.ReleaseFullDate,
+		&i.ArtistID,
+	)
 	return i, err
 }
 

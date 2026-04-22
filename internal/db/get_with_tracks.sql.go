@@ -7,19 +7,24 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getAlbumWithTracks = `-- name: GetAlbumWithTracks :many
-SELECT "album".id, "album".name, "track_album".track_id
-    from "album" inner join "track_album"
+SELECT "album".id, "album".name, "album".release_year,
+        "album".release_full_date, "track_album".track_id
+    FROM "album" INNER JOIN "track_album"
     ON "album".id = "track_album".album_id
 WHERE "album".id = $1
 `
 
 type GetAlbumWithTracksRow struct {
-	ID      int32
-	Name    string
-	TrackID int32
+	ID              int32
+	Name            string
+	ReleaseYear     pgtype.Int4
+	ReleaseFullDate pgtype.Date
+	TrackID         int32
 }
 
 func (q *Queries) GetAlbumWithTracks(ctx context.Context, id int32) ([]GetAlbumWithTracksRow, error) {
@@ -31,7 +36,13 @@ func (q *Queries) GetAlbumWithTracks(ctx context.Context, id int32) ([]GetAlbumW
 	var items []GetAlbumWithTracksRow
 	for rows.Next() {
 		var i GetAlbumWithTracksRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.TrackID); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ReleaseYear,
+			&i.ReleaseFullDate,
+			&i.TrackID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

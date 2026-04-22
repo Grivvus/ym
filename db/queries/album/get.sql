@@ -1,4 +1,4 @@
 -- name: GetAlbum :one
-SELECT "album".id as id, "album".name as name
-    from "album" 
+SELECT id , name, release_year, release_full_date
+    FROM "album" 
 WHERE "album".id = $1;

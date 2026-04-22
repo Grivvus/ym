@@ -7,23 +7,33 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const restoreAlbum = `-- name: RestoreAlbum :exec
 INSERT INTO public."album" (
-    id, name, artist_id
+    id, name, artist_id, release_year, release_full_date
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, $4, $5
 )
 `
 
 type RestoreAlbumParams struct {
-	ID       int32
-	Name     string
-	ArtistID int32
+	ID              int32
+	Name            string
+	ArtistID        int32
+	ReleaseYear     pgtype.Int4
+	ReleaseFullDate pgtype.Date
 }
 
 func (q *Queries) RestoreAlbum(ctx context.Context, arg RestoreAlbumParams) error {
-	_, err := q.db.Exec(ctx, restoreAlbum, arg.ID, arg.Name, arg.ArtistID)
+	_, err := q.db.Exec(ctx, restoreAlbum,
+		arg.ID,
+		arg.Name,
+		arg.ArtistID,
+		arg.ReleaseYear,
+		arg.ReleaseFullDate,
+	)
 	return err
 }

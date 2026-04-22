@@ -15,15 +15,21 @@ FROM public."album"
 ORDER BY id
 `
 
-func (q *Queries) GetAllAlbumsForBackup(ctx context.Context) ([]Album, error) {
+type GetAllAlbumsForBackupRow struct {
+	ID       int32
+	Name     string
+	ArtistID int32
+}
+
+func (q *Queries) GetAllAlbumsForBackup(ctx context.Context) ([]GetAllAlbumsForBackupRow, error) {
 	rows, err := q.db.Query(ctx, getAllAlbumsForBackup)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Album
+	var items []GetAllAlbumsForBackupRow
 	for rows.Next() {
-		var i Album
+		var i GetAllAlbumsForBackupRow
 		if err := rows.Scan(&i.ID, &i.Name, &i.ArtistID); err != nil {
 			return nil, err
 		}

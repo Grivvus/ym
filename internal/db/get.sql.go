@@ -12,20 +12,27 @@ import (
 )
 
 const getAlbum = `-- name: GetAlbum :one
-SELECT "album".id as id, "album".name as name
-    from "album" 
+SELECT id , name, release_year, release_full_date
+    FROM "album" 
 WHERE "album".id = $1
 `
 
 type GetAlbumRow struct {
-	ID   int32
-	Name string
+	ID              int32
+	Name            string
+	ReleaseYear     pgtype.Int4
+	ReleaseFullDate pgtype.Date
 }
 
 func (q *Queries) GetAlbum(ctx context.Context, id int32) (GetAlbumRow, error) {
 	row := q.db.QueryRow(ctx, getAlbum, id)
 	var i GetAlbumRow
-	err := row.Scan(&i.ID, &i.Name)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ReleaseYear,
+		&i.ReleaseFullDate,
+	)
 	return i, err
 }
 

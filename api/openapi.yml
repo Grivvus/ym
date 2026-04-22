@@ -1608,6 +1608,12 @@ components:
         album_cover:
           type: string
           format: binary
+        release_year:
+          type: integer
+          format: int32
+        release_full_date:
+          type: string
+          format: date
 
     AlbumCreateResponse:
       type: object
@@ -1627,6 +1633,8 @@ components:
         - album_id
         - album_name
         - tracks
+        - release_year
+        - release_full_date
       properties:
         album_id:
           type: integer
@@ -1635,6 +1643,14 @@ components:
           type: string
         cover_url:
           type: string
+        release_year:
+          type: integer
+          format: int32
+          nullable: true
+        release_full_date:
+          type: string
+          format: date
+          nullable: true
         tracks:
           type: array
           items:

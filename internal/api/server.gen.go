@@ -32,9 +32,11 @@ type AlbumCoverResponse struct {
 
 // AlbumCreateRequest defines model for AlbumCreateRequest.
 type AlbumCreateRequest struct {
-	AlbumCover *openapi_types.File `json:"album_cover,omitempty"`
-	AlbumName  string              `json:"album_name"`
-	ArtistId   int32               `json:"artist_id"`
+	AlbumCover      *openapi_types.File `json:"album_cover,omitempty"`
+	AlbumName       string              `json:"album_name"`
+	ArtistId        int32               `json:"artist_id"`
+	ReleaseFullDate *openapi_types.Date `json:"release_full_date,omitempty"`
+	ReleaseYear     *int32              `json:"release_year,omitempty"`
 }
 
 // AlbumCreateResponse defines model for AlbumCreateResponse.
@@ -50,10 +52,12 @@ type AlbumDeleteResponse struct {
 
 // AlbumInfoResponse defines model for AlbumInfoResponse.
 type AlbumInfoResponse struct {
-	AlbumId   int32   `json:"album_id"`
-	AlbumName string  `json:"album_name"`
-	CoverUrl  *string `json:"cover_url,omitempty"`
-	Tracks    []int32 `json:"tracks"`
+	AlbumId         int32               `json:"album_id"`
+	AlbumName       string              `json:"album_name"`
+	CoverUrl        *string             `json:"cover_url,omitempty"`
+	ReleaseFullDate *openapi_types.Date `json:"release_full_date"`
+	ReleaseYear     *int32              `json:"release_year"`
+	Tracks          []int32             `json:"tracks"`
 }
 
 // ArtistCreateRequest defines model for ArtistCreateRequest.

@@ -56,9 +56,11 @@ func (ns NullStatus) Value() (driver.Value, error) {
 }
 
 type Album struct {
-	ID       int32
-	Name     string
-	ArtistID int32
+	ID              int32
+	Name            string
+	ReleaseYear     pgtype.Int4
+	ReleaseFullDate pgtype.Date
+	ArtistID        int32
 }
 
 type Artist struct {

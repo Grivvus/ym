@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/service"
@@ -138,6 +139,8 @@ func (h AlbumHandlers) parsePostForm(
 	_, fileHeader, _ := r.FormFile("album_cover")
 	artist := r.FormValue("artist_id")
 	name := r.FormValue("album_name")
+	year := r.FormValue("release_year")
+	date := r.FormValue("release_full_date")
 	if name == "" || artist == "" {
 		return service.AlbumCreateParams{}, nil, fmt.Errorf("form fields are not set or empty")
 	}
@@ -148,6 +151,25 @@ func (h AlbumHandlers) parsePostForm(
 	var params = service.AlbumCreateParams{
 		ArtistID: int32(artistID),
 		Name:     name,
+	}
+	if year == "" {
+		params.ReleaseYear = nil
+	} else {
+		yearNum, err := strconv.ParseInt(year, 10, 32)
+		if err != nil {
+			return service.AlbumCreateParams{}, nil, fmt.Errorf("year must be integer")
+		}
+		i32 := int32(yearNum)
+		params.ReleaseYear = &i32
+	}
+	if date == "" {
+		params.ReleaseDate = nil
+	} else {
+		dt, err := time.Parse(time.RFC3339, date)
+		if err != nil {
+			return service.AlbumCreateParams{}, nil, fmt.Errorf("invalid date format, expected RFC3339")
+		}
+		params.ReleaseDate = &dt
 	}
 	return params, fileHeader, nil
 }

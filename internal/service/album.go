@@ -7,17 +7,22 @@ import (
 	"io"
 	"log/slog"
 	"mime/multipart"
+	"time"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/oapi-codegen/runtime/types"
 )
 
 type AlbumCreateParams struct {
-	ArtistID int32
-	Name     string
+	ArtistID    int32
+	Name        string
+	ReleaseYear *int32
+	ReleaseDate *time.Time
 }
 
 type AlbumService struct {
@@ -57,8 +62,10 @@ func (s *AlbumService) Create(
 ) (api.AlbumCreateResponse, error) {
 	var ret api.AlbumCreateResponse
 	var album = db.CreateAlbumParams{
-		Name:     albumInfo.Name,
-		ArtistID: albumInfo.ArtistID,
+		Name:            albumInfo.Name,
+		ArtistID:        albumInfo.ArtistID,
+		ReleaseYear:     intPtrToDBInt(albumInfo.ReleaseYear),
+		ReleaseFullDate: datePtrToDBDate(albumInfo.ReleaseDate),
 	}
 	albumRet, err := s.queries.CreateAlbum(ctx, album)
 	if err != nil {
@@ -107,6 +114,8 @@ func (s *AlbumService) Get(
 	}
 	ret.AlbumId = album.ID
 	ret.AlbumName = album.Name
+	ret.ReleaseYear = dbIntToIntPtr(album.ReleaseYear)
+	ret.ReleaseFullDate = dbDateToSwaggerDate(album.ReleaseFullDate)
 	for _, t := range albumTracks {
 		ret.Tracks = append(ret.Tracks, t.TrackID)
 	}
@@ -146,4 +155,34 @@ func (s *AlbumService) GetCover(
 	ctx context.Context, albumID int32,
 ) ([]byte, error) {
 	return s.artworkService.Get(ctx, albumID)
+}
+
+func intPtrToDBInt(iptr *int32) pgtype.Int4 {
+	if iptr == nil {
+		return pgtype.Int4{Valid: false}
+	}
+	return pgtype.Int4{Valid: true, Int32: *iptr}
+}
+
+func datePtrToDBDate(dt *time.Time) pgtype.Date {
+	if dt == nil {
+		return pgtype.Date{Valid: false}
+	}
+	return pgtype.Date{Valid: true, Time: *dt}
+}
+
+func dbDateToSwaggerDate(dt pgtype.Date) *types.Date {
+	if !dt.Valid {
+		return nil
+	}
+	return &types.Date{
+		Time: dt.Time,
+	}
+}
+
+func dbIntToIntPtr(i pgtype.Int4) *int32 {
+	if !i.Valid {
+		return nil
+	}
+	return &i.Int32
 }
