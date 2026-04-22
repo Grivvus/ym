@@ -741,7 +741,7 @@ func (service BackupService) prepareOriginalOnlyBackup(
 	snapshot *dto.FullDBBackup, queuedAt time.Time,
 ) {
 	queuedTrackIDs := make(map[int32]struct{}, len(snapshot.TranscodingQueue))
-	var lastQueueID int32
+	var lastQueueID int64
 
 	for i := range snapshot.Tracks {
 		snapshot.Tracks[i].FastPresetFname = nil

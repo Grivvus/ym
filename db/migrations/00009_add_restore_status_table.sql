@@ -8,10 +8,15 @@ CREATE TABLE restore_status(
     status status NOT NULL DEFAULT 'pending',
     error TEXT
 );
+
+CREATE INDEX restore_status_active_created_at_idx
+    ON "restore_status" (created_at DESC)
+    WHERE status IN ('pending', 'started');
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE "restore_status"
+DROP INDEX IF EXISTS restore_status_active_created_at_idx;
+DROP TABLE IF EXISTS "restore_status";
 DROP TYPE status
 -- +goose StatementEnd

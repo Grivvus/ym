@@ -22,7 +22,7 @@ INSERT INTO public."transcoding_queue" (
 `
 
 type RestoreTranscodingQueueParams struct {
-	ID                    int32
+	ID                    int64
 	AddedAt               pgtype.Timestamp
 	TrackOriginalFileName string
 	TrackID               int32

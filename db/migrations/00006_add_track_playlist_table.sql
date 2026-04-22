@@ -7,9 +7,13 @@ CREATE TABLE track_playlist (
     FOREIGN KEY (track_id) REFERENCES track (id) ON DELETE RESTRICT,
     FOREIGN KEY (playlist_id) REFERENCES playlist (id) ON DELETE CASCADE
 );
+
+CREATE INDEX track_playlist_playlist_id_first
+    ON track_playlist (playlist_id, track_id);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE "track_playlist"
+DROP INDEX IF EXISTS track_playlist_playlist_id_first;
+DROP TABLE IF EXISTS "track_playlist";
 -- +goose StatementEnd

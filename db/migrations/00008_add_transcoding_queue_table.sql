@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE transcoding_queue(
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     added_at timestamp NOT NULL DEFAULT now(),
     track_original_file_name TEXT NOT NULL,
     track_id INTEGER NOT NULL,
@@ -13,5 +13,5 @@ CREATE TABLE transcoding_queue(
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE "transcoding_queue"
+DROP TABLE IF EXISTS "transcoding_queue";
 -- +goose StatementEnd

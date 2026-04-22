@@ -20,12 +20,12 @@ SELECT id, added_at, track_original_file_name, track_id
 `
 
 type GetTranscodingQueueParams struct {
-	ID    int32
+	ID    int64
 	Limit int32
 }
 
 type GetTranscodingQueueRow struct {
-	ID                    int32
+	ID                    int64
 	AddedAt               pgtype.Timestamp
 	TrackOriginalFileName string
 	TrackID               int32

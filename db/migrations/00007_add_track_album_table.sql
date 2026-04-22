@@ -7,9 +7,13 @@ CREATE TABLE track_album(
     FOREIGN KEY (track_id) REFERENCES track (id) ON DELETE CASCADE,
     FOREIGN KEY (album_id) REFERENCES album (id) ON DELETE CASCADE
 );
+
+CREATE INDEX track_album_album_id_first
+    ON track_album (album_id, track_id);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE "track_album"
+DROP INDEX IF EXISTS track_album_album_id_first;
+DROP TABLE IF EXISTS "track_album";
 -- +goose StatementEnd

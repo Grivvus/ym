@@ -9,5 +9,5 @@ CREATE TABLE artist (
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE "artist"
+DROP TABLE IF EXISTS "artist";
 -- +goose StatementEnd

@@ -7,13 +7,13 @@ CREATE TABLE album (
     release_full_date DATE,
     artist_id INTEGER NOT NULL,
     FOREIGN KEY (artist_id) REFERENCES artist (id) ON DELETE CASCADE,
-    UNIQUE(name, artist_id)
+    UNIQUE(artist_id, name)
 );
 
-CREATE INDEX album_release_year ON "album" (release_year)
+CREATE INDEX album_release_year ON "album" (release_year);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE "album"
+DROP TABLE IF EXISTS "album"
 -- +goose StatementEnd

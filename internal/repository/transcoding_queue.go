@@ -35,7 +35,7 @@ func (repo *TranscodingQueueRepository) GetTranscodingQueue(
 	go func() {
 		defer close(queue)
 		defer close(errc)
-		lastElementID := int32(0)
+		lastElementID := int64(0)
 		for {
 			rows, err := repo.queries.GetTranscodingQueue(ctx, db.GetTranscodingQueueParams{
 				ID:    lastElementID,
@@ -60,11 +60,11 @@ func (repo *TranscodingQueueRepository) GetTranscodingQueue(
 }
 
 func (repo *TranscodingQueueRepository) RemoveFromQueueAndUpdateTrack(
-	ctx context.Context, queueID int32, trackDuration int32,
+	ctx context.Context, queueID int64, trackDuration int32,
 	presetsToName map[audio.Preset]string,
 ) error {
-	_, err := withTx[int32](
-		ctx, repo.pool, repo.queries, func(q *db.Queries) (int32, error) {
+	_, err := withTx(
+		ctx, repo.pool, repo.queries, func(q *db.Queries) (int64, error) {
 			queue, err := q.DeleteFromTranscodingQueue(ctx, queueID)
 			if err != nil {
 				return 0, err
@@ -96,9 +96,9 @@ func (repo *TranscodingQueueRepository) RemoveFromQueueAndUpdateTrack(
 }
 
 func (repo *TranscodingQueueRepository) OnFailedTranscoding(
-	ctx context.Context, queueID int32, errorMsg error,
+	ctx context.Context, queueID int64, errorMsg error,
 ) error {
-	_, err := withTx(ctx, repo.pool, repo.queries, func(q *db.Queries) (int32, error) {
+	_, err := withTx(ctx, repo.pool, repo.queries, func(q *db.Queries) (int64, error) {
 		queue, err := q.DeleteFromTranscodingQueue(ctx, queueID)
 		if err != nil {
 			return 0, err

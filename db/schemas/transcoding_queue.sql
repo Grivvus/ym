@@ -1,5 +1,5 @@
 CREATE TABLE transcoding_queue(
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     added_at timestamp NOT NULL DEFAULT now(),
     track_original_file_name TEXT NOT NULL,
     track_id INTEGER NOT NULL,

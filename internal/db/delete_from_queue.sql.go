@@ -15,7 +15,7 @@ DELETE FROM public."transcoding_queue"
     RETURNING id, added_at, track_original_file_name, track_id, was_failed, error_msg
 `
 
-func (q *Queries) DeleteFromTranscodingQueue(ctx context.Context, id int32) (TranscodingQueue, error) {
+func (q *Queries) DeleteFromTranscodingQueue(ctx context.Context, id int64) (TranscodingQueue, error) {
 	row := q.db.QueryRow(ctx, deleteFromTranscodingQueue, id)
 	var i TranscodingQueue
 	err := row.Scan(

@@ -57,7 +57,7 @@ type User struct {
 }
 
 type TranscodingQueueRow struct {
-	ID                    int32     `json:"id"`
+	ID                    int64     `json:"id"`
 	TrackID               int32     `json:"track_id"`
 	AddedAt               time.Time `json:"added_at"`
 	TrackOriginalFileName string    `json:"track_original_file_name"`
