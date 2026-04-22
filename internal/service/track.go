@@ -222,16 +222,29 @@ func (s *TrackService) GetMeta(
 	}, nil
 }
 
-func (s *TrackService) GetUserTracks(ctx context.Context, userID int32) ([]api.TrackMetadata, error) {
+func (s *TrackService) GetUserTracks(
+	ctx context.Context, userID int32,
+) ([]api.TrackMetadata, error) {
 	tracks, err := s.queries.GetUserTracks(ctx, pgtype.Int4{Int32: userID, Valid: true})
 	if err != nil {
 		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	ret := make([]api.TrackMetadata, len(tracks))
 	for i, track := range tracks {
+		albumID, err := s.queries.GetAlbumByTrackID(ctx, track.ID)
+		if err != nil {
+			if errors.Is(pgx.ErrNoRows, err) {
+				return nil, fmt.Errorf(
+					"%w: track must have at least 1 album, but found none - %w",
+					ErrUnknownDBError, err,
+				)
+			}
+			return nil, fmt.Errorf("%w: exact - %w", ErrUnknownDBError, err)
+		}
 		ret[i] = api.TrackMetadata{
 			ArtistId:            track.ArtistID,
 			Name:                track.Name,
+			AlbumId:             albumID,
 			DurationMs:          track.DurationMs.Int32,
 			TrackId:             track.ID,
 			TrackFastPreset:     &track.FastPresetFname.String,

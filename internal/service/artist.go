@@ -99,10 +99,18 @@ func (s *ArtistService) GetAll(ctx context.Context) ([]api.ArtistInfoResponse, e
 	}
 	artists := make([]api.ArtistInfoResponse, len(dbArtists))
 	for i, artist := range dbArtists {
+		albums, err := s.queries.GetArtistWithAlbums(ctx, artist.ID)
+		if err != nil {
+			return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		}
+		artistAlbums := make([]int32, len(albums))
+		for j, album := range albums {
+			artistAlbums[j] = album.AlbumID
+		}
 		artists[i] = api.ArtistInfoResponse{
 			ArtistId:     artist.ID,
 			ArtistName:   artist.Name,
-			ArtistAlbums: []int32{},
+			ArtistAlbums: artistAlbums,
 		}
 	}
 	return artists, nil
@@ -120,10 +128,18 @@ func (s *ArtistService) GetWithFilters(
 	}
 	artists := make([]api.ArtistInfoResponse, len(dbArtists))
 	for i, artist := range dbArtists {
+		albums, err := s.queries.GetArtistWithAlbums(ctx, artist.ID)
+		if err != nil {
+			return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		}
+		artistAlbums := make([]int32, len(albums))
+		for j, album := range albums {
+			artistAlbums[j] = album.AlbumID
+		}
 		artists[i] = api.ArtistInfoResponse{
 			ArtistId:     artist.ID,
 			ArtistName:   artist.Name,
-			ArtistAlbums: []int32{},
+			ArtistAlbums: artistAlbums,
 		}
 	}
 	return artists, nil

@@ -51,12 +51,14 @@ func (h ArtistHandlers) GetAllArtists(
 	var artists []api.ArtistInfoResponse
 	var err error
 	if params.StartsWith == nil {
+		h.logger.Debug("general")
 		artists, err = h.artistService.GetAll(r.Context())
 	} else {
 		limit := defaultArtistLimit
 		if params.Limit != nil {
 			limit = *params.Limit
 		}
+		h.logger.Debug("with filters")
 		artists, err = h.artistService.GetWithFilters(r.Context(), *params.StartsWith, limit)
 	}
 	if err != nil {
