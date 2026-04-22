@@ -100,6 +100,19 @@ func (h TrackHandlers) StreamTrack(
 	h.serveTrack(w, r, trackId, quality)
 }
 
+func (h TrackHandlers) StreamTrackHead(
+	w http.ResponseWriter, r *http.Request,
+	trackId int32, params api.StreamTrackHeadParams,
+) {
+	var quality string
+	if params.Quality == nil {
+		quality = "standard"
+	} else {
+		quality = *params.Quality
+	}
+	h.serveTrack(w, r, trackId, quality)
+}
+
 func (h TrackHandlers) serveTrack(
 	w http.ResponseWriter, r *http.Request,
 	trackId int32, quality string,
@@ -125,19 +138,6 @@ func (h TrackHandlers) serveTrack(
 	}
 
 	http.ServeContent(w, r, stream.Name, time.Time{}, stream.Reader)
-}
-
-func (h TrackHandlers) StreamTrackHead(
-	w http.ResponseWriter, r *http.Request,
-	trackId int32, params api.StreamTrackHeadParams,
-) {
-	var quality string
-	if params.Quality == nil {
-		quality = "standard"
-	} else {
-		quality = *params.Quality
-	}
-	h.serveTrack(w, r, trackId, quality)
 }
 
 func (h TrackHandlers) parsePostParams(

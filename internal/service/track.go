@@ -7,13 +7,11 @@ import (
 	"io"
 	"log/slog"
 	"mime/multipart"
-	"strconv"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/audio"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
-	"github.com/Grivvus/ym/internal/transcoder"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -126,7 +124,7 @@ func (s *TrackService) UploadTrack(
 	}
 	defer func() { _ = rc.Close() }()
 
-	tmpFname := s.tmpFileName(track.ID)
+	tmpFname := originalTrackStorageKey(track.ID)
 	err = s.st.PutTrack(ctx, tmpFname, rc, trackFileHeader.Size)
 	if err != nil {
 		s.logger.Warn("error mapping should be more precise")
@@ -171,7 +169,7 @@ func (s *TrackService) DeleteTrack(ctx context.Context, trackID int32) error {
 			return fmt.Errorf("can't remove track file: %w", err)
 		}
 	}
-	err = s.st.RemoveTrack(ctx, s.tmpFileName(metadata.TrackId))
+	err = s.st.RemoveTrack(ctx, originalTrackStorageKey(metadata.TrackId))
 	if err != nil {
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
@@ -245,24 +243,6 @@ func (s *TrackService) GetUserTracks(ctx context.Context, userID int32) ([]api.T
 	return ret, nil
 }
 
-func (s *TrackService) GetStreamMeta(
-	ctx context.Context, trackId int32, trackQuality string,
-) (StreamMeta, error) {
-	preset, err := audio.PresetFromString(trackQuality)
-	if err != nil {
-		return StreamMeta{}, fmt.Errorf("%w: invalid name of trackQuality: %v", ErrBadParams, trackQuality)
-	}
-	fullTrackName := transcoder.TranscodedName(s.tmpFileName(trackId), preset)
-	clen, ctype, err := s.st.GetTrackInfo(ctx, fullTrackName)
-	if err != nil {
-		return StreamMeta{}, fmt.Errorf("can't fetch track info: %w", err)
-	}
-	return StreamMeta{
-		ContentLength: clen,
-		ContentType:   ctype,
-	}, nil
-}
-
 func (s *TrackService) GetStream(
 	ctx context.Context, trackID int32, trackQuality string,
 ) (TrackStream, error) {
@@ -277,25 +257,24 @@ func (s *TrackService) GetStream(
 	if !trackExist {
 		return TrackStream{}, NewErrNotFound("track", trackID)
 	}
-	preset, err = s.findClosestExistingPreset(track, preset)
+	trackKey, err := findClosestExistingTrackKey(track, preset)
 	if err != nil {
 		return TrackStream{}, err
 	}
 
-	fullTrackName := transcoder.TranscodedName(s.tmpFileName(trackID), preset)
-	stream, err := s.st.GetTrack(ctx, fullTrackName)
+	stream, err := s.st.GetTrack(ctx, trackKey)
 	if err != nil {
 		return TrackStream{}, fmt.Errorf("can't get track stream: %w", err)
 	}
 
-	_, ctype, err := s.st.GetTrackInfo(ctx, fullTrackName)
+	_, ctype, err := s.st.GetTrackInfo(ctx, trackKey)
 	if err != nil {
 		_ = stream.Close()
 		return TrackStream{}, fmt.Errorf("can't fetch track info: %w", err)
 	}
 
 	return TrackStream{
-		Name:        fullTrackName,
+		Name:        trackKey,
 		ContentType: ctype,
 		Reader:      stream,
 	}, nil
@@ -314,55 +293,47 @@ func (s *TrackService) trackExists(
 	return track, true, nil
 }
 
-func (s *TrackService) findClosestExistingPreset(
+func findClosestExistingTrackKey(
 	track db.GetTrackRow, chosenPreset audio.Preset,
-) (audio.Preset, error) {
+) (string, error) {
 	switch chosenPreset {
-	// if we're looking for Lossless:
-	// find exact lossless
+	// lossless->orig
 	case audio.PresetLossless:
 		if track.LosslessPresetFname.Valid {
-			return audio.PresetLossless, nil
+			return track.LosslessPresetFname.String, nil
 		}
-		return audio.Preset(0), ErrPresetCantBeSelected
-		// if we're looking for high
-		// searching H->S->F
+		return originalTrackStorageKey(track.ID), nil
+	// H->S->F->orig
 	case audio.PresetHigh:
 		if track.HighPresetFname.Valid {
-			return audio.PresetHigh, nil
+			return track.HighPresetFname.String, nil
 		} else if track.StandardPresetFname.Valid {
-			return audio.PresetStandard, nil
+			return track.StandardPresetFname.String, nil
 		} else if track.FastPresetFname.Valid {
-			return audio.PresetFast, nil
+			return track.FastPresetFname.String, nil
 		}
-		return audio.Preset(0), ErrPresetCantBeSelected
-		// if we're looking for standard
-		// searching S->F->H
+		return originalTrackStorageKey(track.ID), nil
+	// S->F->H->orig
 	case audio.PresetStandard:
 		if track.StandardPresetFname.Valid {
-			return audio.PresetStandard, nil
+			return track.StandardPresetFname.String, nil
 		} else if track.FastPresetFname.Valid {
-			return audio.PresetFast, nil
+			return track.FastPresetFname.String, nil
 		} else if track.HighPresetFname.Valid {
-			return audio.PresetHigh, nil
+			return track.HighPresetFname.String, nil
 		}
-		return audio.Preset(0), ErrPresetCantBeSelected
-		// if we're looking for fast
-		// searching F->S->H
+		return originalTrackStorageKey(track.ID), nil
+	// F->S->H->orig
 	case audio.PresetFast:
 		if track.FastPresetFname.Valid {
-			return audio.PresetFast, nil
+			return track.FastPresetFname.String, nil
 		} else if track.StandardPresetFname.Valid {
-			return audio.PresetStandard, nil
+			return track.StandardPresetFname.String, nil
 		} else if track.HighPresetFname.Valid {
-			return audio.PresetHigh, nil
+			return track.HighPresetFname.String, nil
 		}
-		return audio.Preset(0), ErrPresetCantBeSelected
+		return originalTrackStorageKey(track.ID), nil
 	default:
-		return audio.Preset(0), ErrPresetCantBeSelected
+		return "", ErrPresetCantBeSelected
 	}
-}
-
-func (s *TrackService) tmpFileName(trackID int32) string {
-	return "track" + strconv.Itoa(int(trackID))
 }

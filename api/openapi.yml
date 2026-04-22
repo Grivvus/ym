@@ -416,6 +416,7 @@ paths:
           name: quality
           schema:
             type: string
+          description: preferred quality; the server falls back to the closest available preset and then to the original track file
           required: false
       responses: 
         '200':
@@ -446,6 +447,7 @@ paths:
           name: quality
           schema:
             type: string
+          description: preferred quality; the server falls back to the closest available preset and then to the original track file
           required: false
       responses:
         '200':
