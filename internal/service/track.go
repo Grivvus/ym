@@ -248,7 +248,9 @@ func (s *TrackService) GetStream(
 ) (TrackStream, error) {
 	preset, err := audio.PresetFromString(trackQuality)
 	if err != nil {
-		return TrackStream{}, fmt.Errorf("%w: invalid name of trackQuality: %v", ErrBadParams, trackQuality)
+		return TrackStream{}, fmt.Errorf(
+			"%w: invalid name of trackQuality: %v", ErrBadParams, trackQuality,
+		)
 	}
 	track, trackExist, err := s.trackExists(ctx, trackID)
 	if err != nil {
@@ -264,7 +266,15 @@ func (s *TrackService) GetStream(
 
 	stream, err := s.st.GetTrack(ctx, trackKey)
 	if err != nil {
-		return TrackStream{}, fmt.Errorf("can't get track stream: %w", err)
+		if errors.Is(err, storage.ErrObjectNotFound) {
+			return TrackStream{}, fmt.Errorf(
+				"%w: track not found, exact - %w",
+				NewErrNotFound("track", trackID), err,
+			)
+		}
+		return TrackStream{}, fmt.Errorf(
+			"%w: can't get track stream: %w", ErrUnknownDBError, err,
+		)
 	}
 
 	_, ctype, err := s.st.GetTrackInfo(ctx, trackKey)
