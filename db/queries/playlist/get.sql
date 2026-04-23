@@ -1,4 +1,4 @@
 -- name: GetPlaylist :one
-SELECT "playlist".id as id, "playlist".name as name
+SELECT id, name, owner_id
     FROM "playlist"
 WHERE "playlist".id = $1;

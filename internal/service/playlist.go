@@ -16,8 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-var ErrEntityAlreadyExists = errors.New("conflict: entity already exists")
-
 type PlaylistCreateParams struct {
 	OwnerID  int32
 	Name     string
@@ -159,6 +157,34 @@ func (s *PlaylistService) Get(
 		ret.Tracks = append(ret.Tracks, track.TrackID)
 	}
 	return ret, nil
+}
+
+func (s *PlaylistService) ChangePlaylist(
+	ctx context.Context, userID, playlistID int32,
+	newPlaylistData api.PlaylistUpdateRequest,
+) (api.PlaylistResponse, error) {
+	playlistRow, err := s.queries.GetPlaylist(ctx, playlistID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.PlaylistResponse{}, NewErrNotFound("playlist", playlistID)
+		}
+		return api.PlaylistResponse{}, fmt.Errorf("%w, exact - %w", ErrUnknownDBError, err)
+	}
+	// if owner is none - only superuser should be able to modify it
+	if playlistRow.OwnerID.Int32 != userID {
+		return api.PlaylistResponse{}, fmt.Errorf("%w, you can't modify this playlist", ErrUnauthorized)
+	}
+	updatedPlaylist, err := s.queries.UpdatePlaylist(ctx, db.UpdatePlaylistParams{
+		ID:   playlistID,
+		Name: newPlaylistData.PlaylistName,
+	})
+	if err != nil {
+		return api.PlaylistResponse{}, fmt.Errorf("%w, exact - %w", ErrUnknownDBError, err)
+	}
+	return api.PlaylistResponse{
+		PlaylistId:   updatedPlaylist.ID,
+		PlaylistName: updatedPlaylist.Name,
+	}, nil
 }
 
 func (s *PlaylistService) GetUserPlaylists(ctx context.Context, userID int32) (api.Playlists, error) {

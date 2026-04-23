@@ -46,7 +46,27 @@ func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request)
 }
 
 func (h PlaylistHandlers) UpdatePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	w.WriteHeader(http.StatusNotImplemented)
+	userID, _ := requireAuthenticatedUserID(w, r)
+	var newData api.PlaylistUpdateRequest
+	err := json.NewDecoder(r.Body).Decode(&newData)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, fmt.Errorf("can't decode json body"))
+		return
+	}
+	updatedPlaylist, err := h.playlistService.ChangePlaylist(r.Context(), userID, playlistId, newData)
+	if err != nil {
+		if errors.Is(err, service.ErrUnauthorized) {
+			WriteError(w, http.StatusForbidden, err)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, updatedPlaylist)
 }
 
 func (h PlaylistHandlers) DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {

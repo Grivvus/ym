@@ -54,7 +54,6 @@ type AlbumDeleteResponse struct {
 type AlbumInfoResponse struct {
 	AlbumId         int32               `json:"album_id"`
 	AlbumName       string              `json:"album_name"`
-	CoverUrl        *string             `json:"cover_url,omitempty"`
 	ReleaseFullDate *openapi_types.Date `json:"release_full_date"`
 	ReleaseYear     *int32              `json:"release_year"`
 	Tracks          []int32             `json:"tracks"`
@@ -129,9 +128,13 @@ type PlaylistResponse struct {
 	PlaylistName string `json:"playlist_name"`
 }
 
+// PlaylistUpdateRequest defines model for PlaylistUpdateRequest.
+type PlaylistUpdateRequest struct {
+	PlaylistName string `json:"playlist_name"`
+}
+
 // PlaylistWithTracksResponse defines model for PlaylistWithTracksResponse.
 type PlaylistWithTracksResponse struct {
-	CoverUrl     *string `json:"cover_url,omitempty"`
 	PlaylistId   int32   `json:"playlist_id"`
 	PlaylistName string  `json:"playlist_name"`
 	Tracks       []int32 `json:"tracks"`
@@ -240,11 +243,13 @@ type AddTrackToPlaylistJSONBody struct {
 
 // StreamTrackParams defines parameters for StreamTrack.
 type StreamTrackParams struct {
+	// Quality preferred quality; the server falls back to the closest available preset and then to the original track file
 	Quality *string `form:"quality,omitempty" json:"quality,omitempty"`
 }
 
 // StreamTrackHeadParams defines parameters for StreamTrackHead.
 type StreamTrackHeadParams struct {
+	// Quality preferred quality; the server falls back to the closest available preset and then to the original track file
 	Quality *string `form:"quality,omitempty" json:"quality,omitempty"`
 }
 
@@ -267,7 +272,7 @@ type RegisterJSONRequestBody = UserAuth
 type CreatePlaylistMultipartRequestBody = PlaylistCreateRequest
 
 // UpdatePlaylistJSONRequestBody defines body for UpdatePlaylist for application/json ContentType.
-type UpdatePlaylistJSONRequestBody = PlaylistResponse
+type UpdatePlaylistJSONRequestBody = PlaylistUpdateRequest
 
 // AddTrackToPlaylistJSONRequestBody defines body for AddTrackToPlaylist for application/json ContentType.
 type AddTrackToPlaylistJSONRequestBody AddTrackToPlaylistJSONBody

@@ -55,20 +55,21 @@ func (q *Queries) GetArtist(ctx context.Context, id int32) (GetArtistRow, error)
 }
 
 const getPlaylist = `-- name: GetPlaylist :one
-SELECT "playlist".id as id, "playlist".name as name
+SELECT id, name, owner_id
     FROM "playlist"
 WHERE "playlist".id = $1
 `
 
 type GetPlaylistRow struct {
-	ID   int32
-	Name string
+	ID      int32
+	Name    string
+	OwnerID pgtype.Int4
 }
 
 func (q *Queries) GetPlaylist(ctx context.Context, id int32) (GetPlaylistRow, error) {
 	row := q.db.QueryRow(ctx, getPlaylist, id)
 	var i GetPlaylistRow
-	err := row.Scan(&i.ID, &i.Name)
+	err := row.Scan(&i.ID, &i.Name, &i.OwnerID)
 	return i, err
 }
 

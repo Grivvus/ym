@@ -793,16 +793,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PlaylistResponse'
+              $ref: '#/components/schemas/PlaylistUpdateRequest'
       responses:
         '200':
           description: playlist was successfully updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PlaylistWithTracksResponse'
+                $ref: '#/components/schemas/PlaylistResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: you have no permition to change this playlist
           content:
             application/json:
               schema:
@@ -1559,6 +1565,14 @@ components:
           items:
             type: integer
             format: int32
+
+    PlaylistUpdateRequest:
+      type: object
+      required:
+        - playlist_name
+      properties:
+        playlist_name:
+          type: string
 
     PlaylistResponse:
       type: object
