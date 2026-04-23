@@ -36,6 +36,90 @@ func (q *Queries) GetAlbum(ctx context.Context, id int32) (GetAlbumRow, error) {
 	return i, err
 }
 
+const getAlbumByTrackID = `-- name: GetAlbumByTrackID :one
+SELECT album_id FROM track_album
+    WHERE track_id = $1
+    LIMIT 1
+`
+
+func (q *Queries) GetAlbumByTrackID(ctx context.Context, trackID int32) (int32, error) {
+	row := q.db.QueryRow(ctx, getAlbumByTrackID, trackID)
+	var album_id int32
+	err := row.Scan(&album_id)
+	return album_id, err
+}
+
+const getAlbumWithTracks = `-- name: GetAlbumWithTracks :many
+SELECT "album".id, "album".name, "album".release_year,
+        "album".release_full_date, "track_album".track_id
+    FROM "album" INNER JOIN "track_album"
+    ON "album".id = "track_album".album_id
+WHERE "album".id = $1
+`
+
+type GetAlbumWithTracksRow struct {
+	ID              int32
+	Name            string
+	ReleaseYear     pgtype.Int4
+	ReleaseFullDate pgtype.Date
+	TrackID         int32
+}
+
+func (q *Queries) GetAlbumWithTracks(ctx context.Context, id int32) ([]GetAlbumWithTracksRow, error) {
+	rows, err := q.db.Query(ctx, getAlbumWithTracks, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAlbumWithTracksRow
+	for rows.Next() {
+		var i GetAlbumWithTracksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ReleaseYear,
+			&i.ReleaseFullDate,
+			&i.TrackID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllArtists = `-- name: GetAllArtists :many
+SELECT "id", "name" FROM artist
+`
+
+type GetAllArtistsRow struct {
+	ID   int32
+	Name string
+}
+
+func (q *Queries) GetAllArtists(ctx context.Context) ([]GetAllArtistsRow, error) {
+	rows, err := q.db.Query(ctx, getAllArtists)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllArtistsRow
+	for rows.Next() {
+		var i GetAllArtistsRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getArtist = `-- name: GetArtist :one
 SELECT "artist".id, "artist".name
     from "artist" 
@@ -52,6 +136,77 @@ func (q *Queries) GetArtist(ctx context.Context, id int32) (GetArtistRow, error)
 	var i GetArtistRow
 	err := row.Scan(&i.ID, &i.Name)
 	return i, err
+}
+
+const getArtistWithAlbums = `-- name: GetArtistWithAlbums :many
+SELECT "artist".id as artist_id, "artist".name as artist_name,
+        "album".id as album_id
+    FROM "artist" INNER JOIN "album"
+    ON "artist".id = "album".artist_id
+WHERE "artist".id = $1
+`
+
+type GetArtistWithAlbumsRow struct {
+	ArtistID   int32
+	ArtistName string
+	AlbumID    int32
+}
+
+func (q *Queries) GetArtistWithAlbums(ctx context.Context, id int32) ([]GetArtistWithAlbumsRow, error) {
+	rows, err := q.db.Query(ctx, getArtistWithAlbums, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetArtistWithAlbumsRow
+	for rows.Next() {
+		var i GetArtistWithAlbumsRow
+		if err := rows.Scan(&i.ArtistID, &i.ArtistName, &i.AlbumID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getArtistsWithFilter = `-- name: GetArtistsWithFilter :many
+SELECT "id", "name" FROM artist
+                    -- starts with
+    WHERE "name" LIKE $1 || '%'
+LIMIT $2
+`
+
+type GetArtistsWithFilterParams struct {
+	Column1 pgtype.Text
+	Limit   int32
+}
+
+type GetArtistsWithFilterRow struct {
+	ID   int32
+	Name string
+}
+
+func (q *Queries) GetArtistsWithFilter(ctx context.Context, arg GetArtistsWithFilterParams) ([]GetArtistsWithFilterRow, error) {
+	rows, err := q.db.Query(ctx, getArtistsWithFilter, arg.Column1, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetArtistsWithFilterRow
+	for rows.Next() {
+		var i GetArtistsWithFilterRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getPlaylist = `-- name: GetPlaylist :one
@@ -71,6 +226,39 @@ func (q *Queries) GetPlaylist(ctx context.Context, id int32) (GetPlaylistRow, er
 	var i GetPlaylistRow
 	err := row.Scan(&i.ID, &i.Name, &i.OwnerID)
 	return i, err
+}
+
+const getPlaylistWithTracks = `-- name: GetPlaylistWithTracks :many
+SELECT "playlist".id, "playlist".name, "track_playlist".track_id
+    from "playlist" inner join "track_playlist"
+    ON "playlist".id = "track_playlist".playlist_id
+    WHERE "playlist".id = $1
+`
+
+type GetPlaylistWithTracksRow struct {
+	ID      int32
+	Name    string
+	TrackID int32
+}
+
+func (q *Queries) GetPlaylistWithTracks(ctx context.Context, id int32) ([]GetPlaylistWithTracksRow, error) {
+	rows, err := q.db.Query(ctx, getPlaylistWithTracks, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPlaylistWithTracksRow
+	for rows.Next() {
+		var i GetPlaylistWithTracksRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.TrackID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getTrack = `-- name: GetTrack :one
@@ -111,4 +299,100 @@ func (q *Queries) GetTrack(ctx context.Context, id int32) (GetTrackRow, error) {
 		&i.LosslessPresetFname,
 	)
 	return i, err
+}
+
+const getUserPlaylists = `-- name: GetUserPlaylists :many
+SELECT "playlist".id, "playlist".name
+    FROM "playlist"
+    WHERE "playlist".owner_id = $1 OR "playlist".is_public IS TRUE
+`
+
+type GetUserPlaylistsRow struct {
+	ID   int32
+	Name string
+}
+
+func (q *Queries) GetUserPlaylists(ctx context.Context, ownerID pgtype.Int4) ([]GetUserPlaylistsRow, error) {
+	rows, err := q.db.Query(ctx, getUserPlaylists, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserPlaylistsRow
+	for rows.Next() {
+		var i GetUserPlaylistsRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserTracks = `-- name: GetUserTracks :many
+SELECT t.id, t.name, t.artist_id, duration_ms,
+t.fast_preset_fname, t.standard_preset_fname,
+t.high_preset_fname, t.lossless_preset_fname
+    FROM "track" AS t
+    WHERE t.is_globally_available OR t.upload_by_user = $1
+`
+
+type GetUserTracksRow struct {
+	ID                  int32
+	Name                string
+	ArtistID            int32
+	DurationMs          pgtype.Int4
+	FastPresetFname     pgtype.Text
+	StandardPresetFname pgtype.Text
+	HighPresetFname     pgtype.Text
+	LosslessPresetFname pgtype.Text
+}
+
+func (q *Queries) GetUserTracks(ctx context.Context, uploadByUser pgtype.Int4) ([]GetUserTracksRow, error) {
+	rows, err := q.db.Query(ctx, getUserTracks, uploadByUser)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserTracksRow
+	for rows.Next() {
+		var i GetUserTracksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ArtistID,
+			&i.DurationMs,
+			&i.FastPresetFname,
+			&i.StandardPresetFname,
+			&i.HighPresetFname,
+			&i.LosslessPresetFname,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUsersPlaylistByName = `-- name: GetUsersPlaylistByName :one
+SELECT p.id FROM playlist as p
+    WHERE p.owner_id = $1 AND p.name = $2
+`
+
+type GetUsersPlaylistByNameParams struct {
+	OwnerID pgtype.Int4
+	Name    string
+}
+
+func (q *Queries) GetUsersPlaylistByName(ctx context.Context, arg GetUsersPlaylistByNameParams) (int32, error) {
+	row := q.db.QueryRow(ctx, getUsersPlaylistByName, arg.OwnerID, arg.Name)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
 }
