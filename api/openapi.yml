@@ -1554,8 +1554,6 @@ components:
           format: int32
         playlist_name:
           type: string
-        cover_url:
-          type: string
         tracks:
           type: array
           items:
@@ -1643,8 +1641,6 @@ components:
           type: integer
           format: int32
         album_name:
-          type: string
-        cover_url:
           type: string
         release_year:
           type: integer
