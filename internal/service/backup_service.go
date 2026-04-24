@@ -42,10 +42,10 @@ type BackupSettings struct {
 }
 
 type BackupService struct {
-	logger    *slog.Logger
-	queries   *db.Queries
-	storage   storage.Storage
-	restoreMu *sync.Mutex
+	logger     *slog.Logger
+	queries    *db.Queries
+	objStorage storage.Storage
+	restoreMu  *sync.Mutex
 }
 
 type backupManifest struct {
@@ -82,10 +82,10 @@ func NewBackupService(
 	logger *slog.Logger, queries *db.Queries, storage storage.Storage,
 ) BackupService {
 	return BackupService{
-		logger:    logger,
-		queries:   queries,
-		storage:   storage,
-		restoreMu: &sync.Mutex{},
+		logger:     logger,
+		queries:    queries,
+		objStorage: storage,
+		restoreMu:  &sync.Mutex{},
 	}
 }
 
@@ -299,7 +299,7 @@ func (service BackupService) backupImages(
 	ctx context.Context, zipWriter *zip.Writer, snapshot dto.FullDBBackup,
 ) error {
 	for _, obj := range imageArchiveObjects(snapshot) {
-		payload, err := service.storage.GetImage(ctx, obj.storageKey)
+		payload, err := service.objStorage.GetImage(ctx, obj.storageKey)
 		if err != nil {
 			if errors.Is(err, storage.ErrObjectNotFound) {
 				continue
@@ -628,7 +628,7 @@ func (service BackupService) clearStorageState(
 	ctx context.Context, snapshot dto.FullDBBackup,
 ) error {
 	for _, obj := range imageArchiveObjects(snapshot) {
-		if err := service.storage.RemoveImage(ctx, obj.storageKey); err != nil &&
+		if err := service.objStorage.RemoveImage(ctx, obj.storageKey); err != nil &&
 			!errors.Is(err, storage.ErrObjectNotFound) {
 			return fmt.Errorf("can't remove current image %q: %w", obj.storageKey, err)
 		}
@@ -643,7 +643,7 @@ func (service BackupService) clearStorageState(
 			continue
 		}
 		seenTrackKeys[obj.storageKey] = struct{}{}
-		if err := service.storage.RemoveTrack(ctx, obj.storageKey); err != nil &&
+		if err := service.objStorage.RemoveTrack(ctx, obj.storageKey); err != nil &&
 			!errors.Is(err, storage.ErrObjectNotFound) {
 			return fmt.Errorf("can't remove current track object %q: %w", obj.storageKey, err)
 		}
@@ -670,7 +670,7 @@ func (service BackupService) restoreStorageState(
 			if err != nil {
 				return fmt.Errorf("can't open archived image %q: %w", file.Name, err)
 			}
-			err = service.storage.PutImage(ctx, key, rc)
+			err = service.objStorage.PutImage(ctx, key, rc)
 			closeErr := rc.Close()
 			if err != nil {
 				return fmt.Errorf("can't restore image %q: %w", key, err)
@@ -704,7 +704,7 @@ func (service BackupService) restoreTrackFile(
 	if err != nil {
 		return fmt.Errorf("can't open archived track %q: %w", file.Name, err)
 	}
-	err = service.storage.PutTrack(ctx, key, rc, int64(file.UncompressedSize64))
+	err = service.objStorage.PutTrack(ctx, key, rc, int64(file.UncompressedSize64))
 	closeErr := rc.Close()
 	if err != nil {
 		return fmt.Errorf("can't restore track %q: %w", key, err)
@@ -719,7 +719,7 @@ func (service BackupService) restoreTrackFile(
 func (service BackupService) writeTrackToArchive(
 	ctx context.Context, zipWriter *zip.Writer, obj archiveObject,
 ) error {
-	reader, err := service.storage.GetTrack(ctx, obj.storageKey)
+	reader, err := service.objStorage.GetTrack(ctx, obj.storageKey)
 	if err != nil {
 		return fmt.Errorf("can't backup track object %q: %w", obj.storageKey, err)
 	}

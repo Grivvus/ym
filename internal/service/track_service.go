@@ -41,7 +41,7 @@ type TrackStream struct {
 
 type TrackService struct {
 	queries                *db.Queries
-	st                     storage.Storage
+	objStorage             storage.Storage
 	logger                 *slog.Logger
 	transcodingQueueSignal chan<- struct{}
 }
@@ -52,7 +52,7 @@ func NewTrackService(
 ) TrackService {
 	return TrackService{
 		queries:                q,
-		st:                     st,
+		objStorage:             st,
 		logger:                 logger,
 		transcodingQueueSignal: transcodingQueueSignal,
 	}
@@ -125,7 +125,7 @@ func (s *TrackService) UploadTrack(
 	defer func() { _ = rc.Close() }()
 
 	tmpFname := originalTrackStorageKey(track.ID)
-	err = s.st.PutTrack(ctx, tmpFname, rc, trackFileHeader.Size)
+	err = s.objStorage.PutTrack(ctx, tmpFname, rc, trackFileHeader.Size)
 	if err != nil {
 		s.logger.Warn("error mapping should be more precise")
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -152,24 +152,24 @@ func (s *TrackService) DeleteTrack(ctx context.Context, trackID int32) error {
 	}
 	errs := make([]error, 0, 5)
 	if metadata.TrackFastPreset != nil {
-		errs = append(errs, s.st.RemoveTrack(ctx, *metadata.TrackFastPreset))
+		errs = append(errs, s.objStorage.RemoveTrack(ctx, *metadata.TrackFastPreset))
 	}
 	if metadata.TrackStandardPreset != nil {
-		errs = append(errs, s.st.RemoveTrack(ctx, *metadata.TrackStandardPreset))
+		errs = append(errs, s.objStorage.RemoveTrack(ctx, *metadata.TrackStandardPreset))
 	}
 	if metadata.TrackHighPreset != nil {
-		errs = append(errs, s.st.RemoveTrack(ctx, *metadata.TrackHighPreset))
+		errs = append(errs, s.objStorage.RemoveTrack(ctx, *metadata.TrackHighPreset))
 	}
 	if metadata.TrackLosslessPreset != nil {
-		errs = append(errs, s.st.RemoveTrack(ctx, *metadata.TrackLosslessPreset))
+		errs = append(errs, s.objStorage.RemoveTrack(ctx, *metadata.TrackLosslessPreset))
 	}
-	errs = append(errs, s.st.RemoveTrack(ctx, metadata.Name))
+	errs = append(errs, s.objStorage.RemoveTrack(ctx, metadata.Name))
 	for _, err := range errs {
 		if err != nil {
 			return fmt.Errorf("can't remove track file: %w", err)
 		}
 	}
-	err = s.st.RemoveTrack(ctx, originalTrackStorageKey(metadata.TrackId))
+	err = s.objStorage.RemoveTrack(ctx, originalTrackStorageKey(metadata.TrackId))
 	if err != nil {
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
@@ -275,7 +275,7 @@ func (s *TrackService) GetStream(
 		return TrackStream{}, err
 	}
 
-	stream, err := s.st.GetTrack(ctx, trackKey)
+	stream, err := s.objStorage.GetTrack(ctx, trackKey)
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotFound) {
 			return TrackStream{}, fmt.Errorf(
@@ -288,7 +288,7 @@ func (s *TrackService) GetStream(
 		)
 	}
 
-	_, ctype, err := s.st.GetTrackInfo(ctx, trackKey)
+	_, ctype, err := s.objStorage.GetTrackInfo(ctx, trackKey)
 	if err != nil {
 		_ = stream.Close()
 		return TrackStream{}, fmt.Errorf("can't fetch track info: %w", err)

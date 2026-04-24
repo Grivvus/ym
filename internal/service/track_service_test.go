@@ -6,6 +6,8 @@ import (
 	"github.com/Grivvus/ym/internal/audio"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFindClosestExistingTrackKey(t *testing.T) {
@@ -130,21 +132,13 @@ func TestFindClosestExistingTrackKey(t *testing.T) {
 
 			got, err := findClosestExistingTrackKey(tc.track, tc.preset)
 			if tc.want == "" {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-				if err != ErrPresetCantBeSelected {
-					t.Fatalf("expected ErrPresetCantBeSelected, got %v", err)
-				}
+				require.Error(t, err, "expected error, got nil")
+				assert.ErrorIs(t, err, ErrPresetCantBeSelected)
 				return
 			}
 
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if got != tc.want {
-				t.Fatalf("expected %q, got %q", tc.want, got)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }

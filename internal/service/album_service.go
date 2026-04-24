@@ -27,16 +27,16 @@ type AlbumCreateParams struct {
 
 type AlbumService struct {
 	queries        *db.Queries
-	st             storage.Storage
+	objStorage     storage.Storage
 	logger         *slog.Logger
 	artworkService ArtworkManager
 }
 
 func NewAlbumService(q *db.Queries, st storage.Storage, logger *slog.Logger) AlbumService {
 	svc := AlbumService{
-		queries: q,
-		st:      st,
-		logger:  logger,
+		queries:    q,
+		objStorage: st,
+		logger:     logger,
 	}
 	svc.artworkService = NewArtworkManager(st, svc.loadArtworkOwner, logger)
 

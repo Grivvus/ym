@@ -17,16 +17,16 @@ import (
 
 type UserService struct {
 	queries        *db.Queries
-	st             storage.Storage
+	objStorage     storage.Storage
 	logger         *slog.Logger
 	artworkService ArtworkManager
 }
 
 func NewUserService(q *db.Queries, st storage.Storage, logger *slog.Logger) UserService {
 	svc := UserService{
-		queries: q,
-		st:      st,
-		logger:  logger,
+		queries:    q,
+		objStorage: st,
+		logger:     logger,
 	}
 
 	svc.artworkService = NewArtworkManager(st, svc.loadArtworkOwner, logger)

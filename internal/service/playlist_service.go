@@ -24,16 +24,16 @@ type PlaylistCreateParams struct {
 
 type PlaylistService struct {
 	queries        *db.Queries
-	st             storage.Storage
+	objStorage     storage.Storage
 	logger         *slog.Logger
 	artworkService ArtworkManager
 }
 
 func NewPlaylistService(q *db.Queries, st storage.Storage, logger *slog.Logger) PlaylistService {
 	svc := PlaylistService{
-		queries: q,
-		st:      st,
-		logger:  logger,
+		queries:    q,
+		objStorage: st,
+		logger:     logger,
 	}
 
 	svc.artworkService = NewArtworkManager(st, svc.loadArtworkOwner, logger)

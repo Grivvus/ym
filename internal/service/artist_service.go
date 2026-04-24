@@ -18,16 +18,16 @@ import (
 
 type ArtistService struct {
 	queries        *db.Queries
-	st             storage.Storage
+	objStorage     storage.Storage
 	logger         *slog.Logger
 	artworkService ArtworkManager
 }
 
 func NewArtistService(q *db.Queries, st storage.Storage, logger *slog.Logger) ArtistService {
 	svc := ArtistService{
-		queries: q,
-		st:      st,
-		logger:  logger,
+		queries:    q,
+		objStorage: st,
+		logger:     logger,
 	}
 
 	svc.artworkService = NewArtworkManager(st, svc.loadArtworkOwner, logger)

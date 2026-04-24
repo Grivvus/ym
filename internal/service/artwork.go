@@ -24,18 +24,18 @@ func (owner ArtworkOwner) Key() string {
 type ArtworkLoader func(ctx context.Context, id int32) (ArtworkOwner, error)
 
 type ArtworkManager struct {
-	storage storage.Storage
-	load    ArtworkLoader
-	logger  *slog.Logger
+	objStorage storage.Storage
+	load       ArtworkLoader
+	logger     *slog.Logger
 }
 
 func NewArtworkManager(
 	storage storage.Storage, load ArtworkLoader, logger *slog.Logger,
 ) ArtworkManager {
 	return ArtworkManager{
-		storage: storage,
-		load:    load,
-		logger:  logger,
+		objStorage: storage,
+		load:       load,
+		logger:     logger,
 	}
 }
 
@@ -52,7 +52,7 @@ func (m ArtworkManager) Upload(ctx context.Context, id int32, src io.Reader) err
 		)
 	}
 	defer func() { _ = rc.Close() }()
-	err = m.storage.PutImage(ctx, owner.Key(), rc)
+	err = m.objStorage.PutImage(ctx, owner.Key(), rc)
 	if err != nil {
 		if errors.Is(err, storage.ErrBadObject) {
 			return fmt.Errorf("%w file is too large or too small: %w", ErrBadParams, err)
@@ -67,7 +67,7 @@ func (m ArtworkManager) Get(ctx context.Context, id int32) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	img, err := m.storage.GetImage(ctx, owner.Key())
+	img, err := m.objStorage.GetImage(ctx, owner.Key())
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotFound) {
 			return nil, NewErrNotFound(owner.Kind, owner.ID)
@@ -82,7 +82,7 @@ func (m ArtworkManager) Delete(ctx context.Context, id int32) error {
 	if err != nil {
 		return err
 	}
-	err = m.storage.RemoveImage(ctx, owner.Key())
+	err = m.objStorage.RemoveImage(ctx, owner.Key())
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotFound) {
 			// nop
