@@ -165,7 +165,6 @@ type TokenResponse struct {
 type TrackMetadata struct {
 	AlbumId             int32   `json:"album_id"`
 	ArtistId            int32   `json:"artist_id"`
-	CoverUrl            *string `json:"cover_url,omitempty"`
 	DurationMs          int32   `json:"duration_ms"`
 	Name                string  `json:"name"`
 	TrackFastPreset     *string `json:"track_fast_preset,omitempty"`
@@ -395,7 +394,7 @@ type ServerInterface interface {
 	GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32)
 	// get user by id
 	// (GET /users/{userId})
-	GetUserById(w http.ResponseWriter, r *http.Request, userId int32)
+	GetUser(w http.ResponseWriter, r *http.Request, userId int32)
 	// update user
 	// (PATCH /users/{userId})
 	ChangeUser(w http.ResponseWriter, r *http.Request, userId int32)
@@ -617,7 +616,7 @@ func (_ Unimplemented) GetTrackMeta(w http.ResponseWriter, r *http.Request, trac
 
 // get user by id
 // (GET /users/{userId})
-func (_ Unimplemented) GetUserById(w http.ResponseWriter, r *http.Request, userId int32) {
+func (_ Unimplemented) GetUser(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1642,8 +1641,8 @@ func (siw *ServerInterfaceWrapper) GetTrackMeta(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
-// GetUserById operation middleware
-func (siw *ServerInterfaceWrapper) GetUserById(w http.ResponseWriter, r *http.Request) {
+// GetUser operation middleware
+func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 
@@ -1663,7 +1662,7 @@ func (siw *ServerInterfaceWrapper) GetUserById(w http.ResponseWriter, r *http.Re
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetUserById(w, r, userId)
+		siw.Handler.GetUser(w, r, userId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2047,7 +2046,7 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/tracks/{trackId}", wrapper.GetTrackMeta)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/users/{userId}", wrapper.GetUserById)
+		r.Get(options.BaseURL+"/users/{userId}", wrapper.GetUser)
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/users/{userId}", wrapper.ChangeUser)

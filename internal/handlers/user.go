@@ -16,13 +16,13 @@ type UserHandlers struct {
 	logger      *slog.Logger
 }
 
-func (u UserHandlers) GetUserById(
+func (u UserHandlers) GetUser(
 	w http.ResponseWriter, r *http.Request, userId int32,
 ) {
 	if !requireCurrentUser(w, r, userId) {
 		return
 	}
-	user, err := u.userService.GetUserByID(r.Context(), userId)
+	user, err := u.userService.GetUser(r.Context(), userId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("can't find user with this id"))

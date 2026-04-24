@@ -89,7 +89,7 @@ paths:
   /users/{userId}:
     get:
       summary: get user by id
-      operationId: getUserById
+      operationId: getUser
       parameters:
         - in: path
           name: userId

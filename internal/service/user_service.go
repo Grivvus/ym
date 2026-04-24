@@ -37,7 +37,7 @@ func NewUserService(q *db.Queries, st storage.Storage, logger *slog.Logger) User
 func (u *UserService) loadArtworkOwner(
 	ctx context.Context, ownerID int32,
 ) (ArtworkOwner, error) {
-	user, err := u.GetUserByID(ctx, ownerID)
+	user, err := u.GetUser(ctx, ownerID)
 	if err != nil {
 		return ArtworkOwner{}, err
 	}
@@ -48,7 +48,7 @@ func (u *UserService) loadArtworkOwner(
 	}, nil
 }
 
-func (u *UserService) GetUserByID(
+func (u *UserService) GetUser(
 	ctx context.Context, userID int32,
 ) (api.UserReturn, error) {
 	var ret api.UserReturn

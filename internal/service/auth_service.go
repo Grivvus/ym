@@ -38,17 +38,13 @@ func (a AuthService) Register(
 	if err != nil {
 		return api.TokenResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
-	isSuperuser := false
-	if usersCnt == 0 {
-		isSuperuser = true
-	}
 	hashed, salt := utils.HashPassword(user.Password)
 	arg := db.CreateUserParams{
 		Username:    user.Username,
 		Email:       pgtype.Text{Valid: false},
 		Password:    hashed,
 		Salt:        salt,
-		IsSuperuser: isSuperuser,
+		IsSuperuser: usersCnt == 0,
 	}
 	createdUser, err := a.queries.CreateUser(ctx, arg)
 	if err != nil {
