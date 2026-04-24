@@ -1445,8 +1445,6 @@ components:
         album_id:
           type: integer
           format: int32
-        cover_url:
-          type: string
         duration_ms:
           type: integer
           format: int32

@@ -205,14 +205,11 @@ func (s *TrackService) GetMeta(
 	if trackInfo.LosslessPresetFname.Valid {
 		losslessPreset = &trackInfo.LosslessPresetFname.String
 	}
-	s.logger.Warn("remove hardcoded values")
-	trackCoverURL := fmt.Sprintf("0.0.0.0:8000/albums/%d/cover", trackInfo.AlbumID)
 
 	return api.TrackMetadata{
 		TrackId:             trackInfo.ID,
 		ArtistId:            trackInfo.ArtistID,
 		AlbumId:             trackInfo.AlbumID,
-		CoverUrl:            &trackCoverURL,
 		Name:                trackInfo.Name,
 		DurationMs:          trackInfo.DurationMs.Int32,
 		TrackFastPreset:     fastPreset,
@@ -234,10 +231,11 @@ func (s *TrackService) GetUserTracks(
 		albumID, err := s.queries.GetAlbumByTrackID(ctx, track.ID)
 		if err != nil {
 			if errors.Is(pgx.ErrNoRows, err) {
-				return nil, fmt.Errorf(
-					"%w: track must have at least 1 album, but found none - %w",
-					ErrUnknownDBError, err,
+				s.logger.Warn(
+					"track without assosiated album",
+					slog.Int("trackID", int(track.ID)),
 				)
+				continue
 			}
 			return nil, fmt.Errorf("%w: exact - %w", ErrUnknownDBError, err)
 		}
