@@ -41,9 +41,13 @@ func main() {
 		os.Stdout, &slog.HandlerOptions{AddSource: true},
 	))
 
-	err := godotenv.Load(".env.minio", ".env")
-	if err != nil {
-		logger.Error("Can't load .env file", "err", err)
+	for _, path := range []string{".env", ".env.minio"} {
+		err := godotenv.Load(path)
+		if err == nil || os.IsNotExist(err) {
+			continue
+		}
+
+		logger.Error("can't load env file", "path", path, "err", err)
 		exitCode = 1
 		return
 	}
@@ -122,12 +126,7 @@ func main() {
 	logger.Info("server was started on", "port", cfg.Port)
 
 	go func() {
-		var err error
-		if cfg.TLSCertFile != "" && cfg.TLSKeyFile != "" {
-			err = s.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile)
-		} else {
-			err = s.ListenAndServe()
-		}
+		err := s.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("listen failed", "err", err)
 		}

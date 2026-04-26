@@ -22,9 +22,6 @@ type Config struct {
 	S3AccessKey        string `envconfig:"MINIO_ACCESS_KEY" required:"true"`
 	S3SecretKey        string `envconfig:"MINIO_SECRET_KEY" required:"true"`
 	S3SecureConnection bool   `envconfig:"S3_SECURE" default:"false"`
-
-	TLSCertFile string `envconfig:"APPLICATION_TLS_CERT_FILE"`
-	TLSKeyFile  string `envconfig:"APPLICATION_TLS_KEY_FILE"`
 }
 
 func NewConfig() (*Config, error) {

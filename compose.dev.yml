@@ -10,8 +10,10 @@ services:
         condition: service_completed_successfully
     build:
       context: .
+    env_file:
+      - .env
     volumes:
-      - ./.env.minio:/.env.minio:rw
+      - ./.env.minio:/.env.minio:ro
     develop:
       watch:
         - action: rebuild
