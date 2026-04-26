@@ -1421,11 +1421,11 @@ components:
           format: email
         code:
           type: string
-          minLength: 1
+          minLength: 6
         new_password:
           type: string
           format: password
-          minLength: 1
+          minLength: 6
 
     UserUpdate:
       type: object
