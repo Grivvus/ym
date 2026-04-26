@@ -56,6 +56,14 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 			_ = WriteError(w, http.StatusNotFound, fmt.Errorf("no such user"))
 			return
 		}
+		if errors.Is(err, service.ErrBadParams) {
+			_ = WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
+			_ = WriteError(w, http.StatusConflict, fmt.Errorf("user already exists"))
+			return
+		}
 		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}

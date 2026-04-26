@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,19 +17,22 @@ import (
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/handlers"
 	"github.com/Grivvus/ym/internal/service"
+	"github.com/Grivvus/ym/internal/utils"
 	"github.com/Grivvus/ym/tests/testenv"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgtype"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 )
 
 type IntegrationTestSuite struct {
 	suite.Suite
-	env    *testenv.Environment
-	server *httptest.Server
-	client *http.Client
+	env         *testenv.Environment
+	server      *httptest.Server
+	client      *http.Client
+	resetMailer *testPasswordResetMailer
 }
 
 func TestIntegrationTestSuite(t *testing.T) {
@@ -47,8 +51,21 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	queueNotificationChan := make(chan struct{}, 1)
+	s.resetMailer = newTestPasswordResetMailer()
+	passwordResetCfg := &utils.PasswordResetConfig{
+		Enabled:         true,
+		CodeSecret:      "integration-password-reset-secret",
+		CodeTTL:         15 * time.Minute,
+		ResendCooldown:  time.Minute,
+		MaxAttempts:     5,
+		CodeLength:      6,
+		AcceptedMessage: "if an account with that email exists, a reset code has been sent",
+	}
 
 	authService := service.NewAuthService(env.Queries, logger, &env.Config)
+	passwordResetService := service.NewPasswordResetService(
+		env.Queries, logger, s.resetMailer, passwordResetCfg,
+	)
 	userService := service.NewUserService(env.Queries, env.Storage, logger)
 	albumService := service.NewAlbumService(env.Queries, env.Storage, logger)
 	playlistService := service.NewPlaylistService(env.Queries, env.Storage, logger)
@@ -58,7 +75,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	rootHandler := handlers.NewRootHandler(
 		logger,
-		authService, userService,
+		authService, passwordResetService, userService,
 		albumService, artistService,
 		trackService, playlistService,
 		backupService,
@@ -94,6 +111,7 @@ func (s *IntegrationTestSuite) SetupTest() {
 
 	_, err := s.env.DB.Exec(ctx, `
 		TRUNCATE TABLE
+			"password_reset_code",
 			"transcoding_queue",
 			"track_playlist",
 			"track_album",
@@ -106,6 +124,7 @@ func (s *IntegrationTestSuite) SetupTest() {
 		RESTART IDENTITY CASCADE
 	`)
 	s.Require().NoError(err)
+	s.resetMailer.Reset()
 }
 
 func (s *IntegrationTestSuite) TestEnvironmentBootstrapsDatabaseAndStorage() {
@@ -271,6 +290,7 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 
 	_, err = s.env.DB.Exec(ctx, `
 		TRUNCATE TABLE
+			"password_reset_code",
 			"transcoding_queue",
 			"track_playlist",
 			"track_album",
@@ -338,41 +358,206 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 	s.Equal(fastTrack, fastPayload)
 }
 
-type registerResponse struct {
-	StatusCode int
-	Body       api.TokenResponse
+func (s *IntegrationTestSuite) TestPasswordReset_RequestReturnsAcceptedForUnknownEmail() {
+	resp := s.requestPasswordReset("unknown@example.com")
+
+	s.Equal(http.StatusAccepted, resp.StatusCode)
+	s.Equal(
+		"if an account with that email exists, a reset code has been sent",
+		resp.Body.Msg,
+	)
+	_, exists := s.resetMailer.LastCode("unknown@example.com")
+	s.False(exists)
 }
 
-func (s *IntegrationTestSuite) registerUser(user api.UserAuth) registerResponse {
-	body, err := json.Marshal(user)
-	s.Require().NoError(err)
+func (s *IntegrationTestSuite) TestPasswordReset_ConfirmChangesPasswordAndInvalidatesRefreshToken() {
+	registerResp := s.registerUser(api.UserAuth{
+		Username: "reset-user",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusCreated, registerResp.StatusCode)
+	s.setUserEmail(registerResp.Body.UserId, "reset@example.com", "reset-user")
+
+	requestResp := s.requestPasswordReset("reset@example.com")
+	s.Equal(http.StatusAccepted, requestResp.StatusCode)
+
+	code, exists := s.resetMailer.LastCode("reset@example.com")
+	s.True(exists)
+	s.Len(code, 6)
+
+	oldAccessToken := registerResp.Body.AccessToken
+	oldRefreshToken := registerResp.Body.RefreshToken
+
+	confirmResp := s.confirmPasswordReset("reset@example.com", code, "password-2")
+	s.Equal(http.StatusOK, confirmResp.StatusCode)
+	s.Equal("password was successfully reset", confirmResp.Body.Msg)
+
+	refreshResp := s.refreshTokens(oldRefreshToken)
+	s.Equal(http.StatusUnauthorized, refreshResp.StatusCode)
+	s.Equal("invalid refresh token", refreshResp.Error.Error)
+
+	loginOldPasswordResp := s.loginUser(api.UserAuth{
+		Username: "reset-user",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusUnauthorized, loginOldPasswordResp.StatusCode)
+	s.Equal("invalid credentials", loginOldPasswordResp.Error.Error)
+
+	loginNewPasswordResp := s.loginUser(api.UserAuth{
+		Username: "reset-user",
+		Password: "password-2",
+	})
+	s.Equal(http.StatusOK, loginNewPasswordResp.StatusCode)
+	s.NotEmpty(loginNewPasswordResp.Body.AccessToken)
+
+	statusCode, body := s.performJSONRequest(
+		http.MethodGet,
+		fmt.Sprintf("/users/%d", registerResp.Body.UserId),
+		nil,
+		oldAccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+
+	var user api.UserReturn
+	s.Require().NoError(json.Unmarshal(body, &user))
+	s.Equal("reset@example.com", *user.Email)
+}
+
+type tokenResponse struct {
+	StatusCode int
+	Body       api.TokenResponse
+	Error      api.ErrorResponse
+}
+
+type messageResponse struct {
+	StatusCode int
+	Body       api.MessageResponse
+	Error      api.ErrorResponse
+}
+
+func (s *IntegrationTestSuite) registerUser(user api.UserAuth) tokenResponse {
+	statusCode, respBody := s.performJSONRequest(http.MethodPost, "/auth/register", user, "")
+
+	var tokenResp api.TokenResponse
+	s.Require().NoError(json.Unmarshal(respBody, &tokenResp))
+
+	return tokenResponse{
+		StatusCode: statusCode,
+		Body:       tokenResp,
+	}
+}
+
+func (s *IntegrationTestSuite) loginUser(user api.UserAuth) tokenResponse {
+	statusCode, respBody := s.performJSONRequest(http.MethodPost, "/auth/login", user, "")
+	response := tokenResponse{StatusCode: statusCode}
+	if statusCode == http.StatusOK {
+		s.Require().NoError(json.Unmarshal(respBody, &response.Body))
+	} else {
+		s.Require().NoError(json.Unmarshal(respBody, &response.Error))
+	}
+	return response
+}
+
+func (s *IntegrationTestSuite) refreshTokens(refreshToken string) tokenResponse {
+	statusCode, respBody := s.performJSONRequest(
+		http.MethodPost,
+		"/auth/refresh",
+		api.UpdateTokenRequest{RefreshToken: refreshToken},
+		"",
+	)
+	response := tokenResponse{StatusCode: statusCode}
+	if statusCode == http.StatusOK {
+		s.Require().NoError(json.Unmarshal(respBody, &response.Body))
+	} else {
+		s.Require().NoError(json.Unmarshal(respBody, &response.Error))
+	}
+	return response
+}
+
+func (s *IntegrationTestSuite) requestPasswordReset(email string) messageResponse {
+	statusCode, respBody := s.performJSONRequest(
+		http.MethodPost,
+		"/auth/password-reset/request",
+		api.PasswordResetRequest{Email: openapi_types.Email(email)},
+		"",
+	)
+	response := messageResponse{StatusCode: statusCode}
+	if statusCode == http.StatusAccepted {
+		s.Require().NoError(json.Unmarshal(respBody, &response.Body))
+	} else {
+		s.Require().NoError(json.Unmarshal(respBody, &response.Error))
+	}
+	return response
+}
+
+func (s *IntegrationTestSuite) confirmPasswordReset(
+	email string, code string, newPassword string,
+) messageResponse {
+	statusCode, respBody := s.performJSONRequest(
+		http.MethodPost,
+		"/auth/password-reset/confirm",
+		api.PasswordResetConfirmRequest{
+			Email:       openapi_types.Email(email),
+			Code:        code,
+			NewPassword: newPassword,
+		},
+		"",
+	)
+	response := messageResponse{StatusCode: statusCode}
+	if statusCode == http.StatusOK {
+		s.Require().NoError(json.Unmarshal(respBody, &response.Body))
+	} else {
+		s.Require().NoError(json.Unmarshal(respBody, &response.Error))
+	}
+	return response
+}
+
+func (s *IntegrationTestSuite) performJSONRequest(
+	method string, path string, payload any, accessToken string,
+) (int, []byte) {
+	var bodyReader io.Reader
+	if payload != nil {
+		body, err := json.Marshal(payload)
+		s.Require().NoError(err)
+		bodyReader = bytes.NewReader(body)
+	}
 
 	req, err := http.NewRequestWithContext(
 		context.Background(),
-		http.MethodPost,
-		s.server.URL+"/auth/register",
-		bytes.NewReader(body),
+		method,
+		s.server.URL+path,
+		bodyReader,
 	)
 	s.Require().NoError(err)
-	req.Header.Set("Content-Type", "application/json")
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if accessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+	}
 
 	resp, err := s.client.Do(req)
 	s.Require().NoError(err)
-	s.T().Cleanup(func() {
+	defer func() {
 		s.Require().NoError(resp.Body.Close())
-	})
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	s.Require().NoError(err)
 
-	var tokenResp api.TokenResponse
-	err = json.Unmarshal(respBody, &tokenResp)
-	s.Require().NoError(err)
+	return resp.StatusCode, respBody
+}
 
-	return registerResponse{
-		StatusCode: resp.StatusCode,
-		Body:       tokenResp,
-	}
+func (s *IntegrationTestSuite) setUserEmail(userID int32, email string, username string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := s.env.Queries.UpdateUser(ctx, db.UpdateUserParams{
+		ID:       userID,
+		Username: username,
+		Email:    pgtype.Text{String: email, Valid: true},
+	})
+	s.Require().NoError(err)
 }
 
 func (s *IntegrationTestSuite) userIsSuperuser(userID int32) bool {
@@ -388,4 +573,35 @@ func (s *IntegrationTestSuite) userIsSuperuser(userID int32) bool {
 	s.Require().NoError(err)
 
 	return isSuperuser
+}
+
+type testPasswordResetMailer struct {
+	mu    sync.Mutex
+	codes map[string]string
+}
+
+func newTestPasswordResetMailer() *testPasswordResetMailer {
+	return &testPasswordResetMailer{codes: map[string]string{}}
+}
+
+func (m *testPasswordResetMailer) SendPasswordResetCode(
+	_ context.Context, recipient string, code string, _ time.Duration,
+) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.codes[recipient] = code
+	return nil
+}
+
+func (m *testPasswordResetMailer) Reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.codes = map[string]string{}
+}
+
+func (m *testPasswordResetMailer) LastCode(recipient string) (string, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	code, ok := m.codes[recipient]
+	return code, ok
 }

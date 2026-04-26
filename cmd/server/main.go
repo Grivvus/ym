@@ -14,6 +14,7 @@ import (
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/handlers"
+	"github.com/Grivvus/ym/internal/mailer"
 	"github.com/Grivvus/ym/internal/repository"
 	"github.com/Grivvus/ym/internal/service"
 	"github.com/Grivvus/ym/internal/storage"
@@ -47,14 +48,24 @@ func main() {
 			continue
 		}
 
-		logger.Error("can't load env file", "path", path, "err", err)
-		exitCode = 1
-		return
+		logger.Warn("can't load env file, continuing with process environment", "path", path, "err", err)
 	}
 
 	cfg, err := utils.NewConfig()
 	if err != nil {
 		logger.Error("can't create config", "err", err)
+		exitCode = 1
+		return
+	}
+	smtpCfg, err := utils.NewSMTPConfig()
+	if err != nil {
+		logger.Error("can't create smtp config", "err", err)
+		exitCode = 1
+		return
+	}
+	passwordResetCfg, err := utils.NewPasswordResetConfig()
+	if err != nil {
+		logger.Error("can't create password reset config", "err", err)
 		exitCode = 1
 		return
 	}
@@ -77,6 +88,24 @@ func main() {
 
 	dbInst := db.New(pool)
 
+	var passwordResetMailer mailer.Mailer
+	if passwordResetCfg.Enabled {
+		validateErr := passwordResetCfg.Validate()
+		switch {
+		case validateErr != nil:
+			logger.Warn("password reset is disabled due to invalid config", "err", validateErr)
+		case !smtpCfg.IsConfigured():
+			logger.Warn("password reset is disabled because SMTP config is incomplete")
+		default:
+			smtpMailer, err := mailer.NewSMTPMailer(*smtpCfg, logger)
+			if err != nil {
+				logger.Warn("password reset is disabled because SMTP config is invalid", "err", err)
+			} else {
+				passwordResetMailer = smtpMailer
+			}
+		}
+	}
+
 	queueNotificationChan := make(chan struct{})
 
 	transcoderRepo := repository.NewTranscodingQueueRepository(pool, dbInst)
@@ -86,6 +115,9 @@ func main() {
 	tcoder.StartListener(ctx)
 
 	authService := service.NewAuthService(dbInst, logger, cfg)
+	passwordResetService := service.NewPasswordResetService(
+		dbInst, logger, passwordResetMailer, passwordResetCfg,
+	)
 	userService := service.NewUserService(dbInst, storageClient, logger)
 	albumService := service.NewAlbumService(dbInst, storageClient, logger)
 	playlistService := service.NewPlaylistService(dbInst, storageClient, logger)
@@ -95,7 +127,7 @@ func main() {
 
 	var server api.ServerInterface = handlers.NewRootHandler(
 		logger,
-		authService, userService,
+		authService, passwordResetService, userService,
 		albumService, artistService,
 		trackService, playlistService,
 		backupService,

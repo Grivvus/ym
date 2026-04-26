@@ -13,6 +13,7 @@ cd ym
 cp .env.example .env # you can change some variables
 touch .env.minio
 ```
+If you want email password reset, configure `PASSWORD_RESET_*` and `SMTP_*` variables in `.env`.
 
 3. configure docker volumes
 

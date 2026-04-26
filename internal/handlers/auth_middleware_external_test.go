@@ -34,6 +34,25 @@ func TestAuthMiddleware_PublicPathSkipsAuthorization(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, recorder.Code)
 }
 
+func TestAuthMiddleware_PasswordResetPathSkipsAuthorization(t *testing.T) {
+	t.Parallel()
+
+	var called bool
+	middleware := handlers.AuthMiddleware(testLogger(), []byte("secret"))
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/password-reset/request", nil)
+	recorder := httptest.NewRecorder()
+
+	middleware(next).ServeHTTP(recorder, req)
+
+	assert.True(t, called)
+	assert.Equal(t, http.StatusNoContent, recorder.Code)
+}
+
 func TestAuthMiddleware_OptionsRequestSkipsAuthorization(t *testing.T) {
 	t.Parallel()
 

@@ -69,6 +69,16 @@ type Artist struct {
 	Url  pgtype.Text
 }
 
+type PasswordResetCode struct {
+	UserID            int32
+	CodeHash          []byte
+	ExpiresAt         pgtype.Timestamptz
+	AttemptsLeft      int32
+	ResendAvailableAt pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+}
+
 type Playlist struct {
 	ID       int32
 	Name     string
@@ -118,12 +128,13 @@ type TranscodingQueue struct {
 }
 
 type User struct {
-	ID          int32
-	Username    string
-	IsSuperuser bool
-	Email       pgtype.Text
-	Password    []byte
-	Salt        []byte
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	ID             int32
+	Username       string
+	IsSuperuser    bool
+	Email          pgtype.Text
+	Password       []byte
+	Salt           []byte
+	RefreshVersion int32
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
 }

@@ -1,0 +1,9 @@
+CREATE TABLE "password_reset_code" (
+    user_id INTEGER PRIMARY KEY REFERENCES "user" (id) ON DELETE CASCADE,
+    code_hash bytea NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    attempts_left INTEGER NOT NULL,
+    resend_available_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

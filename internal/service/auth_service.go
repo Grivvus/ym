@@ -55,7 +55,9 @@ func (a AuthService) Register(
 		return api.TokenResponse{}, fmt.Errorf("%w cause: %w", ErrUnknownDBError, err)
 	}
 
-	accessToken, refreshToken, err := utils.CreateTokens(int(createdUser.ID), a.jwtSecret)
+	accessToken, refreshToken, err := utils.CreateTokensWithRefreshVersion(
+		int(createdUser.ID), createdUser.RefreshVersion, a.jwtSecret,
+	)
 
 	return api.TokenResponse{
 		UserId:       createdUser.ID,
@@ -81,7 +83,9 @@ func (a AuthService) Login(
 		return api.TokenResponse{}, ErrUnauthorized
 	}
 
-	accessToken, refreshToken, err := utils.CreateTokens(int(dbuser.ID), a.jwtSecret)
+	accessToken, refreshToken, err := utils.CreateTokensWithRefreshVersion(
+		int(dbuser.ID), dbuser.RefreshVersion, a.jwtSecret,
+	)
 
 	return api.TokenResponse{
 		UserId:       dbuser.ID,
@@ -94,7 +98,9 @@ func (a AuthService) Login(
 func (a AuthService) UpdateTokens(
 	ctx context.Context, refreshToken string,
 ) (api.TokenResponse, error) {
-	userID, err := utils.ParseRefreshToken(refreshToken, a.jwtSecret)
+	userID, refreshVersion, err := utils.ParseRefreshTokenWithVersion(
+		refreshToken, a.jwtSecret,
+	)
 	if err != nil {
 		return api.TokenResponse{}, ErrUnauthorized
 	}
@@ -107,8 +113,13 @@ func (a AuthService) UpdateTokens(
 		}
 		return api.TokenResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
+	if refreshVersion != dbuser.RefreshVersion {
+		return api.TokenResponse{}, ErrUnauthorized
+	}
 
-	accessToken, newRefreshToken, err := utils.CreateTokens(int(dbuser.ID), a.jwtSecret)
+	accessToken, newRefreshToken, err := utils.CreateTokensWithRefreshVersion(
+		int(dbuser.ID), dbuser.RefreshVersion, a.jwtSecret,
+	)
 	if err != nil {
 		return api.TokenResponse{}, fmt.Errorf("can't create tokens: %w", err)
 	}

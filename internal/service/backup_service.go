@@ -215,14 +215,15 @@ func (service BackupService) backupDB(ctx context.Context) (dto.FullDBBackup, er
 
 	for _, user := range users {
 		backup.Users = append(backup.Users, dto.User{
-			ID:          user.ID,
-			Username:    user.Username,
-			IsSuperuser: user.IsSuperuser,
-			Email:       textToPtr(user.Email),
-			Password:    base64.StdEncoding.EncodeToString(user.Password),
-			Salt:        base64.StdEncoding.EncodeToString(user.Salt),
-			CreatedAt:   timestamptzToTime(user.CreatedAt),
-			UpdatedAt:   timestamptzToTime(user.UpdatedAt),
+			ID:             user.ID,
+			Username:       user.Username,
+			IsSuperuser:    user.IsSuperuser,
+			Email:          textToPtr(user.Email),
+			Password:       base64.StdEncoding.EncodeToString(user.Password),
+			Salt:           base64.StdEncoding.EncodeToString(user.Salt),
+			RefreshVersion: user.RefreshVersion,
+			CreatedAt:      timestamptzToTime(user.CreatedAt),
+			UpdatedAt:      timestamptzToTime(user.UpdatedAt),
 		})
 	}
 
@@ -520,14 +521,15 @@ func (service BackupService) restoreDBSnapshot(
 		}
 
 		err = service.queries.RestoreUser(ctx, db.RestoreUserParams{
-			ID:          user.ID,
-			Username:    user.Username,
-			IsSuperuser: user.IsSuperuser,
-			Email:       ptrToText(user.Email),
-			Password:    password,
-			Salt:        salt,
-			CreatedAt:   timeToTimestamptz(user.CreatedAt),
-			UpdatedAt:   timeToTimestamptz(user.UpdatedAt),
+			ID:             user.ID,
+			Username:       user.Username,
+			IsSuperuser:    user.IsSuperuser,
+			Email:          ptrToText(user.Email),
+			Password:       password,
+			Salt:           salt,
+			RefreshVersion: user.RefreshVersion,
+			CreatedAt:      timeToTimestamptz(user.CreatedAt),
+			UpdatedAt:      timeToTimestamptz(user.UpdatedAt),
 		})
 		if err != nil {
 			return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)

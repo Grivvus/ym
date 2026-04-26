@@ -46,14 +46,15 @@ type TrackPlaylist struct {
 }
 
 type User struct {
-	ID          int32     `json:"id"`
-	Username    string    `json:"username"`
-	IsSuperuser bool      `json:"is_superuser"`
-	Email       *string   `json:"email"`
-	Password    string    `json:"password"`
-	Salt        string    `json:"salt"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID             int32     `json:"id"`
+	Username       string    `json:"username"`
+	IsSuperuser    bool      `json:"is_superuser"`
+	Email          *string   `json:"email"`
+	Password       string    `json:"password"`
+	Salt           string    `json:"salt"`
+	RefreshVersion int32     `json:"refresh_version"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type TranscodingQueueRow struct {

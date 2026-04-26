@@ -40,7 +40,13 @@ func AuthMiddleware(logger *slog.Logger, jwtSecret []byte) func(http.Handler) ht
 
 func isPublicPath(path string) bool {
 	switch path {
-	case "/ping", "/auth/login", "/auth/register", "/auth/refresh", "/openapi.yml":
+	case "/ping",
+		"/auth/login",
+		"/auth/register",
+		"/auth/refresh",
+		"/auth/password-reset/request",
+		"/auth/password-reset/confirm",
+		"/openapi.yml":
 		return true
 	default:
 		return strings.HasPrefix(path, "/swagger/")

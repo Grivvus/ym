@@ -24,6 +24,11 @@ const (
 
 var threads = uint8(runtime.NumCPU())
 
+type tokenClaims struct {
+	RefreshVersion int32 `json:"refresh_version,omitempty"`
+	jwt.RegisteredClaims
+}
+
 func generateSalt(length int) []byte {
 	salt := make([]byte, length)
 	_, err := rand.Read(salt)
@@ -50,19 +55,31 @@ func VerifyPassword(password string, salt []byte, expectedHash []byte) bool {
 func CreateTokens(
 	userID int, secret []byte,
 ) (access string, refresh string, err error) {
+	return CreateTokensWithRefreshVersion(userID, 0, secret)
+}
+
+func CreateTokensWithRefreshVersion(
+	userID int, refreshVersion int32, secret []byte,
+) (access string, refresh string, err error) {
 	now := time.Now()
 	userIDStr := strconv.Itoa(userID)
 
-	claimsAccess := jwt.RegisteredClaims{
-		Subject:   userIDStr,
-		IssuedAt:  jwt.NewNumericDate(now),
-		ExpiresAt: jwt.NewNumericDate(now.Add(accessTokenTTL)),
+	claimsAccess := tokenClaims{
+		RefreshVersion: refreshVersion,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userIDStr,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(accessTokenTTL)),
+		},
 	}
 
-	claimsRefresh := jwt.RegisteredClaims{
-		Subject:   userIDStr,
-		IssuedAt:  jwt.NewNumericDate(now),
-		ExpiresAt: jwt.NewNumericDate(now.Add(refreshTokenTTL)),
+	claimsRefresh := tokenClaims{
+		RefreshVersion: refreshVersion,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userIDStr,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(refreshTokenTTL)),
+		},
 	}
 
 	jwtAccess := jwt.NewWithClaims(jwt.SigningMethodHS512, claimsAccess)
@@ -86,11 +103,26 @@ func ParseAccessToken(raw string, secret []byte) (int32, error) {
 }
 
 func ParseRefreshToken(raw string, secret []byte) (int32, error) {
-	return parseTokenUserID(raw, secret, "refresh")
+	userID, _, err := ParseRefreshTokenWithVersion(raw, secret)
+	return userID, err
+}
+
+func ParseRefreshTokenWithVersion(raw string, secret []byte) (int32, int32, error) {
+	userID, claims, err := parseTokenClaims(raw, secret, "refresh")
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return userID, claims.RefreshVersion, nil
 }
 
 func parseTokenUserID(raw string, secret []byte, tokenKind string) (int32, error) {
-	claims := jwt.RegisteredClaims{}
+	userID, _, err := parseTokenClaims(raw, secret, tokenKind)
+	return userID, err
+}
+
+func parseTokenClaims(raw string, secret []byte, tokenKind string) (int32, tokenClaims, error) {
+	claims := tokenClaims{}
 	_, err := jwt.ParseWithClaims(
 		raw, &claims,
 		func(token *jwt.Token) (any, error) {
@@ -106,7 +138,7 @@ func parseTokenUserID(raw string, secret []byte, tokenKind string) (int32, error
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS512.Alg()}),
 	)
 	if err != nil {
-		return 0, fmt.Errorf("can't parse %s token: %w", tokenKind, err)
+		return 0, tokenClaims{}, fmt.Errorf("can't parse %s token: %w", tokenKind, err)
 	}
 
 	userIDValue := claims.Subject
@@ -114,15 +146,15 @@ func parseTokenUserID(raw string, secret []byte, tokenKind string) (int32, error
 		userIDValue = claims.Issuer
 	}
 	if userIDValue == "" {
-		return 0, errors.New("token does not contain user id")
+		return 0, tokenClaims{}, errors.New("token does not contain user id")
 	}
 
 	parsedUserID, err := strconv.ParseInt(userIDValue, 10, 32)
 	if err != nil {
-		return 0, fmt.Errorf("invalid user id in token: %w", err)
+		return 0, tokenClaims{}, fmt.Errorf("invalid user id in token: %w", err)
 	}
 
-	return int32(parsedUserID), nil
+	return int32(parsedUserID), claims, nil
 }
 
 func deriveTokenSecret(secret []byte, tokenKind string) []byte {

@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/Grivvus/ym/internal/utils"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -79,22 +81,7 @@ func (u *UserService) ChangeUser(
 	userID int32,
 	newUserParams api.UserUpdate,
 ) (api.UserReturn, error) {
-	updateParamsDB := db.UpdateUserParams{
-		ID:       userID,
-		Username: newUserParams.NewUsername,
-	}
-	if newUserParams.NewEmail != "" {
-		updateParamsDB.Email = pgtype.Text{
-			String: newUserParams.NewEmail,
-			Valid:  true,
-		}
-	} else {
-		updateParamsDB.Email = pgtype.Text{
-			Valid: false,
-		}
-	}
-
-	updatedUser, err := u.queries.UpdateUser(ctx, updateParamsDB)
+	currentUser, err := u.queries.GetUserByID(ctx, userID)
 	var ret api.UserReturn
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -103,8 +90,50 @@ func (u *UserService) ChangeUser(
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
+	username := currentUser.Username
+	if newUserParams.NewUsername != nil {
+		username = strings.TrimSpace(*newUserParams.NewUsername)
+		if username == "" {
+			return ret, fmt.Errorf("%w: new username is required", ErrBadParams)
+		}
+	}
+
+	email := currentUser.Email
+	if newUserParams.NewEmail != nil {
+		if strings.TrimSpace(string(*newUserParams.NewEmail)) == "" {
+			email = pgtype.Text{Valid: false}
+		} else {
+			normalizedEmail, err := utils.NormalizeEmailAddress(string(*newUserParams.NewEmail))
+			if err != nil {
+				return ret, fmt.Errorf("%w: %w", ErrBadParams, err)
+			}
+			email = pgtype.Text{
+				String: normalizedEmail,
+				Valid:  true,
+			}
+		}
+	}
+
+	updateParamsDB := db.UpdateUserParams{
+		ID:       userID,
+		Username: username,
+		Email:    email,
+	}
+
+	updatedUser, err := u.queries.UpdateUser(ctx, updateParamsDB)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ret, NewErrNotFound("user", userID)
+		}
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+			return ret, NewErrAlreadyExists("user", username)
+		}
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+
 	ret.Username = updatedUser.Username
 	ret.Id = updatedUser.ID
+	ret.IsSuperuser = updatedUser.IsSuperuser
 	if updatedUser.Email.Valid {
 		ret.Email = &updatedUser.Email.String
 	} else {
@@ -117,6 +146,9 @@ func (u *UserService) ChangeUser(
 func (u *UserService) ChangePassword(
 	ctx context.Context, userID int32, newPasswordParams api.UserChangePassword,
 ) error {
+	if strings.TrimSpace(newPasswordParams.NewPassword) == "" {
+		return fmt.Errorf("%w: new password is required", ErrBadParams)
+	}
 	user, err := u.queries.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

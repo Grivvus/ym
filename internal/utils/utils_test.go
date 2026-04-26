@@ -119,3 +119,17 @@ func TestParseRefreshToken_ParseWithInvalidSecret(t *testing.T) {
 	assert.Error(t, err)
 	assert.NotEqual(t, int32(userID), parsedID)
 }
+
+func TestParseRefreshTokenWithVersion_ParseWithValidSecret(t *testing.T) {
+	t.Parallel()
+	const userID = 13
+	const refreshVersion = 7
+	secret := []byte("secret")
+	_, refresh, err := utils.CreateTokensWithRefreshVersion(userID, refreshVersion, secret)
+	require.NoError(t, err)
+
+	parsedID, parsedVersion, err := utils.ParseRefreshTokenWithVersion(refresh, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, int32(userID), parsedID)
+	assert.Equal(t, int32(refreshVersion), parsedVersion)
+}

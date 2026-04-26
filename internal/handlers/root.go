@@ -19,13 +19,19 @@ type RootHandler struct {
 
 func NewRootHandler(
 	logger *slog.Logger,
-	auth service.AuthService, user service.UserService,
+	auth service.AuthService,
+	passwordReset service.PasswordResetService,
+	user service.UserService,
 	album service.AlbumService, artist service.ArtistService,
 	track service.TrackService, playlist service.PlaylistService,
 	backup service.BackupService,
 ) RootHandler {
 	return RootHandler{
-		AuthHandlers:     AuthHandlers{service: auth, logger: logger},
+		AuthHandlers: AuthHandlers{
+			authService:          auth,
+			passwordResetService: passwordReset,
+			logger:               logger,
+		},
 		ArtistHandlers:   ArtistHandlers{artistService: artist, logger: logger},
 		UserHandlers:     UserHandlers{userService: user, logger: logger},
 		AlbumHandlers:    AlbumHandlers{albumService: album, logger: logger},

@@ -5,6 +5,7 @@ CREATE TABLE "user" (
     email VARCHAR(318) UNIQUE,
     password bytea NOT NULL,
     salt bytea NOT NULL,
+    refresh_version INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

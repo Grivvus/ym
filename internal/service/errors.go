@@ -37,3 +37,5 @@ func (e ErrAlreadyExists) Error() string {
 var ErrUnknownDBError = fmt.Errorf("unknown database error")
 
 var ErrBadParams = fmt.Errorf("bad params")
+
+var ErrServiceUnavailable = fmt.Errorf("service unavailable")
