@@ -706,7 +706,9 @@ func (service BackupService) restoreTrackFile(
 	if err != nil {
 		return fmt.Errorf("can't open archived track %q: %w", file.Name, err)
 	}
-	err = service.objStorage.PutTrack(ctx, key, rc, int64(file.UncompressedSize64))
+	err = service.objStorage.PutTrack(
+		ctx, key, rc, storage.PutTrackOptions{Size: int64(file.UncompressedSize64)},
+	)
 	closeErr := rc.Close()
 	if err != nil {
 		return fmt.Errorf("can't restore track %q: %w", key, err)

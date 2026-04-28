@@ -19,6 +19,7 @@ import (
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/repository"
 	"github.com/Grivvus/ym/internal/storage"
+	"github.com/Grivvus/ym/internal/utils"
 )
 
 var presetArgs = map[audio.Preset][]string{
@@ -145,26 +146,40 @@ func (t *Transcoder) job(ctx context.Context, transcodingInfo db.GetTranscodingQ
 func (t *Transcoder) uploadTmpFilesToStorage(
 	ctx context.Context, presetsToName map[audio.Preset]string,
 ) error {
-	for _, presetFname := range presetsToName {
+	for preset, presetFname := range presetsToName {
 		f, err := os.Open(presetFname)
 		if err != nil {
 			t.logger.Error("can't open transcoded file", "err", err.Error())
 			return err
 		}
+		checksum, err := utils.SHA256HexFromReadSeeker(f)
+		if err != nil {
+			_ = f.Close()
+			t.logger.Error("can't checksum transcoded file", "err", err.Error())
+			return err
+		}
 		fstat, err := f.Stat()
 		if err != nil {
+			_ = f.Close()
 			t.logger.Error("can't stat transcoded file", "err", err.Error())
 			return err
 		}
-		defer func() { _ = f.Close() }()
 		err = t.storage.PutTrack(
 			ctx,
 			presetFname,
 			f,
-			fstat.Size(),
+			storage.PutTrackOptions{
+				Size:           fstat.Size(),
+				ContentType:    contentTypeForPreset(preset),
+				ChecksumSHA256: checksum,
+			},
 		)
+		closeErr := f.Close()
 		if err != nil {
 			return err
+		}
+		if closeErr != nil {
+			return closeErr
 		}
 	}
 	return nil
@@ -297,4 +312,17 @@ func TranscodedName(fname string, preset audio.Preset) string {
 	b.WriteByte('_')
 	b.WriteString(preset.String())
 	return b.String()
+}
+
+func contentTypeForPreset(preset audio.Preset) string {
+	switch preset {
+	case audio.PresetFast, audio.PresetStandard:
+		return "audio/ogg"
+	case audio.PresetHigh:
+		return "audio/mp4"
+	case audio.PresetLossless:
+		return "audio/flac"
+	default:
+		return "application/octet-stream"
+	}
 }

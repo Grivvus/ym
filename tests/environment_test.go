@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/handlers"
 	"github.com/Grivvus/ym/internal/service"
+	"github.com/Grivvus/ym/internal/storage"
 	"github.com/Grivvus/ym/internal/utils"
 	"github.com/Grivvus/ym/tests/testenv"
 	"github.com/go-chi/chi/v5"
@@ -148,7 +150,10 @@ func (s *IntegrationTestSuite) TestEnvironmentBootstrapsDatabaseAndStorage() {
 	const objectID = "integration-smoke-track"
 
 	payload := []byte("integration-smoke-payload")
-	s.Require().NoError(env.Storage.PutTrack(ctx, objectID, bytes.NewReader(payload), int64(len(payload))))
+	s.Require().NoError(env.Storage.PutTrack(
+		ctx, objectID, bytes.NewReader(payload),
+		storage.PutTrackOptions{Size: int64(len(payload))},
+	))
 	s.T().Cleanup(func() {
 		s.Require().NoError(env.Storage.RemoveTrack(context.Background(), objectID))
 	})
@@ -162,6 +167,120 @@ func (s *IntegrationTestSuite) TestEnvironmentBootstrapsDatabaseAndStorage() {
 	actual, err := io.ReadAll(reader)
 	s.Require().NoError(err)
 	s.Equal(payload, actual)
+}
+
+func (s *IntegrationTestSuite) TestDownloadTrackHeadReturnsDownloadMetadata() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	userResp := s.registerUser(api.UserAuth{
+		Username: "download-user",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusCreated, userResp.StatusCode)
+
+	trackID, checksum := s.createDownloadableTrack(ctx, userResp.Body.UserId)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodHead,
+		fmt.Sprintf("%s/tracks/%d/download?quality=standard", s.server.URL, trackID),
+		nil,
+	)
+	s.Require().NoError(err)
+	req.Header.Set("Authorization", "Bearer "+userResp.Body.AccessToken)
+
+	resp, err := s.client.Do(req)
+	s.Require().NoError(err)
+	defer func() {
+		s.Require().NoError(resp.Body.Close())
+	}()
+
+	s.Equal(http.StatusOK, resp.StatusCode)
+	s.Equal("audio/ogg", resp.Header.Get("Content-Type"))
+	s.Equal("bytes", resp.Header.Get("Accept-Ranges"))
+	s.Equal("standard", resp.Header.Get("X-Track-Quality-Requested"))
+	s.Equal("fast", resp.Header.Get("X-Track-Quality-Resolved"))
+	s.Equal(checksum, resp.Header.Get("X-Track-Checksum-Sha256"))
+	s.NotEmpty(resp.Header.Get("ETag"))
+	s.True(
+		strings.Contains(
+			resp.Header.Get("Content-Disposition"),
+			fmt.Sprintf("filename=track-%d-fast.opus", trackID),
+		),
+	)
+}
+
+func (s *IntegrationTestSuite) TestDownloadTrackReturnsFileAndHeaders() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	userResp := s.registerUser(api.UserAuth{
+		Username: "download-user",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusCreated, userResp.StatusCode)
+
+	trackID, checksum := s.createDownloadableTrack(ctx, userResp.Body.UserId)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("%s/tracks/%d/download?quality=fast", s.server.URL, trackID),
+		nil,
+	)
+	s.Require().NoError(err)
+	req.Header.Set("Authorization", "Bearer "+userResp.Body.AccessToken)
+
+	resp, err := s.client.Do(req)
+	s.Require().NoError(err)
+	defer func() {
+		s.Require().NoError(resp.Body.Close())
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	s.Require().NoError(err)
+
+	s.Equal(http.StatusOK, resp.StatusCode)
+	s.Equal([]byte("fast-track-payload"), body)
+	s.Equal("fast", resp.Header.Get("X-Track-Quality-Resolved"))
+	s.Equal(checksum, resp.Header.Get("X-Track-Checksum-Sha256"))
+	s.True(
+		strings.Contains(
+			resp.Header.Get("Content-Disposition"),
+			fmt.Sprintf("filename=track-%d-fast.opus", trackID),
+		),
+	)
+}
+
+func (s *IntegrationTestSuite) TestDownloadTrackForbidsPrivateTrackForAnotherUser() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	ownerResp := s.registerUser(api.UserAuth{
+		Username: "download-owner",
+		Password: "password-1",
+	})
+	otherResp := s.registerUser(api.UserAuth{
+		Username: "download-other",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusCreated, ownerResp.StatusCode)
+	s.Equal(http.StatusCreated, otherResp.StatusCode)
+
+	trackID, _ := s.createDownloadableTrack(ctx, ownerResp.Body.UserId)
+
+	statusCode, respBody := s.performJSONRequest(
+		http.MethodGet,
+		fmt.Sprintf("/tracks/%d/download?quality=fast", trackID),
+		nil,
+		otherResp.Body.AccessToken,
+	)
+
+	var errorResp api.ErrorResponse
+	s.Require().NoError(json.Unmarshal(respBody, &errorResp))
+	s.Equal(http.StatusForbidden, statusCode)
+	s.Contains(errorResp.Error, "user can't have access to this track")
 }
 
 func (s *IntegrationTestSuite) TestRegister_FirstUserBecomesSuperuser() {
@@ -273,10 +392,12 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 	s.Require().NoError(s.env.Storage.PutImage(ctx, albumImageKey, bytes.NewReader(albumImage)))
 	s.Require().NoError(s.env.Storage.PutImage(ctx, playlistImageKey, bytes.NewReader(playlistImage)))
 	s.Require().NoError(s.env.Storage.PutTrack(
-		ctx, originalTrackKey, bytes.NewReader(originalTrack), int64(len(originalTrack)),
+		ctx, originalTrackKey, bytes.NewReader(originalTrack),
+		storage.PutTrackOptions{Size: int64(len(originalTrack))},
 	))
 	s.Require().NoError(s.env.Storage.PutTrack(
-		ctx, fastTrackKey, bytes.NewReader(fastTrack), int64(len(fastTrack)),
+		ctx, fastTrackKey, bytes.NewReader(fastTrack),
+		storage.PutTrackOptions{Size: int64(len(fastTrack))},
 	))
 
 	backupReader, _, err := backupService.MakeBackup(ctx, service.BackupSettings{
@@ -421,6 +542,63 @@ func (s *IntegrationTestSuite) TestPasswordReset_ConfirmChangesPasswordAndInvali
 	var user api.UserReturn
 	s.Require().NoError(json.Unmarshal(body, &user))
 	s.Equal("reset@example.com", *user.Email)
+}
+
+func (s *IntegrationTestSuite) createDownloadableTrack(
+	ctx context.Context, ownerID int32,
+) (int32, string) {
+	artist, err := s.env.Queries.CreateArtist(ctx, "download-artist")
+	s.Require().NoError(err)
+
+	album, err := s.env.Queries.CreateAlbum(ctx, db.CreateAlbumParams{
+		Name:     "download-album",
+		ArtistID: artist.ID,
+	})
+	s.Require().NoError(err)
+
+	track, err := s.env.Queries.CreateTrack(ctx, db.CreateTrackParams{
+		Name:                "download-track",
+		ArtistID:            artist.ID,
+		IsGloballyAvailable: false,
+		UploadByUser:        pgtype.Int4{Int32: ownerID, Valid: true},
+	})
+	s.Require().NoError(err)
+
+	s.Require().NoError(s.env.Queries.AddTrackToAlbum(ctx, db.AddTrackToAlbumParams{
+		TrackID: track.ID,
+		AlbumID: album.ID,
+	}))
+
+	fastTrackKey := fmt.Sprintf("track%d_fast", track.ID)
+	_, err = s.env.Queries.AddPostTranscodingInfo(ctx, db.AddPostTranscodingInfoParams{
+		ID:                  track.ID,
+		DurationMs:          pgtype.Int4{Int32: 12345, Valid: true},
+		FastPresetFname:     pgtype.Text{String: fastTrackKey, Valid: true},
+		StandardPresetFname: pgtype.Text{Valid: false},
+		HighPresetFname:     pgtype.Text{Valid: false},
+		LosslessPresetFname: pgtype.Text{Valid: false},
+	})
+	s.Require().NoError(err)
+
+	payload := []byte("fast-track-payload")
+	checksum, err := utils.SHA256HexFromReadSeeker(bytes.NewReader(payload))
+	s.Require().NoError(err)
+
+	s.Require().NoError(s.env.Storage.PutTrack(
+		ctx,
+		fastTrackKey,
+		bytes.NewReader(payload),
+		storage.PutTrackOptions{
+			Size:           int64(len(payload)),
+			ContentType:    "audio/ogg",
+			ChecksumSHA256: checksum,
+		},
+	))
+	s.T().Cleanup(func() {
+		s.Require().NoError(s.env.Storage.RemoveTrack(context.Background(), fastTrackKey))
+	})
+
+	return track.ID, checksum
 }
 
 type tokenResponse struct {

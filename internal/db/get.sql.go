@@ -262,12 +262,15 @@ func (q *Queries) GetPlaylistWithTracks(ctx context.Context, id int32) ([]GetPla
 }
 
 const getTrack = `-- name: GetTrack :one
-SELECT t.id, t.name, t.artist_id, ta.album_id, t.duration_ms,
+SELECT t.id, t.name, t.artist_id, a.name AS artist_name, ta.album_id, t.duration_ms,
 t.fast_preset_fname, t.standard_preset_fname,
-t.high_preset_fname, t.lossless_preset_fname
+t.high_preset_fname, t.lossless_preset_fname,
+t.is_globally_available, t.upload_by_user
     FROM "track" AS t
     INNER JOIN "track_album" AS ta
         ON t.id = ta.track_id
+    INNER JOIN "artist" AS a
+        ON t.artist_id = a.id
     WHERE t.id = $1
     LIMIT 1
 `
@@ -276,12 +279,15 @@ type GetTrackRow struct {
 	ID                  int32
 	Name                string
 	ArtistID            int32
+	ArtistName          string
 	AlbumID             int32
 	DurationMs          pgtype.Int4
 	FastPresetFname     pgtype.Text
 	StandardPresetFname pgtype.Text
 	HighPresetFname     pgtype.Text
 	LosslessPresetFname pgtype.Text
+	IsGloballyAvailable bool
+	UploadByUser        pgtype.Int4
 }
 
 func (q *Queries) GetTrack(ctx context.Context, id int32) (GetTrackRow, error) {
@@ -291,12 +297,15 @@ func (q *Queries) GetTrack(ctx context.Context, id int32) (GetTrackRow, error) {
 		&i.ID,
 		&i.Name,
 		&i.ArtistID,
+		&i.ArtistName,
 		&i.AlbumID,
 		&i.DurationMs,
 		&i.FastPresetFname,
 		&i.StandardPresetFname,
 		&i.HighPresetFname,
 		&i.LosslessPresetFname,
+		&i.IsGloballyAvailable,
+		&i.UploadByUser,
 	)
 	return i, err
 }

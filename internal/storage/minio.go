@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 
 	"github.com/minio/minio-go/v7"
 )
+
+const trackChecksumSHA256MetadataKey = "track-checksum-sha256"
 
 type minioStorage struct {
 	client *minio.Client
@@ -16,19 +19,33 @@ type minioStorage struct {
 }
 
 func (m minioStorage) PutTrack(
-	ctx context.Context, id string, r io.Reader, objSize int64,
+	ctx context.Context, id string, r io.Reader, opts PutTrackOptions,
 ) error {
-	return m.put(ctx, "tracks", id, objSize, r, minio.PutObjectOptions{})
+	putOpts := minio.PutObjectOptions{ContentType: opts.ContentType}
+	if putOpts.ContentType == "" {
+		putOpts.ContentType = "application/octet-stream"
+	}
+	if opts.ChecksumSHA256 != "" {
+		putOpts.UserMetadata = map[string]string{
+			trackChecksumSHA256MetadataKey: opts.ChecksumSHA256,
+		}
+	}
+	return m.put(ctx, "tracks", id, opts.Size, r, putOpts)
 }
 
 func (m minioStorage) GetTrackInfo(
 	ctx context.Context, id string,
-) (uint, string, error) {
+) (TrackObjectInfo, error) {
 	info, err := m.client.StatObject(ctx, "tracks", id, minio.StatObjectOptions{})
 	if err != nil {
-		return 0, "", wrapStorageError(err, id)
+		return TrackObjectInfo{}, wrapStorageError(err, id)
 	}
-	return uint(info.Size), info.ContentType, nil
+	return TrackObjectInfo{
+		Size:           info.Size,
+		ContentType:    info.ContentType,
+		ETag:           info.ETag,
+		ChecksumSHA256: metadataValue(info.UserMetadata, trackChecksumSHA256MetadataKey),
+	}, nil
 }
 
 func (m minioStorage) GetTrack(
@@ -151,4 +168,13 @@ func wrapStorageError(err error, objectID string) error {
 		return fmt.Errorf("%w caused by: %w", InternalStorageError, err)
 	}
 	return fmt.Errorf("%w caused by: %w", InternalStorageError, err)
+}
+
+func metadataValue(metadata map[string]string, key string) string {
+	for k, v := range metadata {
+		if strings.EqualFold(k, key) {
+			return v
+		}
+	}
+	return ""
 }

@@ -7,11 +7,14 @@ import (
 	"io"
 	"log/slog"
 	"mime/multipart"
+	"net/http"
+	"strings"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/audio"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/storage"
+	"github.com/Grivvus/ym/internal/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -28,15 +31,26 @@ type TrackUploadParams struct {
 
 var ErrPresetCantBeSelected = errors.New("preset can't be selected for this track")
 
+const (
+	defaultTrackQuality     = "standard"
+	resolvedQualityOriginal = "original"
+)
+
 type StreamMeta struct {
 	ContentLength uint
 	ContentType   string
 }
 
 type TrackStream struct {
-	Name        string
-	ContentType string
-	Reader      io.ReadSeekCloser
+	Name             string
+	ContentType      string
+	ContentLength    int64
+	ETag             string
+	ChecksumSHA256   string
+	RequestedQuality string
+	ResolvedQuality  string
+	DownloadName     string
+	Reader           io.ReadSeekCloser
 }
 
 type TrackService struct {
@@ -124,8 +138,21 @@ func (s *TrackService) UploadTrack(
 	}
 	defer func() { _ = rc.Close() }()
 
+	checksum, err := utils.SHA256HexFromReadSeeker(rc)
+	if err != nil {
+		return ret, fmt.Errorf("can't checksum track file: %w", err)
+	}
+	contentType, err := detectTrackUploadContentType(trackFileHeader, rc)
+	if err != nil {
+		return ret, fmt.Errorf("can't detect track content type: %w", err)
+	}
+
 	tmpFname := originalTrackStorageKey(track.ID)
-	err = s.objStorage.PutTrack(ctx, tmpFname, rc, trackFileHeader.Size)
+	err = s.objStorage.PutTrack(ctx, tmpFname, rc, storage.PutTrackOptions{
+		Size:           trackFileHeader.Size,
+		ContentType:    contentType,
+		ChecksumSHA256: checksum,
+	})
 	if err != nil {
 		s.logger.Warn("error mapping should be more precise")
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -255,27 +282,85 @@ func (s *TrackService) GetUserTracks(
 }
 
 func (s *TrackService) GetStream(
-	ctx context.Context, trackID int32, trackQuality string,
+	ctx context.Context, userID, trackID int32, trackQuality string,
 ) (TrackStream, error) {
-	preset, err := audio.PresetFromString(trackQuality)
+	return s.getTrackFile(ctx, userID, trackID, trackQuality, true, false)
+}
+
+func (s *TrackService) GetDownload(
+	ctx context.Context, userID, trackID int32, trackQuality string,
+) (TrackStream, error) {
+	return s.getTrackFile(ctx, userID, trackID, trackQuality, true, true)
+}
+
+func (s *TrackService) GetDownloadMeta(
+	ctx context.Context, userID, trackID int32, trackQuality string,
+) (TrackStream, error) {
+	return s.getTrackFile(ctx, userID, trackID, trackQuality, false, true)
+}
+
+func (s *TrackService) getTrackFile(
+	ctx context.Context, userID, trackID int32, trackQuality string,
+	includeReader bool, includeChecksum bool,
+) (TrackStream, error) {
+	requestedQuality := trackQuality
+	if requestedQuality == "" {
+		requestedQuality = defaultTrackQuality
+	}
+	preset, err := audio.PresetFromString(requestedQuality)
 	if err != nil {
 		return TrackStream{}, fmt.Errorf(
-			"%w: invalid name of trackQuality: %v", ErrBadParams, trackQuality,
+			"%w: invalid name of trackQuality: %v", ErrBadParams, requestedQuality,
 		)
 	}
-	track, trackExist, err := s.trackExists(ctx, trackID)
+	track, err := s.getTrack(ctx, trackID)
 	if err != nil {
 		return TrackStream{}, err
 	}
-	if !trackExist {
-		return TrackStream{}, NewErrNotFound("track", trackID)
+	if !canAccessTrack(track, userID) {
+		return TrackStream{}, fmt.Errorf("%w: user can't have access to this track", ErrUnauthorized)
 	}
-	trackKey, err := findClosestExistingTrackKey(track, preset)
+	selected, err := findClosestExistingTrackFile(track, preset)
 	if err != nil {
 		return TrackStream{}, err
 	}
 
-	stream, err := s.objStorage.GetTrack(ctx, trackKey)
+	info, err := s.objStorage.GetTrackInfo(ctx, selected.key)
+	if err != nil {
+		if errors.Is(err, storage.ErrObjectNotFound) {
+			return TrackStream{}, fmt.Errorf(
+				"%w: track not found, exact - %w",
+				NewErrNotFound("track", trackID), err,
+			)
+		}
+		return TrackStream{}, fmt.Errorf("%w: can't fetch track info: %w", ErrUnknownDBError, err)
+	}
+
+	if includeChecksum && info.ChecksumSHA256 == "" {
+		info.ChecksumSHA256, err = s.calculateTrackChecksum(ctx, trackID, selected.key)
+		if err != nil {
+			return TrackStream{}, err
+		}
+	}
+
+	contentType := normalizeTrackContentType(info.ContentType, selected.quality)
+
+	ret := TrackStream{
+		Name:             selected.key,
+		ContentType:      contentType,
+		ContentLength:    info.Size,
+		ETag:             info.ETag,
+		ChecksumSHA256:   info.ChecksumSHA256,
+		RequestedQuality: requestedQuality,
+		ResolvedQuality:  selected.quality,
+		DownloadName:     trackDownloadFileName(track.ID, selected.quality, contentType),
+	}
+
+	if !includeReader {
+		return ret, nil
+	}
+
+	stream, err := s.objStorage.GetTrack(ctx, selected.key)
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotFound) {
 			return TrackStream{}, fmt.Errorf(
@@ -287,74 +372,188 @@ func (s *TrackService) GetStream(
 			"%w: can't get track stream: %w", ErrUnknownDBError, err,
 		)
 	}
+	ret.Reader = stream
 
-	_, ctype, err := s.objStorage.GetTrackInfo(ctx, trackKey)
-	if err != nil {
-		_ = stream.Close()
-		return TrackStream{}, fmt.Errorf("can't fetch track info: %w", err)
-	}
-
-	return TrackStream{
-		Name:        trackKey,
-		ContentType: ctype,
-		Reader:      stream,
-	}, nil
+	return ret, nil
 }
 
-func (s *TrackService) trackExists(
-	ctx context.Context, trackID int32,
-) (db.GetTrackRow, bool, error) {
+func (s *TrackService) getTrack(ctx context.Context, trackID int32) (db.GetTrackRow, error) {
 	track, err := s.queries.GetTrack(ctx, trackID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return track, false, nil
+			return track, NewErrNotFound("track", trackID)
 		}
-		return track, false, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		return track, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
-	return track, true, nil
+	return track, nil
+}
+
+func (s *TrackService) calculateTrackChecksum(
+	ctx context.Context, trackID int32, trackKey string,
+) (string, error) {
+	stream, err := s.objStorage.GetTrack(ctx, trackKey)
+	if err != nil {
+		if errors.Is(err, storage.ErrObjectNotFound) {
+			return "", fmt.Errorf(
+				"%w: track not found, exact - %w",
+				NewErrNotFound("track", trackID), err,
+			)
+		}
+		return "", fmt.Errorf("%w: can't get track for checksum: %w", ErrUnknownDBError, err)
+	}
+	defer func() { _ = stream.Close() }()
+
+	checksum, err := utils.SHA256HexFromReadSeeker(stream)
+	if err != nil {
+		return "", fmt.Errorf("%w: can't checksum track: %w", ErrUnknownDBError, err)
+	}
+	return checksum, nil
+}
+
+type selectedTrackFile struct {
+	key     string
+	quality string
+}
+
+func findClosestExistingTrackFile(
+	track db.GetTrackRow, chosenPreset audio.Preset,
+) (selectedTrackFile, error) {
+	switch chosenPreset {
+	// lossless->orig
+	case audio.PresetLossless:
+		if track.LosslessPresetFname.Valid {
+			return selectedPresetTrackFile(track.LosslessPresetFname.String, audio.PresetLossless), nil
+		}
+		return selectedOriginalTrackFile(track.ID), nil
+	// H->S->F->orig
+	case audio.PresetHigh:
+		if track.HighPresetFname.Valid {
+			return selectedPresetTrackFile(track.HighPresetFname.String, audio.PresetHigh), nil
+		} else if track.StandardPresetFname.Valid {
+			return selectedPresetTrackFile(track.StandardPresetFname.String, audio.PresetStandard), nil
+		} else if track.FastPresetFname.Valid {
+			return selectedPresetTrackFile(track.FastPresetFname.String, audio.PresetFast), nil
+		}
+		return selectedOriginalTrackFile(track.ID), nil
+	// S->F->H->orig
+	case audio.PresetStandard:
+		if track.StandardPresetFname.Valid {
+			return selectedPresetTrackFile(track.StandardPresetFname.String, audio.PresetStandard), nil
+		} else if track.FastPresetFname.Valid {
+			return selectedPresetTrackFile(track.FastPresetFname.String, audio.PresetFast), nil
+		} else if track.HighPresetFname.Valid {
+			return selectedPresetTrackFile(track.HighPresetFname.String, audio.PresetHigh), nil
+		}
+		return selectedOriginalTrackFile(track.ID), nil
+	// F->S->H->orig
+	case audio.PresetFast:
+		if track.FastPresetFname.Valid {
+			return selectedPresetTrackFile(track.FastPresetFname.String, audio.PresetFast), nil
+		} else if track.StandardPresetFname.Valid {
+			return selectedPresetTrackFile(track.StandardPresetFname.String, audio.PresetStandard), nil
+		} else if track.HighPresetFname.Valid {
+			return selectedPresetTrackFile(track.HighPresetFname.String, audio.PresetHigh), nil
+		}
+		return selectedOriginalTrackFile(track.ID), nil
+	default:
+		return selectedTrackFile{}, ErrPresetCantBeSelected
+	}
 }
 
 func findClosestExistingTrackKey(
 	track db.GetTrackRow, chosenPreset audio.Preset,
 ) (string, error) {
-	switch chosenPreset {
-	// lossless->orig
-	case audio.PresetLossless:
-		if track.LosslessPresetFname.Valid {
-			return track.LosslessPresetFname.String, nil
-		}
-		return originalTrackStorageKey(track.ID), nil
-	// H->S->F->orig
-	case audio.PresetHigh:
-		if track.HighPresetFname.Valid {
-			return track.HighPresetFname.String, nil
-		} else if track.StandardPresetFname.Valid {
-			return track.StandardPresetFname.String, nil
-		} else if track.FastPresetFname.Valid {
-			return track.FastPresetFname.String, nil
-		}
-		return originalTrackStorageKey(track.ID), nil
-	// S->F->H->orig
-	case audio.PresetStandard:
-		if track.StandardPresetFname.Valid {
-			return track.StandardPresetFname.String, nil
-		} else if track.FastPresetFname.Valid {
-			return track.FastPresetFname.String, nil
-		} else if track.HighPresetFname.Valid {
-			return track.HighPresetFname.String, nil
-		}
-		return originalTrackStorageKey(track.ID), nil
-	// F->S->H->orig
-	case audio.PresetFast:
-		if track.FastPresetFname.Valid {
-			return track.FastPresetFname.String, nil
-		} else if track.StandardPresetFname.Valid {
-			return track.StandardPresetFname.String, nil
-		} else if track.HighPresetFname.Valid {
-			return track.HighPresetFname.String, nil
-		}
-		return originalTrackStorageKey(track.ID), nil
+	selected, err := findClosestExistingTrackFile(track, chosenPreset)
+	if err != nil {
+		return "", err
+	}
+	return selected.key, nil
+}
+
+func selectedPresetTrackFile(key string, preset audio.Preset) selectedTrackFile {
+	return selectedTrackFile{key: key, quality: preset.String()}
+}
+
+func selectedOriginalTrackFile(trackID int32) selectedTrackFile {
+	return selectedTrackFile{
+		key:     originalTrackStorageKey(trackID),
+		quality: resolvedQualityOriginal,
+	}
+}
+
+func canAccessTrack(track db.GetTrackRow, userID int32) bool {
+	if track.IsGloballyAvailable {
+		return true
+	}
+	return track.UploadByUser.Valid && track.UploadByUser.Int32 == userID
+}
+
+func detectTrackUploadContentType(
+	header *multipart.FileHeader, file multipart.File,
+) (string, error) {
+	contentType := header.Header.Get("Content-Type")
+	if contentType != "" && contentType != "application/octet-stream" {
+		return contentType, nil
+	}
+
+	var sniff [512]byte
+	n, err := file.Read(sniff[:])
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return "", err
+	}
+	if n == 0 {
+		return "application/octet-stream", nil
+	}
+	return http.DetectContentType(sniff[:n]), nil
+}
+
+func normalizeTrackContentType(contentType string, resolvedQuality string) string {
+	if contentType != "" && contentType != "application/octet-stream" {
+		return contentType
+	}
+	switch resolvedQuality {
+	case audio.PresetFast.String(), audio.PresetStandard.String():
+		return "audio/ogg"
+	case audio.PresetHigh.String():
+		return "audio/mp4"
+	case audio.PresetLossless.String():
+		return "audio/flac"
 	default:
-		return "", ErrPresetCantBeSelected
+		return "application/octet-stream"
+	}
+}
+
+func trackDownloadFileName(trackID int32, resolvedQuality string, contentType string) string {
+	return fmt.Sprintf("track-%d-%s.%s", trackID, resolvedQuality, trackExtension(resolvedQuality, contentType))
+}
+
+func trackExtension(resolvedQuality string, contentType string) string {
+	switch resolvedQuality {
+	case audio.PresetFast.String(), audio.PresetStandard.String():
+		return "opus"
+	case audio.PresetHigh.String():
+		return "m4a"
+	case audio.PresetLossless.String():
+		return "flac"
+	}
+
+	switch strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0])) {
+	case "audio/mpeg", "audio/mp3":
+		return "mp3"
+	case "audio/mp4", "audio/x-m4a":
+		return "m4a"
+	case "audio/flac", "audio/x-flac":
+		return "flac"
+	case "audio/opus":
+		return "opus"
+	case "audio/ogg":
+		return "ogg"
+	case "audio/wav", "audio/x-wav":
+		return "wav"
+	default:
+		return "bin"
 	}
 }

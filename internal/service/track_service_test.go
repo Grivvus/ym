@@ -142,3 +142,108 @@ func TestFindClosestExistingTrackKey(t *testing.T) {
 		})
 	}
 }
+
+func TestFindClosestExistingTrackFileResolvedQuality(t *testing.T) {
+	t.Parallel()
+
+	text := func(s string) pgtype.Text {
+		return pgtype.Text{String: s, Valid: true}
+	}
+
+	testCases := []struct {
+		name        string
+		track       db.GetTrackRow
+		preset      audio.Preset
+		wantKey     string
+		wantQuality string
+	}{
+		{
+			name: "standard falls back to fast",
+			track: db.GetTrackRow{
+				ID:              42,
+				FastPresetFname: text("track42_fast"),
+			},
+			preset:      audio.PresetStandard,
+			wantKey:     "track42_fast",
+			wantQuality: "fast",
+		},
+		{
+			name: "high exact match",
+			track: db.GetTrackRow{
+				ID:              42,
+				HighPresetFname: text("track42_high"),
+			},
+			preset:      audio.PresetHigh,
+			wantKey:     "track42_high",
+			wantQuality: "high",
+		},
+		{
+			name:        "lossless falls back to original",
+			track:       db.GetTrackRow{ID: 42},
+			preset:      audio.PresetLossless,
+			wantKey:     "track42",
+			wantQuality: "original",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := findClosestExistingTrackFile(tc.track, tc.preset)
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantKey, got.key)
+			assert.Equal(t, tc.wantQuality, got.quality)
+		})
+	}
+}
+
+func TestCanAccessTrack(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name   string
+		track  db.GetTrackRow
+		userID int32
+		want   bool
+	}{
+		{
+			name:   "globally available track is accessible",
+			track:  db.GetTrackRow{IsGloballyAvailable: true},
+			userID: 10,
+			want:   true,
+		},
+		{
+			name: "uploaded private track is accessible to uploader",
+			track: db.GetTrackRow{
+				UploadByUser: pgtype.Int4{Int32: 10, Valid: true},
+			},
+			userID: 10,
+			want:   true,
+		},
+		{
+			name: "private track is forbidden for another user",
+			track: db.GetTrackRow{
+				UploadByUser: pgtype.Int4{Int32: 10, Valid: true},
+			},
+			userID: 11,
+			want:   false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tc.want, canAccessTrack(tc.track, tc.userID))
+		})
+	}
+}
+
+func TestTrackDownloadFileName(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "track-42-standard.opus", trackDownloadFileName(42, "standard", "audio/ogg"))
+	assert.Equal(t, "track-42-high.m4a", trackDownloadFileName(42, "high", "audio/mp4"))
+	assert.Equal(t, "track-42-original.mp3", trackDownloadFileName(42, "original", "audio/mpeg"))
+}

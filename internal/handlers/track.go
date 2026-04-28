@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Grivvus/ym/internal/api"
@@ -91,67 +93,135 @@ func (h TrackHandlers) DownloadTrack(
 	w http.ResponseWriter, r *http.Request,
 	trackId int32, params api.DownloadTrackParams,
 ) {
-	WriteJSON(w, http.StatusNotImplemented, "")
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+	quality := trackQuality(params.Quality)
+	track, err := h.trackService.GetDownload(r.Context(), userID, trackId, quality)
+	if err != nil {
+		h.handleTrackFileError(w, "can't download track", err)
+		return
+	}
+	defer func() { _ = track.Reader.Close() }()
+
+	setTrackFileHeaders(w, track, true)
+	http.ServeContent(w, r, track.DownloadName, time.Time{}, track.Reader)
 }
 
 func (h TrackHandlers) DownloadTrackHead(
 	w http.ResponseWriter, r *http.Request,
 	trackId int32, params api.DownloadTrackHeadParams,
 ) {
-	WriteJSON(w, http.StatusNotImplemented, "")
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+	quality := trackQuality(params.Quality)
+	track, err := h.trackService.GetDownloadMeta(r.Context(), userID, trackId, quality)
+	if err != nil {
+		h.handleTrackFileError(w, "can't fetch track download metadata", err)
+		return
+	}
+
+	setTrackFileHeaders(w, track, true)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h TrackHandlers) StreamTrack(
 	w http.ResponseWriter, r *http.Request,
 	trackId int32, params api.StreamTrackParams,
 ) {
-	var quality string
-	if params.Quality == nil {
-		quality = "standard"
-	} else {
-		quality = *params.Quality
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
 	}
-	h.serveTrack(w, r, trackId, quality)
+	h.serveTrack(w, r, userID, trackId, trackQuality(params.Quality))
 }
 
 func (h TrackHandlers) StreamTrackHead(
 	w http.ResponseWriter, r *http.Request,
 	trackId int32, params api.StreamTrackHeadParams,
 ) {
-	var quality string
-	if params.Quality == nil {
-		quality = "standard"
-	} else {
-		quality = *params.Quality
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
 	}
-	h.serveTrack(w, r, trackId, quality)
+	h.serveTrack(w, r, userID, trackId, trackQuality(params.Quality))
 }
 
 func (h TrackHandlers) serveTrack(
 	w http.ResponseWriter, r *http.Request,
-	trackId int32, quality string,
+	userID, trackId int32, quality string,
 ) {
-	stream, err := h.trackService.GetStream(r.Context(), trackId, quality)
+	stream, err := h.trackService.GetStream(r.Context(), userID, trackId, quality)
 	if err != nil {
-		h.logger.Error("can't stream track:", "err", err)
-		if errors.Is(err, service.ErrBadParams) {
-			_ = WriteError(w, http.StatusBadRequest, err)
-		} else if errors.Is(err, service.ErrPresetCantBeSelected) {
-			_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("%w. Probably wrong name", err))
-		} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = WriteError(w, http.StatusNotFound, err)
-		} else {
-			_ = WriteError(w, http.StatusInternalServerError, err)
-		}
+		h.handleTrackFileError(w, "can't stream track", err)
 		return
 	}
 	defer func() { _ = stream.Reader.Close() }()
 
-	if stream.ContentType != "" && stream.ContentType != "application/octet-stream" {
-		w.Header().Set("Content-Type", stream.ContentType)
+	setTrackFileHeaders(w, stream, false)
+	http.ServeContent(w, r, stream.Name, time.Time{}, stream.Reader)
+}
+
+func (h TrackHandlers) handleTrackFileError(w http.ResponseWriter, msg string, err error) {
+	h.logger.Error(msg, "err", err)
+	if errors.Is(err, service.ErrBadParams) {
+		_ = WriteError(w, http.StatusBadRequest, err)
+	} else if errors.Is(err, service.ErrPresetCantBeSelected) {
+		_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("%w. Probably wrong name", err))
+	} else if errors.Is(err, service.ErrUnauthorized) {
+		_ = WriteError(w, http.StatusForbidden, err)
+	} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+		_ = WriteError(w, http.StatusNotFound, err)
+	} else {
+		_ = WriteError(w, http.StatusInternalServerError, err)
+	}
+}
+
+func setTrackFileHeaders(w http.ResponseWriter, track service.TrackStream, download bool) {
+	if track.ContentType != "" && track.ContentType != "application/octet-stream" {
+		w.Header().Set("Content-Type", track.ContentType)
+	}
+	if track.ContentLength >= 0 {
+		w.Header().Set("Content-Length", strconv.FormatInt(track.ContentLength, 10))
+	}
+	w.Header().Set("Accept-Ranges", "bytes")
+
+	if !download {
+		return
 	}
 
-	http.ServeContent(w, r, stream.Name, time.Time{}, stream.Reader)
+	if etag := quotedETag(track.ETag); etag != "" {
+		w.Header().Set("ETag", etag)
+	}
+	w.Header().Set(
+		"Content-Disposition",
+		mime.FormatMediaType("attachment", map[string]string{
+			"filename": track.DownloadName,
+		}),
+	)
+	w.Header().Set("X-Track-Quality-Requested", track.RequestedQuality)
+	w.Header().Set("X-Track-Quality-Resolved", track.ResolvedQuality)
+	if track.ChecksumSHA256 != "" {
+		w.Header().Set("X-Track-Checksum-Sha256", track.ChecksumSHA256)
+	}
+}
+
+func quotedETag(etag string) string {
+	etag = strings.TrimSpace(etag)
+	if etag == "" {
+		return ""
+	}
+	return `"` + strings.Trim(etag, `"`) + `"`
+}
+
+func trackQuality(quality *string) string {
+	if quality == nil || *quality == "" {
+		return "standard"
+	}
+	return *quality
 }
 
 func (h TrackHandlers) parsePostParams(
