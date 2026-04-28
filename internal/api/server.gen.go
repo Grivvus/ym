@@ -252,6 +252,18 @@ type AddTrackToPlaylistJSONBody struct {
 	TrackId int32 `json:"track_id"`
 }
 
+// DownloadTrackParams defines parameters for DownloadTrack.
+type DownloadTrackParams struct {
+	// Quality preferred quality; the server falls back to the closest available preset and then to the original track file
+	Quality *string `form:"quality,omitempty" json:"quality,omitempty"`
+}
+
+// DownloadTrackHeadParams defines parameters for DownloadTrackHead.
+type DownloadTrackHeadParams struct {
+	// Quality preferred quality; the server falls back to the closest available preset and then to the original track file
+	Quality *string `form:"quality,omitempty" json:"quality,omitempty"`
+}
+
 // StreamTrackParams defines parameters for StreamTrack.
 type StreamTrackParams struct {
 	// Quality preferred quality; the server falls back to the closest available preset and then to the original track file
@@ -404,6 +416,12 @@ type ServerInterface interface {
 	// uploads new track, make all transcoding stuff, stores it
 	// (POST /tracks)
 	UploadTrack(w http.ResponseWriter, r *http.Request)
+	// downloading track file
+	// (GET /tracks/{id}/download)
+	DownloadTrack(w http.ResponseWriter, r *http.Request, id int32, params DownloadTrackParams)
+	// getting track metadata, needed for download
+	// (HEAD /tracks/{id}/download)
+	DownloadTrackHead(w http.ResponseWriter, r *http.Request, id int32, params DownloadTrackHeadParams)
 	// getting track stream
 	// (GET /tracks/{id}/stream)
 	StreamTrack(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackParams)
@@ -623,6 +641,18 @@ func (_ Unimplemented) GetTracks(w http.ResponseWriter, r *http.Request) {
 // uploads new track, make all transcoding stuff, stores it
 // (POST /tracks)
 func (_ Unimplemented) UploadTrack(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// downloading track file
+// (GET /tracks/{id}/download)
+func (_ Unimplemented) DownloadTrack(w http.ResponseWriter, r *http.Request, id int32, params DownloadTrackParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// getting track metadata, needed for download
+// (HEAD /tracks/{id}/download)
+func (_ Unimplemented) DownloadTrackHead(w http.ResponseWriter, r *http.Request, id int32, params DownloadTrackHeadParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1559,6 +1589,90 @@ func (siw *ServerInterfaceWrapper) UploadTrack(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// DownloadTrack operation middleware
+func (siw *ServerInterfaceWrapper) DownloadTrack(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DownloadTrackParams
+
+	// ------------- Optional query parameter "quality" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "quality", r.URL.Query(), &params.Quality)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quality", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DownloadTrack(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DownloadTrackHead operation middleware
+func (siw *ServerInterfaceWrapper) DownloadTrackHead(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DownloadTrackHeadParams
+
+	// ------------- Optional query parameter "quality" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "quality", r.URL.Query(), &params.Quality)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quality", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DownloadTrackHead(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // StreamTrack operation middleware
 func (siw *ServerInterfaceWrapper) StreamTrack(w http.ResponseWriter, r *http.Request) {
 
@@ -2102,6 +2216,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/tracks", wrapper.UploadTrack)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/tracks/{id}/download", wrapper.DownloadTrack)
+	})
+	r.Group(func(r chi.Router) {
+		r.Head(options.BaseURL+"/tracks/{id}/download", wrapper.DownloadTrackHead)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/tracks/{id}/stream", wrapper.StreamTrack)

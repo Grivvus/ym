@@ -481,8 +481,32 @@ paths:
       responses: 
         '200':
           description: "metadata was fetched"
+          headers:
+            Content-Type:
+              description: information about track format
+              schema:
+                type: string
+              example: audio/mpeg
+            Content-Length:
+              description: Full downloadable file size in bytes
+              schema:
+                type: integer
+                format: int64
+              example: 8423912
+            Accept-Ranges:
+              description: Indicates whether byte-range requests are supported
+              schema:
+                type: string
+                enum: [bytes]
+              example: bytes
         '401':
           description: "unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "user can't have access to this track"
           content:
             application/json:
               schema:
@@ -532,6 +556,151 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: "unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "user can't have access to this track"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "no track found"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tracks/{id}/download:
+    head:
+      summary: getting track metadata, needed for download
+      operationId: downloadTrackHead
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int32
+          required: true
+        - in: query
+          name: quality
+          schema:
+            type: string
+          description: preferred quality; the server falls back to the closest available preset and then to the original track file
+          required: false
+      responses:
+        '200':
+          description: "metadata was fetched"
+          headers:
+            Content-Type:
+              description: information about track format
+              schema:
+                type: string
+              example: audio/mpeg
+            Content-Length:
+              description: Full downloadable file size in bytes
+              schema:
+                type: integer
+                format: int64
+              example: 8423912
+            Accept-Ranges:
+              description: Indicates whether byte-range requests are supported
+              schema:
+                type: string
+                enum: [bytes]
+              example: bytes
+            ETag:
+              description: Opaque identifier of this exact downloadable file version
+              schema:
+                type: string
+              example: '"track-123-standard-v5"'
+            Content-Disposition:
+              description: Suggested filename for saving the track
+              schema:
+                type: string
+              example: attachment; filename*=UTF-8''artist-title.mp3
+            X-Track-Quality-Requested:
+              description: Quality requested by the client
+              schema:
+                type: string
+                enum: [fast, standard, high, lossless]
+              example: standard
+            X-Track-Quality-Resolved:
+              description: Actual quality selected by the server
+              schema:
+                type: string
+                enum: [fast, standard, high, lossless, original]
+              example: standard
+            X-Track-Checksum-Sha256:
+              description: SHA-256 checksum of the full downloadable file
+              schema:
+                type: string
+              example: 0b4f0c7a...
+        '401':
+          description: "unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "user can't have access to this track"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "no track found"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: downloading track file
+      operationId: downloadTrack
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int32
+          required: true
+        - in: query
+          name: quality
+          schema:
+            type: string
+          description: preferred quality; the server falls back to the closest available preset and then to the original track file
+          required: false
+      responses:
+        '200':
+          description: "start downloading"
+          content:
+            audio/*:
+              schema:
+                type: string
+                format: binary
+        '206':
+          description: "partial"
+          content:
+            audio/*:
+              schema:
+                type: string
+                format: binary
+        '416':
+          description: "invalid range"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: "unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "user can't have access to this track"
           content:
             application/json:
               schema:
@@ -586,7 +755,7 @@ paths:
             type: integer
           description: limit on a number of artists
       responses:
-        200:
+        '200':
           description: success
           content:
             application/json:
@@ -594,7 +763,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ArtistInfoResponse'
-        401:
+        '401':
           description: Unauthorized
           content:
             application/json:

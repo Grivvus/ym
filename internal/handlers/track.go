@@ -87,6 +87,20 @@ func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h TrackHandlers) DownloadTrack(
+	w http.ResponseWriter, r *http.Request,
+	trackId int32, params api.DownloadTrackParams,
+) {
+	WriteJSON(w, http.StatusNotImplemented, "")
+}
+
+func (h TrackHandlers) DownloadTrackHead(
+	w http.ResponseWriter, r *http.Request,
+	trackId int32, params api.DownloadTrackHeadParams,
+) {
+	WriteJSON(w, http.StatusNotImplemented, "")
+}
+
 func (h TrackHandlers) StreamTrack(
 	w http.ResponseWriter, r *http.Request,
 	trackId int32, params api.StreamTrackParams,
