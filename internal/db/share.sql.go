@@ -9,6 +9,49 @@ import (
 	"context"
 )
 
+const getSharedUsers = `-- name: GetSharedUsers :many
+SELECT shared_with_user FROM "playlist_share_info"
+WHERE playlist_id = $1
+`
+
+func (q *Queries) GetSharedUsers(ctx context.Context, playlistID int32) ([]int32, error) {
+	rows, err := q.db.Query(ctx, getSharedUsers, playlistID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var shared_with_user int32
+		if err := rows.Scan(&shared_with_user); err != nil {
+			return nil, err
+		}
+		items = append(items, shared_with_user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const revokePlaylistAccess = `-- name: RevokePlaylistAccess :one
+DELETE from "playlist_share_info"
+WHERE playlist_id = $1 AND shared_with_user = $2
+RETURNING playlist_id, shared_with_user, has_write_permission
+`
+
+type RevokePlaylistAccessParams struct {
+	PlaylistID     int32
+	SharedWithUser int32
+}
+
+func (q *Queries) RevokePlaylistAccess(ctx context.Context, arg RevokePlaylistAccessParams) (PlaylistShareInfo, error) {
+	row := q.db.QueryRow(ctx, revokePlaylistAccess, arg.PlaylistID, arg.SharedWithUser)
+	var i PlaylistShareInfo
+	err := row.Scan(&i.PlaylistID, &i.SharedWithUser, &i.HasWritePermission)
+	return i, err
+}
+
 const sharePlaylistWith = `-- name: SharePlaylistWith :exec
 INSERT INTO "playlist_share_info"
     (playlist_id, shared_with_user, has_write_permission)

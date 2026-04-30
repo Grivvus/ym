@@ -158,6 +158,17 @@ type PlaylistResponse struct {
 	PlaylistName string `json:"playlist_name"`
 }
 
+// PlaylistRevokeAccessRequest defines model for PlaylistRevokeAccessRequest.
+type PlaylistRevokeAccessRequest struct {
+	UserId int32 `json:"user_id"`
+}
+
+// PlaylistShareRequest defines model for PlaylistShareRequest.
+type PlaylistShareRequest struct {
+	HasWritePermission bool    `json:"has_write_permission"`
+	ShareWithUsers     []int32 `json:"share_with_users"`
+}
+
 // PlaylistUpdateRequest defines model for PlaylistUpdateRequest.
 type PlaylistUpdateRequest struct {
 	PlaylistName string `json:"playlist_name"`
@@ -167,6 +178,7 @@ type PlaylistUpdateRequest struct {
 type PlaylistWithTracksResponse struct {
 	PlaylistId   int32   `json:"playlist_id"`
 	PlaylistName string  `json:"playlist_name"`
+	SharedWith   []int32 `json:"shared_with"`
 	Tracks       []int32 `json:"tracks"`
 }
 
@@ -182,6 +194,12 @@ type RestoreStatusResponse struct {
 
 // RestoreStatusResponseStatus defines model for RestoreStatusResponse.Status.
 type RestoreStatusResponseStatus string
+
+// SimpleUser defines model for SimpleUser.
+type SimpleUser struct {
+	Id       int32  `json:"id"`
+	Username string `json:"username"`
+}
 
 // TokenResponse defines model for TokenResponse.
 type TokenResponse struct {
@@ -249,6 +267,9 @@ type UserUpdate struct {
 	NewEmail    *openapi_types.Email `json:"new_email,omitempty"`
 	NewUsername *string              `json:"new_username,omitempty"`
 }
+
+// Users defines model for Users.
+type Users = []SimpleUser
 
 // GetAllArtistsParams defines parameters for GetAllArtists.
 type GetAllArtistsParams struct {
@@ -330,6 +351,12 @@ type UpdatePlaylistJSONRequestBody = PlaylistUpdateRequest
 
 // AddTrackToPlaylistJSONRequestBody defines body for AddTrackToPlaylist for application/json ContentType.
 type AddTrackToPlaylistJSONRequestBody AddTrackToPlaylistJSONBody
+
+// RevokePlaylistJSONRequestBody defines body for RevokePlaylist for application/json ContentType.
+type RevokePlaylistJSONRequestBody = PlaylistRevokeAccessRequest
+
+// SharePlaylistJSONRequestBody defines body for SharePlaylist for application/json ContentType.
+type SharePlaylistJSONRequestBody = PlaylistShareRequest
 
 // UploadTrackMultipartRequestBody defines body for UploadTrack for multipart/form-data ContentType.
 type UploadTrackMultipartRequestBody = TrackUploadRequest
@@ -430,6 +457,12 @@ type ServerInterface interface {
 	// (POST /playlists/{playlistId}/cover)
 	UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32)
 
+	// (POST /playlists/{playlistId}/revoke)
+	RevokePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
+
+	// (POST /playlists/{playlistId}/share)
+	SharePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
+
 	// (POST /restore)
 	Restore(w http.ResponseWriter, r *http.Request)
 
@@ -459,6 +492,9 @@ type ServerInterface interface {
 	// getting track metadata
 	// (GET /tracks/{trackId})
 	GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32)
+	// get all id + usernames
+	// (GET /users)
+	GetAllUsers(w http.ResponseWriter, r *http.Request)
 	// get user by id
 	// (GET /users/{userId})
 	GetUser(w http.ResponseWriter, r *http.Request, userId int32)
@@ -647,6 +683,16 @@ func (_ Unimplemented) UploadPlaylistCover(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (POST /playlists/{playlistId}/revoke)
+func (_ Unimplemented) RevokePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /playlists/{playlistId}/share)
+func (_ Unimplemented) SharePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (POST /restore)
 func (_ Unimplemented) Restore(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -702,6 +748,12 @@ func (_ Unimplemented) DeleteTrack(w http.ResponseWriter, r *http.Request, track
 // getting track metadata
 // (GET /tracks/{trackId})
 func (_ Unimplemented) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// get all id + usernames
+// (GET /users)
+func (_ Unimplemented) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1552,6 +1604,68 @@ func (siw *ServerInterfaceWrapper) UploadPlaylistCover(w http.ResponseWriter, r 
 	handler.ServeHTTP(w, r)
 }
 
+// RevokePlaylist operation middleware
+func (siw *ServerInterfaceWrapper) RevokePlaylist(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "playlistId" -------------
+	var playlistId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playlistId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokePlaylist(w, r, playlistId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SharePlaylist operation middleware
+func (siw *ServerInterfaceWrapper) SharePlaylist(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "playlistId" -------------
+	var playlistId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playlistId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SharePlaylist(w, r, playlistId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // Restore operation middleware
 func (siw *ServerInterfaceWrapper) Restore(w http.ResponseWriter, r *http.Request) {
 
@@ -1864,6 +1978,26 @@ func (siw *ServerInterfaceWrapper) GetTrackMeta(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetTrackMeta(w, r, trackId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAllUsers operation middleware
+func (siw *ServerInterfaceWrapper) GetAllUsers(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAllUsers(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2260,6 +2394,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/playlists/{playlistId}/cover", wrapper.UploadPlaylistCover)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/playlists/{playlistId}/revoke", wrapper.RevokePlaylist)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/playlists/{playlistId}/share", wrapper.SharePlaylist)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/restore", wrapper.Restore)
 	})
 	r.Group(func(r chi.Router) {
@@ -2288,6 +2428,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/tracks/{trackId}", wrapper.GetTrackMeta)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/users", wrapper.GetAllUsers)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/users/{userId}", wrapper.GetUser)

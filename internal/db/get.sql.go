@@ -120,6 +120,65 @@ func (q *Queries) GetAllArtists(ctx context.Context) ([]GetAllArtistsRow, error)
 	return items, nil
 }
 
+const getAllUsernames = `-- name: GetAllUsernames :many
+SELECT id, username FROM "user"
+`
+
+type GetAllUsernamesRow struct {
+	ID       int32
+	Username string
+}
+
+func (q *Queries) GetAllUsernames(ctx context.Context) ([]GetAllUsernamesRow, error) {
+	rows, err := q.db.Query(ctx, getAllUsernames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllUsernamesRow
+	for rows.Next() {
+		var i GetAllUsernamesRow
+		if err := rows.Scan(&i.ID, &i.Username); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllUsernamesExcept = `-- name: GetAllUsernamesExcept :many
+SELECT id, username FROM "user"
+WHERE id <> $1
+`
+
+type GetAllUsernamesExceptRow struct {
+	ID       int32
+	Username string
+}
+
+func (q *Queries) GetAllUsernamesExcept(ctx context.Context, id int32) ([]GetAllUsernamesExceptRow, error) {
+	rows, err := q.db.Query(ctx, getAllUsernamesExcept, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllUsernamesExceptRow
+	for rows.Next() {
+		var i GetAllUsernamesExceptRow
+		if err := rows.Scan(&i.ID, &i.Username); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getArtist = `-- name: GetArtist :one
 SELECT "artist".id, "artist".name
     from "artist" 
@@ -453,6 +512,23 @@ func (q *Queries) GetUserTracks(ctx context.Context, uploadByUser pgtype.Int4) (
 		return nil, err
 	}
 	return items, nil
+}
+
+const getUsername = `-- name: GetUsername :one
+SELECT id, username FROM "user"
+WHERE id = $1
+`
+
+type GetUsernameRow struct {
+	ID       int32
+	Username string
+}
+
+func (q *Queries) GetUsername(ctx context.Context, id int32) (GetUsernameRow, error) {
+	row := q.db.QueryRow(ctx, getUsername, id)
+	var i GetUsernameRow
+	err := row.Scan(&i.ID, &i.Username)
+	return i, err
 }
 
 const getUsersPlaylistByName = `-- name: GetUsersPlaylistByName :one

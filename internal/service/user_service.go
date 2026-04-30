@@ -50,6 +50,21 @@ func (u *UserService) loadArtworkOwner(
 	}, nil
 }
 
+func (u *UserService) GetAllUsers(ctx context.Context) (api.Users, error) {
+	users, err := u.queries.GetAllUsernames(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w, caused by - ", ErrUnknownDBError, err)
+	}
+	apiUsers := make(api.Users, len(users))
+	for i, user := range users {
+		apiUsers[i] = api.SimpleUser{
+			Id:       user.ID,
+			Username: user.Username,
+		}
+	}
+	return apiUsers, nil
+}
+
 func (u *UserService) GetUser(
 	ctx context.Context, userID int32,
 ) (api.UserReturn, error) {

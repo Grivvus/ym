@@ -16,6 +16,17 @@ type UserHandlers struct {
 	logger      *slog.Logger
 }
 
+func (u UserHandlers) GetAllUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := u.userService.GetAllUsers(r.Context())
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err)
+	}
+	err = json.NewEncoder(w).Encode(users)
+	if err != nil {
+		u.logger.Error("can't encode response", "err", err)
+	}
+}
+
 func (u UserHandlers) GetUser(
 	w http.ResponseWriter, r *http.Request, userId int32,
 ) {

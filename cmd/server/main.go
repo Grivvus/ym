@@ -114,13 +114,15 @@ func main() {
 	)
 	tcoder.StartListener(ctx)
 
+	playlistRepo := repository.NewPlaylistRepository(pool)
+
 	authService := service.NewAuthService(dbInst, logger, cfg)
 	passwordResetService := service.NewPasswordResetService(
 		dbInst, logger, passwordResetMailer, passwordResetCfg,
 	)
 	userService := service.NewUserService(dbInst, storageClient, logger)
 	albumService := service.NewAlbumService(dbInst, storageClient, logger)
-	playlistService := service.NewPlaylistService(dbInst, storageClient, logger)
+	playlistService := service.NewPlaylistService(dbInst, playlistRepo, storageClient, logger)
 	trackService := service.NewTrackService(dbInst, storageClient, logger, queueNotificationChan)
 	artistService := service.NewArtistService(dbInst, storageClient, logger)
 	backupService := service.NewBackupService(logger, dbInst, storageClient)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
+	"github.com/Grivvus/ym/internal/repository"
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -23,14 +24,19 @@ type PlaylistCreateParams struct {
 
 type PlaylistService struct {
 	queries        *db.Queries
+	repo           *repository.PlaylistRepository
 	objStorage     storage.Storage
 	logger         *slog.Logger
 	artworkService ArtworkManager
 }
 
-func NewPlaylistService(q *db.Queries, st storage.Storage, logger *slog.Logger) PlaylistService {
+func NewPlaylistService(
+	q *db.Queries, playlistRepository *repository.PlaylistRepository,
+	st storage.Storage, logger *slog.Logger,
+) PlaylistService {
 	svc := PlaylistService{
 		queries:    q,
+		repo:       playlistRepository,
 		objStorage: st,
 		logger:     logger,
 	}
@@ -141,8 +147,13 @@ func (s *PlaylistService) Get(
 		}
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
+	usersSharedWith, err := s.queries.GetSharedUsers(ctx, playlistID)
+	if err != nil {
+		return ret, fmt.Errorf("%w caused by: %w", err)
+	}
 	ret.PlaylistId = playlist.ID
 	ret.PlaylistName = playlist.Name
+	ret.SharedWith = usersSharedWith
 	ret.Tracks = []int32{}
 	playlistTracks, err := s.queries.GetPlaylistWithTracks(ctx, playlistID)
 	if err != nil {
@@ -186,7 +197,9 @@ func (s *PlaylistService) ChangePlaylist(
 	}, nil
 }
 
-func (s *PlaylistService) GetUserPlaylists(ctx context.Context, userID int32) (api.Playlists, error) {
+func (s *PlaylistService) GetUserPlaylists(
+	ctx context.Context, userID int32,
+) (api.Playlists, error) {
 	owned, err := s.queries.GetUserOwnedPlaylists(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -215,6 +228,53 @@ func (s *PlaylistService) GetUserPlaylists(ctx context.Context, userID int32) (a
 	return ret, nil
 }
 
+func (s *PlaylistService) SharePlaylistWithUsers(
+	ctx context.Context, playlistID int32, ownerID int32,
+	shareInfo api.PlaylistShareRequest,
+) error {
+	err := s.requireToBeOwner(ctx, playlistID, ownerID)
+	if err != nil {
+		return err
+	}
+	err = s.repo.SharePlaylistWithMany(
+		ctx, playlistID, shareInfo.HasWritePermission, shareInfo.ShareWithUsers,
+	)
+	if err != nil {
+		if pgerr, ok := errors.AsType[*pgconn.PgError](err); ok {
+			if pgerr.Code == "23505" {
+				return fmt.Errorf(
+					"%w - playlist already shared with some users you chose",
+					NewErrAlreadyExists("playlist-shared_user", playlistID),
+				)
+			}
+		}
+		return fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
+	}
+
+	return nil
+}
+
+func (s *PlaylistService) RevokePlaylistAccess(
+	ctx context.Context, playlistID, ownerID, userID int32,
+) error {
+	err := s.requireToBeOwner(ctx, playlistID, ownerID)
+	if err != nil {
+		return err
+	}
+	_, err = s.queries.GetPlaylist(ctx, playlistID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return NewErrNotFound("playlist", playlistID)
+		}
+		return fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
+	}
+	err = s.repo.RevokePlaylistAccess(ctx, playlistID, userID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
+	}
+	return nil
+}
+
 func (s *PlaylistService) UploadCover(
 	ctx context.Context, playlistID int32, cover io.Reader,
 ) error {
@@ -231,4 +291,17 @@ func (s *PlaylistService) GetCover(
 	ctx context.Context, playlistID int32,
 ) ([]byte, error) {
 	return s.artworkService.Get(ctx, playlistID)
+}
+
+func (s *PlaylistService) requireToBeOwner(ctx context.Context, playlistID, userID int32) error {
+	playlist, err := s.queries.GetPlaylist(ctx, playlistID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return NewErrNotFound("playlist", playlistID)
+		}
+	}
+	if playlist.OwnerID != userID {
+		return fmt.Errorf("you can't manage someone else's playlist", ErrUnauthorized)
+	}
+	return nil
 }

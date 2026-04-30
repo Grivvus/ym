@@ -146,6 +146,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /users:
+    get:
+      summary: get all id + usernames
+      operationId: getAllUsers
+      responses:
+        '200':
+          description: fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Users'
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /users/{userId}:
     get:
       summary: get user by id
@@ -166,7 +184,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserReturn'
         '401':
-          description: Unauthorized access, if something goes wrong with tokens
+          description: unauthorized access
           content:
             application/json:
               schema:
@@ -1113,6 +1131,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /playlists/{playlistId}/share:
+    post:
+      description: share this playlist with other users
+      operationId: sharePlaylist
+      parameters:
+        - in: path
+          name: playlistId
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaylistShareRequest'
+      responses:
+        '200':
+          description: playlist was shared with users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: you can't change someone else's playlist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: no playlist was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /playlists/{playlistId}/revoke:
+    post:
+      description: revoke access to playlist
+      operationId: revokePlaylist
+      parameters:
+        - in: path
+          name: playlistId
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaylistRevokeAccessRequest'
+      responses:
+        '200':
+          description: successfully revoke access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: you can't change someone else's playlist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: no playlist was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /playlists/{playlistId}/cover:
     post:
@@ -1552,6 +1651,23 @@ components:
           type: string
           format: password
 
+    SimpleUser:
+      type: object
+      required:
+        - id
+        - username
+      properties:
+        id:
+          type: integer
+          format: int32
+        username:
+          type: string
+
+    Users:
+      type: array
+      items:
+        $ref: '#/components/schemas/SimpleUser'
+
     UserReturn:
       type: object
       required:
@@ -1819,6 +1935,7 @@ components:
         - playlist_id
         - playlist_name
         - tracks
+        - shared_with
       properties:
         playlist_id:
           type: integer
@@ -1826,6 +1943,11 @@ components:
         playlist_name:
           type: string
         tracks:
+          type: array
+          items:
+            type: integer
+            format: int32
+        shared_with:
           type: array
           items:
             type: integer
@@ -1838,6 +1960,29 @@ components:
       properties:
         playlist_name:
           type: string
+
+    PlaylistShareRequest:
+      type: object
+      required:
+        - share_with_users
+        - has_write_permission
+      properties:
+        share_with_users:
+          type: array
+          items:
+            type: integer
+            format: int32
+        has_write_permission:
+          type: boolean
+
+    PlaylistRevokeAccessRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: integer
+          format: int32
 
     PlaylistResponse:
       type: object

@@ -141,6 +141,52 @@ func (h PlaylistHandlers) AddTrackToPlaylist(
 	}
 }
 
+func (h PlaylistHandlers) SharePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
+	ownerID, _ := requireAuthenticatedUserID(w, r)
+	var body api.PlaylistShareRequest
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, fmt.Errorf("bad json: %w", err))
+		return
+	}
+	err = h.playlistService.SharePlaylistWithUsers(r.Context(), playlistId, ownerID, body)
+	if err != nil {
+		if errors.Is(err, service.ErrUnauthorized) {
+			WriteError(w, http.StatusForbidden, err)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
+			WriteError(w, http.StatusConflict, err)
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+}
+
+func (h PlaylistHandlers) RevokePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
+	ownerID, _ := requireAuthenticatedUserID(w, r)
+	var body api.PlaylistRevokeAccessRequest
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, fmt.Errorf("bad json: %w", err))
+		return
+	}
+	err = h.playlistService.RevokePlaylistAccess(r.Context(), playlistId, ownerID, body.UserId)
+	if err != nil {
+		if errors.Is(err, service.ErrUnauthorized) {
+			WriteError(w, http.StatusForbidden, err)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+}
+
 func (h PlaylistHandlers) DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	err := h.playlistService.DeleteCover(r.Context(), playlistId)
 	if err != nil {
