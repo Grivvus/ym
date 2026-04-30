@@ -86,6 +86,12 @@ type Playlist struct {
 	OwnerID  int32
 }
 
+type PlaylistShareInfo struct {
+	PlaylistID         int32
+	SharedWithUser     int32
+	HasWritePermission bool
+}
+
 type RestoreStatus struct {
 	ID         string
 	CreatedAt  pgtype.Timestamptz

@@ -294,6 +294,39 @@ func (q *Queries) GetPublicPlaylists(ctx context.Context, ownerID int32) ([]GetP
 	return items, nil
 }
 
+const getSharedPlaylists = `-- name: GetSharedPlaylists :many
+SELECT p.id, p.name, ps.has_write_permission
+    FROM "playlist" p INNER JOIN "playlist_share_info" ps
+        ON p.id = ps.playlist_id
+    WHERE ps.shared_with_user = $1
+`
+
+type GetSharedPlaylistsRow struct {
+	ID                 int32
+	Name               string
+	HasWritePermission bool
+}
+
+func (q *Queries) GetSharedPlaylists(ctx context.Context, sharedWithUser int32) ([]GetSharedPlaylistsRow, error) {
+	rows, err := q.db.Query(ctx, getSharedPlaylists, sharedWithUser)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSharedPlaylistsRow
+	for rows.Next() {
+		var i GetSharedPlaylistsRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.HasWritePermission); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTrack = `-- name: GetTrack :one
 SELECT t.id, t.name, t.artist_id, a.name AS artist_name, ta.album_id, t.duration_ms,
 t.fast_preset_fname, t.standard_preset_fname,
@@ -423,7 +456,7 @@ func (q *Queries) GetUserTracks(ctx context.Context, uploadByUser pgtype.Int4) (
 }
 
 const getUsersPlaylistByName = `-- name: GetUsersPlaylistByName :one
-SELECT p.id FROM playlist as p
+SELECT p.id FROM "playlist" as p
     WHERE p.owner_id = $1 AND p.name = $2
 `
 

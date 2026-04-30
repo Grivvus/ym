@@ -10,7 +10,7 @@ import (
 )
 
 const updatePlaylist = `-- name: UpdatePlaylist :one
-UPDATE public."playlist" SET
+UPDATE "playlist" SET
     name = $2
 WHERE id = $1
 RETURNING id, name, is_public, owner_id
