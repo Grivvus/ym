@@ -7,10 +7,16 @@ WHERE "playlist".id = $1;
 SELECT p.id FROM playlist as p
     WHERE p.owner_id = $1 AND p.name = $2;
 
--- name: GetUserPlaylists :many
+-- name: GetUserOwnedPlaylists :many
 SELECT "playlist".id, "playlist".name
     FROM "playlist"
-    WHERE "playlist".owner_id = $1 OR "playlist".is_public IS TRUE;
+    WHERE "playlist".owner_id = $1;
+
+-- name: GetPublicPlaylists :many
+SELECT p.id, p.name, p.owner_id
+    FROM "playlist" p
+    WHERE p.is_public IS TRUE AND 
+        p.owner_id <> $1;
 
 -- name: GetPlaylistWithTracks :many
 SELECT "playlist".id, "playlist".name, "track_playlist".track_id

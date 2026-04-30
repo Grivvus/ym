@@ -63,7 +63,7 @@ RETURNING id, name, is_public, owner_id
 
 type CreatePlaylistParams struct {
 	Name     string
-	OwnerID  pgtype.Int4
+	OwnerID  int32
 	IsPublic bool
 }
 

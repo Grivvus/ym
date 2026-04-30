@@ -100,7 +100,11 @@ func (h PlaylistHandlers) GetPlaylist(w http.ResponseWriter, r *http.Request, pl
 	}
 }
 
-func (h PlaylistHandlers) GetPlaylists(w http.ResponseWriter, r *http.Request) {
+func (h PlaylistHandlers) GetPlaylists(
+	w http.ResponseWriter, r *http.Request,
+	params api.GetPlaylistsParams,
+) {
+	h.logger.Warn("functional with different type of playlists is not implemented yet")
 	userID, ok := requireAuthenticatedUserID(w, r)
 	if !ok {
 		return

@@ -955,8 +955,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
-      summary: get all user's playlist
+      summary: get all playlists available to the user
       operationId: getPlaylists
+      parameters:
+        - in: query
+          name: include_public
+          schema:
+            type: boolean
+        - in: query
+          name: include_shared
+          schema:
+            type: boolean
+        - in: query
+          name: include_owned
+          schema:
+            type: boolean
       responses :
         '200':
           description: playlists was fetched
@@ -1838,10 +1851,30 @@ components:
         playlist_name:
           type: string
 
+    ExtendedPlaylist:
+        type: object
+        required:
+          - playlist_id
+          - playlist_name
+          - playlist_owner_id
+          - playlist_type
+        properties:
+          playlist_id:
+            type: integer
+            format: int32
+          playlist_name:
+            type: string
+          playlist_owner_id:
+            type: integer
+            format: int32
+          playlist_type:
+            type: string
+            enum: [owned, public, shared]
+
     Playlists:
       type: array
       items:
-        $ref: '#/components/schemas/PlaylistResponse'
+        $ref: '#/components/schemas/ExtendedPlaylist'
 
     PlaylistDeleteResponse:
       type: object

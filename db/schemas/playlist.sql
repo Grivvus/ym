@@ -2,6 +2,6 @@ CREATE TABLE playlist (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     is_public BOOLEAN NOT NULL,
-    owner_id INTEGER,
+    owner_id INTEGER NOT NULL,
     FOREIGN KEY (owner_id) REFERENCES "user" (id) ON DELETE SET NULL
 );

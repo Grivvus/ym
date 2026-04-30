@@ -7,8 +7,6 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const restorePlaylist = `-- name: RestorePlaylist :exec
@@ -23,7 +21,7 @@ type RestorePlaylistParams struct {
 	ID       int32
 	Name     string
 	IsPublic bool
-	OwnerID  pgtype.Int4
+	OwnerID  int32
 }
 
 func (q *Queries) RestorePlaylist(ctx context.Context, arg RestorePlaylistParams) error {

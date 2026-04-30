@@ -83,7 +83,7 @@ type Playlist struct {
 	ID       int32
 	Name     string
 	IsPublic bool
-	OwnerID  pgtype.Int4
+	OwnerID  int32
 }
 
 type RestoreStatus struct {

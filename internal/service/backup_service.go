@@ -248,7 +248,7 @@ func (service BackupService) backupDB(ctx context.Context) (dto.FullDBBackup, er
 			ID:       playlist.ID,
 			Name:     playlist.Name,
 			IsPublic: playlist.IsPublic,
-			OwnerID:  int4ToPtr(playlist.OwnerID),
+			OwnerID:  playlist.OwnerID,
 		})
 	}
 
@@ -563,7 +563,7 @@ func (service BackupService) restoreDBSnapshot(
 			ID:       playlist.ID,
 			Name:     playlist.Name,
 			IsPublic: playlist.IsPublic,
-			OwnerID:  ptrToInt4(playlist.OwnerID),
+			OwnerID:  playlist.OwnerID,
 		})
 		if err != nil {
 			return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)

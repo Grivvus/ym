@@ -218,7 +218,7 @@ WHERE "playlist".id = $1
 type GetPlaylistRow struct {
 	ID      int32
 	Name    string
-	OwnerID pgtype.Int4
+	OwnerID int32
 }
 
 func (q *Queries) GetPlaylist(ctx context.Context, id int32) (GetPlaylistRow, error) {
@@ -251,6 +251,39 @@ func (q *Queries) GetPlaylistWithTracks(ctx context.Context, id int32) ([]GetPla
 	for rows.Next() {
 		var i GetPlaylistWithTracksRow
 		if err := rows.Scan(&i.ID, &i.Name, &i.TrackID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPublicPlaylists = `-- name: GetPublicPlaylists :many
+SELECT p.id, p.name, p.owner_id
+    FROM "playlist" p
+    WHERE p.is_public IS TRUE AND 
+        p.owner_id <> $1
+`
+
+type GetPublicPlaylistsRow struct {
+	ID      int32
+	Name    string
+	OwnerID int32
+}
+
+func (q *Queries) GetPublicPlaylists(ctx context.Context, ownerID int32) ([]GetPublicPlaylistsRow, error) {
+	rows, err := q.db.Query(ctx, getPublicPlaylists, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPublicPlaylistsRow
+	for rows.Next() {
+		var i GetPublicPlaylistsRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.OwnerID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -310,26 +343,26 @@ func (q *Queries) GetTrack(ctx context.Context, id int32) (GetTrackRow, error) {
 	return i, err
 }
 
-const getUserPlaylists = `-- name: GetUserPlaylists :many
+const getUserOwnedPlaylists = `-- name: GetUserOwnedPlaylists :many
 SELECT "playlist".id, "playlist".name
     FROM "playlist"
-    WHERE "playlist".owner_id = $1 OR "playlist".is_public IS TRUE
+    WHERE "playlist".owner_id = $1
 `
 
-type GetUserPlaylistsRow struct {
+type GetUserOwnedPlaylistsRow struct {
 	ID   int32
 	Name string
 }
 
-func (q *Queries) GetUserPlaylists(ctx context.Context, ownerID pgtype.Int4) ([]GetUserPlaylistsRow, error) {
-	rows, err := q.db.Query(ctx, getUserPlaylists, ownerID)
+func (q *Queries) GetUserOwnedPlaylists(ctx context.Context, ownerID int32) ([]GetUserOwnedPlaylistsRow, error) {
+	rows, err := q.db.Query(ctx, getUserOwnedPlaylists, ownerID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetUserPlaylistsRow
+	var items []GetUserOwnedPlaylistsRow
 	for rows.Next() {
-		var i GetUserPlaylistsRow
+		var i GetUserOwnedPlaylistsRow
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}
@@ -395,7 +428,7 @@ SELECT p.id FROM playlist as p
 `
 
 type GetUsersPlaylistByNameParams struct {
-	OwnerID pgtype.Int4
+	OwnerID int32
 	Name    string
 }
 

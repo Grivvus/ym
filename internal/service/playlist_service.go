@@ -13,7 +13,6 @@ import (
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type PlaylistCreateParams struct {
@@ -65,7 +64,7 @@ func (s *PlaylistService) Create(
 	var ret api.PlaylistCreateResponse
 	playlist, err := s.queries.CreatePlaylist(ctx, db.CreatePlaylistParams{
 		Name:     playlistInfo.Name,
-		OwnerID:  pgtype.Int4{Int32: playlistInfo.OwnerID, Valid: true},
+		OwnerID:  playlistInfo.OwnerID,
 		IsPublic: playlistInfo.IsPublic,
 	})
 	if err != nil {
@@ -171,7 +170,7 @@ func (s *PlaylistService) ChangePlaylist(
 		return api.PlaylistResponse{}, fmt.Errorf("%w, exact - %w", ErrUnknownDBError, err)
 	}
 	// if owner is none - only superuser should be able to modify it
-	if playlistRow.OwnerID.Int32 != userID {
+	if playlistRow.OwnerID != userID {
 		return api.PlaylistResponse{}, fmt.Errorf("%w, you can't modify this playlist", ErrUnauthorized)
 	}
 	updatedPlaylist, err := s.queries.UpdatePlaylist(ctx, db.UpdatePlaylistParams{
@@ -188,16 +187,30 @@ func (s *PlaylistService) ChangePlaylist(
 }
 
 func (s *PlaylistService) GetUserPlaylists(ctx context.Context, userID int32) (api.Playlists, error) {
-	playlists, err := s.queries.GetUserPlaylists(ctx, pgtype.Int4{Int32: userID, Valid: true})
+	owned, err := s.queries.GetUserOwnedPlaylists(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
-	ret := make(api.Playlists, len(playlists))
-	for i, playlist := range playlists {
-		ret[i] = api.PlaylistResponse{
-			PlaylistId:   playlist.ID,
-			PlaylistName: playlist.Name,
-		}
+	global, err := s.queries.GetPublicPlaylists(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	ret := make(api.Playlists, 0, len(owned)+len(global))
+	for _, playlist := range owned {
+		ret = append(ret, api.ExtendedPlaylist{
+			PlaylistId:      playlist.ID,
+			PlaylistName:    playlist.Name,
+			PlaylistOwnerId: userID,
+			PlaylistType:    api.Owned,
+		})
+	}
+	for _, playlist := range global {
+		ret = append(ret, api.ExtendedPlaylist{
+			PlaylistId:      playlist.ID,
+			PlaylistName:    playlist.Name,
+			PlaylistOwnerId: playlist.OwnerID,
+			PlaylistType:    api.Public,
+		})
 	}
 	return ret, nil
 }

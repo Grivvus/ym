@@ -17,6 +17,13 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for ExtendedPlaylistPlaylistType.
+const (
+	Owned  ExtendedPlaylistPlaylistType = "owned"
+	Public ExtendedPlaylistPlaylistType = "public"
+	Shared ExtendedPlaylistPlaylistType = "shared"
+)
+
 // Defines values for RestoreStatusResponseStatus.
 const (
 	Error    RestoreStatusResponseStatus = "error"
@@ -93,6 +100,17 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
+// ExtendedPlaylist defines model for ExtendedPlaylist.
+type ExtendedPlaylist struct {
+	PlaylistId      int32                        `json:"playlist_id"`
+	PlaylistName    string                       `json:"playlist_name"`
+	PlaylistOwnerId int32                        `json:"playlist_owner_id"`
+	PlaylistType    ExtendedPlaylistPlaylistType `json:"playlist_type"`
+}
+
+// ExtendedPlaylistPlaylistType defines model for ExtendedPlaylist.PlaylistType.
+type ExtendedPlaylistPlaylistType string
+
 // MessageResponse defines model for MessageResponse.
 type MessageResponse struct {
 	Msg string `json:"msg"`
@@ -153,7 +171,7 @@ type PlaylistWithTracksResponse struct {
 }
 
 // Playlists defines model for Playlists.
-type Playlists = []PlaylistResponse
+type Playlists = []ExtendedPlaylist
 
 // RestoreStatusResponse defines model for RestoreStatusResponse.
 type RestoreStatusResponse struct {
@@ -245,6 +263,13 @@ type GetAllArtistsParams struct {
 type BackupParams struct {
 	IncludeImages           *bool `form:"include_images,omitempty" json:"include_images,omitempty"`
 	IncludeTranscodedTracks *bool `form:"include_transcoded_tracks,omitempty" json:"include_transcoded_tracks,omitempty"`
+}
+
+// GetPlaylistsParams defines parameters for GetPlaylists.
+type GetPlaylistsParams struct {
+	IncludePublic *bool `form:"include_public,omitempty" json:"include_public,omitempty"`
+	IncludeShared *bool `form:"include_shared,omitempty" json:"include_shared,omitempty"`
+	IncludeOwned  *bool `form:"include_owned,omitempty" json:"include_owned,omitempty"`
 }
 
 // AddTrackToPlaylistJSONBody defines parameters for AddTrackToPlaylist.
@@ -377,9 +402,9 @@ type ServerInterface interface {
 	// route to test, that server is alive
 	// (GET /ping)
 	Ping(w http.ResponseWriter, r *http.Request)
-	// get all user's playlist
+	// get all playlists available to the user
 	// (GET /playlists)
-	GetPlaylists(w http.ResponseWriter, r *http.Request)
+	GetPlaylists(w http.ResponseWriter, r *http.Request, params GetPlaylistsParams)
 	// creates new playlist
 	// (POST /playlists)
 	CreatePlaylist(w http.ResponseWriter, r *http.Request)
@@ -571,9 +596,9 @@ func (_ Unimplemented) Ping(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// get all user's playlist
+// get all playlists available to the user
 // (GET /playlists)
-func (_ Unimplemented) GetPlaylists(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GetPlaylists(w http.ResponseWriter, r *http.Request, params GetPlaylistsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1244,14 +1269,43 @@ func (siw *ServerInterfaceWrapper) Ping(w http.ResponseWriter, r *http.Request) 
 // GetPlaylists operation middleware
 func (siw *ServerInterfaceWrapper) GetPlaylists(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPlaylistsParams
+
+	// ------------- Optional query parameter "include_public" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include_public", r.URL.Query(), &params.IncludePublic)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include_public", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "include_shared" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include_shared", r.URL.Query(), &params.IncludeShared)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include_shared", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "include_owned" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include_owned", r.URL.Query(), &params.IncludeOwned)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include_owned", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetPlaylists(w, r)
+		siw.Handler.GetPlaylists(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {

@@ -18,7 +18,7 @@ type Playlist struct {
 	ID       int32  `json:"id"`
 	Name     string `json:"name"`
 	IsPublic bool   `json:"is_public"`
-	OwnerID  *int32 `json:"owner_id"`
+	OwnerID  int32  `json:"owner_id"`
 }
 
 type Track struct {
