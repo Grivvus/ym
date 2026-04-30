@@ -95,7 +95,7 @@ func (s *PlaylistService) Create(
 	}
 	defer func() { _ = f.Close() }()
 
-	err = s.UploadCover(ctx, ret.PlaylistId, f)
+	err = s.UploadCover(ctx, ret.PlaylistId, playlist.OwnerID, f)
 	if err != nil {
 		ret.CoverUploaded = false
 	}
@@ -103,8 +103,12 @@ func (s *PlaylistService) Create(
 	return ret, nil
 }
 
-func (s *PlaylistService) AddTrack(ctx context.Context, playlistID, trackID int32) error {
-	err := s.queries.AddTrackToPlaylist(ctx, db.AddTrackToPlaylistParams{
+func (s *PlaylistService) AddTrack(ctx context.Context, playlistID, userID, trackID int32) error {
+	err := s.checkUserHasWritePermissions(ctx, playlistID, userID)
+	if err != nil {
+		return err
+	}
+	err = s.queries.AddTrackToPlaylist(ctx, db.AddTrackToPlaylistParams{
 		TrackID:    trackID,
 		PlaylistID: playlistID,
 	})
@@ -121,9 +125,13 @@ func (s *PlaylistService) AddTrack(ctx context.Context, playlistID, trackID int3
 }
 
 func (s *PlaylistService) Delete(
-	ctx context.Context, playlistID int32,
+	ctx context.Context, playlistID, userID int32,
 ) error {
-	err := s.artworkService.Delete(ctx, playlistID)
+	err := s.requireToBeOwner(ctx, playlistID, userID)
+	if err != nil {
+		return err
+	}
+	err = s.artworkService.Delete(ctx, playlistID)
 	if err != nil {
 		if _, ok := errors.AsType[ErrNotFound](err); !ok {
 			return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -173,16 +181,9 @@ func (s *PlaylistService) ChangePlaylist(
 	ctx context.Context, userID, playlistID int32,
 	newPlaylistData api.PlaylistUpdateRequest,
 ) (api.PlaylistResponse, error) {
-	playlistRow, err := s.queries.GetPlaylist(ctx, playlistID)
+	err := s.checkUserHasWritePermissions(ctx, playlistID, userID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return api.PlaylistResponse{}, NewErrNotFound("playlist", playlistID)
-		}
-		return api.PlaylistResponse{}, fmt.Errorf("%w, exact - %w", ErrUnknownDBError, err)
-	}
-	// if owner is none - only superuser should be able to modify it
-	if playlistRow.OwnerID != userID {
-		return api.PlaylistResponse{}, fmt.Errorf("%w, you can't modify this playlist", ErrUnauthorized)
+		return api.PlaylistResponse{}, err
 	}
 	updatedPlaylist, err := s.queries.UpdatePlaylist(ctx, db.UpdatePlaylistParams{
 		ID:   playlistID,
@@ -198,17 +199,31 @@ func (s *PlaylistService) ChangePlaylist(
 }
 
 func (s *PlaylistService) GetUserPlaylists(
-	ctx context.Context, userID int32,
+	ctx context.Context, userID int32, params api.GetPlaylistsParams,
 ) (api.Playlists, error) {
-	owned, err := s.queries.GetUserOwnedPlaylists(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	var owned []db.GetUserOwnedPlaylistsRow
+	var global []db.GetPublicPlaylistsRow
+	var shared []db.GetSharedPlaylistsRow
+	var err error
+	if params.IncludeOwned != nil && *params.IncludeOwned {
+		owned, err = s.queries.GetUserOwnedPlaylists(ctx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		}
 	}
-	global, err := s.queries.GetPublicPlaylists(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	if params.IncludePublic != nil && *params.IncludePublic {
+		global, err = s.queries.GetPublicPlaylists(ctx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		}
 	}
-	ret := make(api.Playlists, 0, len(owned)+len(global))
+	if params.IncludeShared != nil && *params.IncludeShared {
+		shared, err = s.queries.GetSharedPlaylists(ctx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		}
+	}
+	ret := make(api.Playlists, 0, len(owned)+len(global)+len(shared))
 	for _, playlist := range owned {
 		ret = append(ret, api.ExtendedPlaylist{
 			PlaylistId:      playlist.ID,
@@ -223,6 +238,14 @@ func (s *PlaylistService) GetUserPlaylists(
 			PlaylistName:    playlist.Name,
 			PlaylistOwnerId: playlist.OwnerID,
 			PlaylistType:    api.Public,
+		})
+	}
+	for _, playlist := range shared {
+		ret = append(ret, api.ExtendedPlaylist{
+			PlaylistId:      playlist.ID,
+			PlaylistName:    playlist.Name,
+			PlaylistOwnerId: playlist.OwnerID,
+			PlaylistType:    api.Shared,
 		})
 	}
 	return ret, nil
@@ -276,14 +299,22 @@ func (s *PlaylistService) RevokePlaylistAccess(
 }
 
 func (s *PlaylistService) UploadCover(
-	ctx context.Context, playlistID int32, cover io.Reader,
+	ctx context.Context, userID, playlistID int32, cover io.Reader,
 ) error {
+	err := s.checkUserHasWritePermissions(ctx, playlistID, userID)
+	if err != nil {
+		return err
+	}
 	return s.artworkService.Upload(ctx, playlistID, cover)
 }
 
 func (s *PlaylistService) DeleteCover(
-	ctx context.Context, playlistID int32,
+	ctx context.Context, userID, playlistID int32,
 ) error {
+	err := s.checkUserHasWritePermissions(ctx, playlistID, userID)
+	if err != nil {
+		return err
+	}
 	return s.artworkService.Delete(ctx, playlistID)
 }
 
@@ -304,4 +335,29 @@ func (s *PlaylistService) requireToBeOwner(ctx context.Context, playlistID, user
 		return fmt.Errorf("you can't manage someone else's playlist", ErrUnauthorized)
 	}
 	return nil
+}
+
+func (s *PlaylistService) checkUserHasWritePermissions(
+	ctx context.Context, playlistID, userID int32,
+) error {
+	playlist, err := s.queries.GetPlaylist(ctx, playlistID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return NewErrNotFound("playlist", playlistID)
+		}
+		return fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
+	}
+	if playlist.OwnerID == userID {
+		return nil
+	}
+	sharedWith, err := s.queries.GetSharedUsers(ctx, playlistID)
+	if err != nil {
+		return fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
+	}
+	for _, id := range sharedWith {
+		if id == userID {
+			return nil
+		}
+	}
+	return fmt.Errorf("you can't manage someone else's playlist", ErrUnauthorized)
 }

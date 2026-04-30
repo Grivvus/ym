@@ -70,7 +70,8 @@ func (h PlaylistHandlers) UpdatePlaylist(w http.ResponseWriter, r *http.Request,
 }
 
 func (h PlaylistHandlers) DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	err := h.playlistService.Delete(r.Context(), playlistId)
+	userID, _ := requireAuthenticatedUserID(w, r)
+	err := h.playlistService.Delete(r.Context(), playlistId, userID)
 	if err != nil {
 		_ = WriteError(
 			w, http.StatusInternalServerError,
@@ -109,7 +110,7 @@ func (h PlaylistHandlers) GetPlaylists(
 	if !ok {
 		return
 	}
-	playlists, err := h.playlistService.GetUserPlaylists(r.Context(), userID)
+	playlists, err := h.playlistService.GetUserPlaylists(r.Context(), userID, params)
 	if err != nil {
 		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
@@ -122,6 +123,7 @@ func (h PlaylistHandlers) GetPlaylists(
 func (h PlaylistHandlers) AddTrackToPlaylist(
 	w http.ResponseWriter, r *http.Request, playlistID int32,
 ) {
+	userID, _ := requireAuthenticatedUserID(w, r)
 	var body api.AddTrackToPlaylistJSONBody
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
@@ -130,7 +132,7 @@ func (h PlaylistHandlers) AddTrackToPlaylist(
 		)
 		return
 	}
-	err = h.playlistService.AddTrack(r.Context(), playlistID, body.TrackId)
+	err = h.playlistService.AddTrack(r.Context(), playlistID, userID, body.TrackId)
 	if err != nil {
 		if e, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
 			_ = WriteError(w, http.StatusConflict, e)
@@ -188,7 +190,8 @@ func (h PlaylistHandlers) RevokePlaylist(w http.ResponseWriter, r *http.Request,
 }
 
 func (h PlaylistHandlers) DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	err := h.playlistService.DeleteCover(r.Context(), playlistId)
+	userID, _ := requireAuthenticatedUserID(w, r)
+	err := h.playlistService.DeleteCover(r.Context(), playlistId, userID)
 	if err != nil {
 		_ = WriteError(
 			w, http.StatusInternalServerError,
@@ -217,7 +220,8 @@ func (h PlaylistHandlers) GetPlaylistCover(w http.ResponseWriter, r *http.Reques
 }
 
 func (h PlaylistHandlers) UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	err := h.playlistService.UploadCover(r.Context(), playlistId, r.Body)
+	userID, _ := requireAuthenticatedUserID(w, r)
+	err := h.playlistService.UploadCover(r.Context(), playlistId, userID, r.Body)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = WriteError(w, http.StatusNotFound, err)

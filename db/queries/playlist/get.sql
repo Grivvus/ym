@@ -19,7 +19,7 @@ SELECT p.id, p.name, p.owner_id
         p.owner_id <> $1;
 
 -- name: GetSharedPlaylists :many
-SELECT p.id, p.name, ps.has_write_permission
+SELECT p.id, p.name, p.owner_id, ps.has_write_permission
     FROM "playlist" p INNER JOIN "playlist_share_info" ps
         ON p.id = ps.playlist_id
     WHERE ps.shared_with_user = $1;

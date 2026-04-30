@@ -354,7 +354,7 @@ func (q *Queries) GetPublicPlaylists(ctx context.Context, ownerID int32) ([]GetP
 }
 
 const getSharedPlaylists = `-- name: GetSharedPlaylists :many
-SELECT p.id, p.name, ps.has_write_permission
+SELECT p.id, p.name, p.owner_id, ps.has_write_permission
     FROM "playlist" p INNER JOIN "playlist_share_info" ps
         ON p.id = ps.playlist_id
     WHERE ps.shared_with_user = $1
@@ -363,6 +363,7 @@ SELECT p.id, p.name, ps.has_write_permission
 type GetSharedPlaylistsRow struct {
 	ID                 int32
 	Name               string
+	OwnerID            int32
 	HasWritePermission bool
 }
 
@@ -375,7 +376,12 @@ func (q *Queries) GetSharedPlaylists(ctx context.Context, sharedWithUser int32) 
 	var items []GetSharedPlaylistsRow
 	for rows.Next() {
 		var i GetSharedPlaylistsRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.HasWritePermission); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.OwnerID,
+			&i.HasWritePermission,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
