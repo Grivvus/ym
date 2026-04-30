@@ -341,7 +341,7 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 	playlist, err := s.env.Queries.CreatePlaylist(ctx, db.CreatePlaylistParams{
 		Name:     "backup-playlist",
 		IsPublic: true,
-		OwnerID:  pgtype.Int4{Int32: user.ID, Valid: true},
+		OwnerID:  user.ID,
 	})
 	s.Require().NoError(err)
 
