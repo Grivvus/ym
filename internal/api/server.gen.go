@@ -273,10 +273,10 @@ type Users = []SimpleUser
 
 // GetAllArtistsParams defines parameters for GetAllArtists.
 type GetAllArtistsParams struct {
-	// StartsWith query parameter for searching/filtering artists
+	// StartsWith Query parameter for searching or filtering artists.
 	StartsWith *string `form:"starts_with,omitempty" json:"starts_with,omitempty"`
 
-	// Limit limit on a number of artists
+	// Limit Maximum number of artists to return.
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
@@ -300,25 +300,25 @@ type AddTrackToPlaylistJSONBody struct {
 
 // DownloadTrackParams defines parameters for DownloadTrack.
 type DownloadTrackParams struct {
-	// Quality preferred quality; the server falls back to the closest available preset and then to the original track file
+	// Quality Preferred quality. If unavailable, the server falls back to the closest available preset, then to the original track file.
 	Quality *string `form:"quality,omitempty" json:"quality,omitempty"`
 }
 
 // DownloadTrackHeadParams defines parameters for DownloadTrackHead.
 type DownloadTrackHeadParams struct {
-	// Quality preferred quality; the server falls back to the closest available preset and then to the original track file
+	// Quality Preferred quality. If unavailable, the server falls back to the closest available preset, then to the original track file.
 	Quality *string `form:"quality,omitempty" json:"quality,omitempty"`
 }
 
 // StreamTrackParams defines parameters for StreamTrack.
 type StreamTrackParams struct {
-	// Quality preferred quality; the server falls back to the closest available preset and then to the original track file
+	// Quality Preferred quality. If unavailable, the server falls back to the closest available preset, then to the original track file.
 	Quality *string `form:"quality,omitempty" json:"quality,omitempty"`
 }
 
 // StreamTrackHeadParams defines parameters for StreamTrackHead.
 type StreamTrackHeadParams struct {
-	// Quality preferred quality; the server falls back to the closest available preset and then to the original track file
+	// Quality Preferred quality. If unavailable, the server falls back to the closest available preset, then to the original track file.
 	Quality *string `form:"quality,omitempty" json:"quality,omitempty"`
 }
 
@@ -369,13 +369,13 @@ type ChangePasswordJSONRequestBody = UserChangePassword
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// creates new album
+	// Creates a new album.
 	// (POST /albums)
 	CreateAlbum(w http.ResponseWriter, r *http.Request)
-	// deletes album by id
+	// Deletes an album by ID.
 	// (DELETE /albums/{albumId})
 	DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int32)
-	// get info about the album
+	// Gets album information.
 	// (GET /albums/{albumId})
 	GetAlbum(w http.ResponseWriter, r *http.Request, albumId int32)
 
@@ -387,16 +387,16 @@ type ServerInterface interface {
 
 	// (POST /albums/{albumId}/cover)
 	UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32)
-	// get list of all artists
+	// Gets a list of all artists.
 	// (GET /artists)
 	GetAllArtists(w http.ResponseWriter, r *http.Request, params GetAllArtistsParams)
-	// creates new artist
+	// Creates a new artist.
 	// (POST /artists)
 	CreateArtist(w http.ResponseWriter, r *http.Request)
-	// deletes artist by id
+	// Deletes an artist by ID.
 	// (DELETE /artists/{artistId})
 	DeleteArtist(w http.ResponseWriter, r *http.Request, artistId int32)
-	// get info about artist
+	// Gets artist information.
 	// (GET /artists/{artistId})
 	GetArtist(w http.ResponseWriter, r *http.Request, artistId int32)
 
@@ -408,43 +408,43 @@ type ServerInterface interface {
 
 	// (POST /artists/{artistId}/image)
 	UploadArtistImage(w http.ResponseWriter, r *http.Request, artistId int32)
-	// login user into account
+	// Logs a user into their account.
 	// (POST /auth/login)
 	Login(w http.ResponseWriter, r *http.Request)
-	// reset password using the code sent by email
+	// Resets a password using the code sent by email.
 	// (POST /auth/password-reset/confirm)
 	ConfirmPasswordReset(w http.ResponseWriter, r *http.Request)
-	// request a password reset code by email
+	// Requests a password reset code by email.
 	// (POST /auth/password-reset/request)
 	RequestPasswordReset(w http.ResponseWriter, r *http.Request)
-	// update jwt tokens
+	// Refreshes JWT tokens.
 	// (POST /auth/refresh)
 	RefreshTokens(w http.ResponseWriter, r *http.Request)
-	// register new user
+	// Registers a new user.
 	// (POST /auth/register)
 	Register(w http.ResponseWriter, r *http.Request)
 
 	// (GET /backup)
 	Backup(w http.ResponseWriter, r *http.Request, params BackupParams)
-	// route to test, that server is alive
+	// Checks whether the server is alive.
 	// (GET /ping)
 	Ping(w http.ResponseWriter, r *http.Request)
-	// get all playlists available to the user
+	// Gets all playlists available to the user.
 	// (GET /playlists)
 	GetPlaylists(w http.ResponseWriter, r *http.Request, params GetPlaylistsParams)
-	// creates new playlist
+	// Creates a new playlist.
 	// (POST /playlists)
 	CreatePlaylist(w http.ResponseWriter, r *http.Request)
-	// deletes playlist by id
+	// Deletes a playlist by ID.
 	// (DELETE /playlists/{playlistId})
 	DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
-	// get info about playlist
+	// Gets playlist information.
 	// (GET /playlists/{playlistId})
 	GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
-	// update playlist
+	// Updates a playlist.
 	// (PATCH /playlists/{playlistId})
 	UpdatePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
-	// add track to playlist
+	// Adds a track to a playlist.
 	// (POST /playlists/{playlistId})
 	AddTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
 
@@ -468,49 +468,49 @@ type ServerInterface interface {
 
 	// (GET /restore/{restoreId})
 	GetRestoreStatus(w http.ResponseWriter, r *http.Request, restoreId string)
-	// get all uploaded tracks meta
+	// Gets metadata for all uploaded tracks.
 	// (GET /tracks)
 	GetTracks(w http.ResponseWriter, r *http.Request)
-	// uploads new track, make all transcoding stuff, stores it
+	// Uploads a new track, queues transcoding, and stores it.
 	// (POST /tracks)
 	UploadTrack(w http.ResponseWriter, r *http.Request)
-	// downloading track file
+	// Downloads a track file.
 	// (GET /tracks/{id}/download)
 	DownloadTrack(w http.ResponseWriter, r *http.Request, id int32, params DownloadTrackParams)
-	// getting track metadata, needed for download
+	// Gets track metadata required for download.
 	// (HEAD /tracks/{id}/download)
 	DownloadTrackHead(w http.ResponseWriter, r *http.Request, id int32, params DownloadTrackHeadParams)
-	// getting track stream
+	// Streams a track.
 	// (GET /tracks/{id}/stream)
 	StreamTrack(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackParams)
-	// getting track metadata, needed for streaming
+	// Gets track metadata required for streaming.
 	// (HEAD /tracks/{id}/stream)
 	StreamTrackHead(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackHeadParams)
-	// delete track
+	// Deletes a track.
 	// (DELETE /tracks/{trackId})
 	DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int32)
-	// getting track metadata
+	// Gets track metadata.
 	// (GET /tracks/{trackId})
 	GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32)
-	// get all id + usernames
+	// Gets all user IDs and usernames.
 	// (GET /users)
 	GetAllUsers(w http.ResponseWriter, r *http.Request)
-	// get user by id
+	// Gets a user by ID.
 	// (GET /users/{userId})
 	GetUser(w http.ResponseWriter, r *http.Request, userId int32)
-	// update user
+	// Updates a user.
 	// (PATCH /users/{userId})
 	ChangeUser(w http.ResponseWriter, r *http.Request, userId int32)
-	// delete current avatar
+	// Deletes the current avatar.
 	// (DELETE /users/{userId}/avatar)
 	DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int32)
-	// get uploaded avatar
+	// Gets the uploaded user avatar.
 	// (GET /users/{userId}/avatar)
 	GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int32)
-	// upload new user's avatar to server
+	// Uploads a new user avatar to the server.
 	// (POST /users/{userId}/avatar)
 	UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int32)
-	// change user's password
+	// Changes a user's password.
 	// (PATCH /users/{userId}/change_password)
 	ChangePassword(w http.ResponseWriter, r *http.Request, userId int32)
 }
@@ -519,19 +519,19 @@ type ServerInterface interface {
 
 type Unimplemented struct{}
 
-// creates new album
+// Creates a new album.
 // (POST /albums)
 func (_ Unimplemented) CreateAlbum(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// deletes album by id
+// Deletes an album by ID.
 // (DELETE /albums/{albumId})
 func (_ Unimplemented) DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// get info about the album
+// Gets album information.
 // (GET /albums/{albumId})
 func (_ Unimplemented) GetAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -552,25 +552,25 @@ func (_ Unimplemented) UploadAlbumCover(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// get list of all artists
+// Gets a list of all artists.
 // (GET /artists)
 func (_ Unimplemented) GetAllArtists(w http.ResponseWriter, r *http.Request, params GetAllArtistsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// creates new artist
+// Creates a new artist.
 // (POST /artists)
 func (_ Unimplemented) CreateArtist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// deletes artist by id
+// Deletes an artist by ID.
 // (DELETE /artists/{artistId})
 func (_ Unimplemented) DeleteArtist(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// get info about artist
+// Gets artist information.
 // (GET /artists/{artistId})
 func (_ Unimplemented) GetArtist(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -591,31 +591,31 @@ func (_ Unimplemented) UploadArtistImage(w http.ResponseWriter, r *http.Request,
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// login user into account
+// Logs a user into their account.
 // (POST /auth/login)
 func (_ Unimplemented) Login(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// reset password using the code sent by email
+// Resets a password using the code sent by email.
 // (POST /auth/password-reset/confirm)
 func (_ Unimplemented) ConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// request a password reset code by email
+// Requests a password reset code by email.
 // (POST /auth/password-reset/request)
 func (_ Unimplemented) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// update jwt tokens
+// Refreshes JWT tokens.
 // (POST /auth/refresh)
 func (_ Unimplemented) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// register new user
+// Registers a new user.
 // (POST /auth/register)
 func (_ Unimplemented) Register(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -626,43 +626,43 @@ func (_ Unimplemented) Backup(w http.ResponseWriter, r *http.Request, params Bac
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// route to test, that server is alive
+// Checks whether the server is alive.
 // (GET /ping)
 func (_ Unimplemented) Ping(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// get all playlists available to the user
+// Gets all playlists available to the user.
 // (GET /playlists)
 func (_ Unimplemented) GetPlaylists(w http.ResponseWriter, r *http.Request, params GetPlaylistsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// creates new playlist
+// Creates a new playlist.
 // (POST /playlists)
 func (_ Unimplemented) CreatePlaylist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// deletes playlist by id
+// Deletes a playlist by ID.
 // (DELETE /playlists/{playlistId})
 func (_ Unimplemented) DeletePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// get info about playlist
+// Gets playlist information.
 // (GET /playlists/{playlistId})
 func (_ Unimplemented) GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// update playlist
+// Updates a playlist.
 // (PATCH /playlists/{playlistId})
 func (_ Unimplemented) UpdatePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// add track to playlist
+// Adds a track to a playlist.
 // (POST /playlists/{playlistId})
 func (_ Unimplemented) AddTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -703,91 +703,91 @@ func (_ Unimplemented) GetRestoreStatus(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// get all uploaded tracks meta
+// Gets metadata for all uploaded tracks.
 // (GET /tracks)
 func (_ Unimplemented) GetTracks(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// uploads new track, make all transcoding stuff, stores it
+// Uploads a new track, queues transcoding, and stores it.
 // (POST /tracks)
 func (_ Unimplemented) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// downloading track file
+// Downloads a track file.
 // (GET /tracks/{id}/download)
 func (_ Unimplemented) DownloadTrack(w http.ResponseWriter, r *http.Request, id int32, params DownloadTrackParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// getting track metadata, needed for download
+// Gets track metadata required for download.
 // (HEAD /tracks/{id}/download)
 func (_ Unimplemented) DownloadTrackHead(w http.ResponseWriter, r *http.Request, id int32, params DownloadTrackHeadParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// getting track stream
+// Streams a track.
 // (GET /tracks/{id}/stream)
 func (_ Unimplemented) StreamTrack(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// getting track metadata, needed for streaming
+// Gets track metadata required for streaming.
 // (HEAD /tracks/{id}/stream)
 func (_ Unimplemented) StreamTrackHead(w http.ResponseWriter, r *http.Request, id int32, params StreamTrackHeadParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// delete track
+// Deletes a track.
 // (DELETE /tracks/{trackId})
 func (_ Unimplemented) DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// getting track metadata
+// Gets track metadata.
 // (GET /tracks/{trackId})
 func (_ Unimplemented) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// get all id + usernames
+// Gets all user IDs and usernames.
 // (GET /users)
 func (_ Unimplemented) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// get user by id
+// Gets a user by ID.
 // (GET /users/{userId})
 func (_ Unimplemented) GetUser(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// update user
+// Updates a user.
 // (PATCH /users/{userId})
 func (_ Unimplemented) ChangeUser(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// delete current avatar
+// Deletes the current avatar.
 // (DELETE /users/{userId}/avatar)
 func (_ Unimplemented) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// get uploaded avatar
+// Gets the uploaded user avatar.
 // (GET /users/{userId}/avatar)
 func (_ Unimplemented) GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// upload new user's avatar to server
+// Uploads a new user avatar to the server.
 // (POST /users/{userId}/avatar)
 func (_ Unimplemented) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// change user's password
+// Changes a user's password.
 // (PATCH /users/{userId}/change_password)
 func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)

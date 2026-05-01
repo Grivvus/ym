@@ -1,21 +1,22 @@
 openapi: 3.0.3
 info:
-  title: ym music service
+  title: YM Music Service
   version: "0.1.0"
 
 paths:
   /ping:
     get:
       security: []
-      summary: route to test, that server is alive
+      summary: Checks whether the server is alive.
       operationId: ping
       responses:
         '200':
-          description: server is alive
+          description: The server is alive.
+
   /auth/login:
     post:
       security: []
-      summary: login user into account
+      summary: Logs a user into their account.
       operationId: login
       requestBody:
         required: true
@@ -25,13 +26,13 @@ paths:
               $ref: '#/components/schemas/UserAuth'
       responses:
         '200':
-          description: User was logged in
+          description: The user was logged in successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenResponse'
         '401':
-          description: Error on invalid user credentials
+          description: Invalid user credentials.
           content:
             application/json:
               schema:
@@ -40,7 +41,7 @@ paths:
   /auth/register:
     post:
       security: []
-      summary: register new user
+      summary: Registers a new user.
       operationId: register
       requestBody:
         required: true
@@ -50,21 +51,22 @@ paths:
               $ref: '#/components/schemas/UserAuth'
       responses:
         '201':
-          description: New user account was created
+          description: A new user account was created successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenResponse'
         '409':
-          description: Error if user already exists
+          description: A user with these credentials already exists.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
   /auth/refresh:
     post:
       security: []
-      summary: update jwt tokens
+      summary: Refreshes JWT tokens.
       operationId: refreshTokens
       requestBody:
         required: true
@@ -74,21 +76,22 @@ paths:
               $ref: '#/components/schemas/UpdateTokenRequest'
       responses:
         '200':
-          description: token were successfully updated
+          description: Tokens were refreshed successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenResponse'
         '401':
-          description: bad request
+          description: Invalid or expired refresh token.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
   /auth/password-reset/request:
     post:
       security: []
-      summary: request a password reset code by email
+      summary: Requests a password reset code by email.
       operationId: requestPasswordReset
       requestBody:
         required: true
@@ -98,27 +101,28 @@ paths:
               $ref: '#/components/schemas/PasswordResetRequest'
       responses:
         '202':
-          description: Request accepted regardless of whether the email exists
+          description: The request was accepted regardless of whether the email exists.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
         '400':
-          description: Invalid email format or malformed request body
+          description: Invalid email format or malformed request body.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
-          description: Password reset is unavailable because email delivery is not configured
+          description: Password reset is unavailable because email delivery is not configured.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
   /auth/password-reset/confirm:
     post:
       security: []
-      summary: reset password using the code sent by email
+      summary: Resets a password using the code sent by email.
       operationId: confirmPasswordReset
       requestBody:
         required: true
@@ -128,19 +132,19 @@ paths:
               $ref: '#/components/schemas/PasswordResetConfirmRequest'
       responses:
         '200':
-          description: Password was successfully reset
+          description: The password was reset successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
         '400':
-          description: Invalid body, invalid code, or expired code
+          description: Invalid request body, invalid code, or expired code.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
-          description: Password reset is unavailable because email delivery is not configured
+          description: Password reset is unavailable because email delivery is not configured.
           content:
             application/json:
               schema:
@@ -148,17 +152,17 @@ paths:
 
   /users:
     get:
-      summary: get all id + usernames
+      summary: Gets all user IDs and usernames.
       operationId: getAllUsers
       responses:
         '200':
-          description: fetched successfully
+          description: Users were fetched successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Users'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
@@ -166,7 +170,7 @@ paths:
 
   /users/{userId}:
     get:
-      summary: get user by id
+      summary: Gets a user by ID.
       operationId: getUser
       parameters:
         - in: path
@@ -175,28 +179,28 @@ paths:
             type: integer
             format: int32
           required: true
-          description: user id, represented as int
+          description: User ID represented as an integer.
       responses:
         '200':
-          description: User data fetched successfully
+          description: User data was fetched successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserReturn'
         '401':
-          description: unauthorized access
+          description: Unauthorized access.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: User with this id not found
+          description: User not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     patch:
-      summary: update user
+      summary: Updates a user.
       operationId: changeUser
       parameters:
         - in: path
@@ -205,7 +209,7 @@ paths:
             type: integer
             format: int32
           required: true
-          description: user id, represented as int
+          description: User ID represented as an integer.
       requestBody:
         required: true
         content:
@@ -214,25 +218,25 @@ paths:
               $ref: '#/components/schemas/UserUpdate'
       responses:
         '200':
-          description: User was successfully updated
+          description: The user was updated successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserReturn'
         '401':
-          description: Unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '400':
-          description: Invalid request data
+          description: Invalid request data.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: not found
+          description: User not found.
           content:
             application/json:
               schema:
@@ -240,7 +244,7 @@ paths:
 
   /users/{userId}/avatar:
     get:
-      summary: get uploaded avatar
+      summary: Gets the uploaded user avatar.
       operationId: getUserAvatar
       parameters:
         - in: path
@@ -251,26 +255,26 @@ paths:
           required: true
       responses:
         '200':
-          description: avatar was found
+          description: The avatar image was returned successfully.
           content:
             image/webp:
               schema:
                 type: string
                 format: binary
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: avatar wasn't found
+          description: Avatar not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
-      summary: upload new user's avatar to server
+      summary: Uploads a new user avatar to the server.
       operationId: uploadUserAvatar
       parameters:
         - in: path
@@ -288,31 +292,31 @@ paths:
               format: binary
       responses:
         '201':
-          description: avatar was successfully uploaded
+          description: The avatar was uploaded successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
         '400':
-          description: wrong format of an image
+          description: Invalid image format.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: user not found
+          description: User not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
-      summary: delete current avatar
+      summary: Deletes the current avatar.
       operationId: deleteUserAvatar
       parameters:
         - in: path
@@ -323,19 +327,19 @@ paths:
           required: true
       responses:
         '200':
-          description: avatar was successfully deleted
+          description: The avatar was deleted successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: user not found
+          description: User not found.
           content:
             application/json:
               schema:
@@ -343,7 +347,7 @@ paths:
 
   /users/{userId}/change_password:
     patch:
-      summary: change user's password
+      summary: Changes a user's password.
       operationId: changePassword
       parameters:
         - in: path
@@ -352,7 +356,7 @@ paths:
             type: integer
             format: int32
           required: true
-          description: user id, represented as int
+          description: User ID represented as an integer.
       requestBody:
         required: true
         content:
@@ -361,15 +365,15 @@ paths:
               $ref: '#/components/schemas/UserChangePassword'
       responses:
         '200':
-          description: User's password was successfully updated
+          description: The user's password was changed successfully.
         '401':
-          description: Unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '400':
-          description: Invalid old password
+          description: Invalid old password.
           content:
             application/json:
               schema:
@@ -377,41 +381,38 @@ paths:
 
   /tracks:
     post:
-      summary: uploads new track, make all transcoding stuff, stores it
+      summary: Uploads a new track, queues transcoding, and stores it.
       operationId: uploadTrack
       requestBody:
         content:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/TrackUploadRequest'
-            # encoding:
-            #   track:
-            #     contentType: audio/*
       responses:
         '202':
-          description: Track uploaded and accepted into the transcoding queue
+          description: The track was uploaded and accepted into the transcoding queue.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TrackUploadSuccessResponse'
         '401':
-          description: Unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '415':
-          description: Unsupported media type, uploading file is not an audio
+          description: Unsupported media type. The uploaded file is not a supported audio file.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
-      summary: get all uploaded tracks meta
+      summary: Gets metadata for all uploaded tracks.
       operationId: getTracks
       responses:
         '200':
-          description: tracks was successfully fetched
+          description: Tracks were fetched successfully.
           content:
             application/json:
               schema:
@@ -419,11 +420,11 @@ paths:
                 items:
                   $ref: '#/components/schemas/TrackMetadata'
         '404':
-          description: unknown userId
+          description: User not found.
 
   /tracks/{trackId}:
     delete:
-      summary: delete track
+      summary: Deletes a track.
       operationId: deleteTrack
       parameters:
         - in: path
@@ -432,24 +433,24 @@ paths:
             type: integer
             format: int32
           required: true
-          description: track id, represented as int
+          description: Track ID represented as an integer.
       responses:
         '200':
-          description: Track was successfully deleted
+          description: The track was deleted successfully.
         '401':
-          description: Unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: No such Track
+          description: Track not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
-      summary: getting track metadata
+      summary: Gets track metadata.
       operationId: getTrackMeta
       parameters:
         - in: path
@@ -458,22 +459,22 @@ paths:
             type: integer
             format: int32
           required: true
-          description: track id, represented as int
+          description: Track ID represented as an integer.
       responses:
         '200':
-          description: track meta was successfully fetched
+          description: Track metadata was fetched successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TrackMetadata'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no track found
+          description: Track not found.
           content:
             application/json:
               schema:
@@ -481,7 +482,7 @@ paths:
 
   /tracks/{id}/stream:
     head:
-      summary: getting track metadata, needed for streaming
+      summary: Gets track metadata required for streaming.
       operationId: streamTrackHead
       parameters:
         - in: path
@@ -494,49 +495,49 @@ paths:
           name: quality
           schema:
             type: string
-          description: preferred quality; the server falls back to the closest available preset and then to the original track file
+          description: Preferred quality. If unavailable, the server falls back to the closest available preset, then to the original track file.
           required: false
-      responses: 
+      responses:
         '200':
-          description: "metadata was fetched"
+          description: Streaming metadata was fetched successfully.
           headers:
             Content-Type:
-              description: information about track format
+              description: Media type of the track file.
               schema:
                 type: string
               example: audio/mpeg
             Content-Length:
-              description: Full downloadable file size in bytes
+              description: Full streamable file size in bytes.
               schema:
                 type: integer
                 format: int64
               example: 8423912
             Accept-Ranges:
-              description: Indicates whether byte-range requests are supported
+              description: Indicates that byte-range requests are supported.
               schema:
                 type: string
                 enum: [bytes]
               example: bytes
         '401':
-          description: "unauthorized"
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "user can't have access to this track"
+          description: The user does not have access to this track.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: "no track found"
+          description: Track not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
-      summary: getting track stream
+      summary: Streams a track.
       operationId: streamTrack
       parameters:
         - in: path
@@ -549,43 +550,43 @@ paths:
           name: quality
           schema:
             type: string
-          description: preferred quality; the server falls back to the closest available preset and then to the original track file
+          description: Preferred quality. If unavailable, the server falls back to the closest available preset, then to the original track file.
           required: false
       responses:
         '200':
-          description: "start streaming"
+          description: The track stream was returned successfully.
           content:
             audio/*:
               schema:
                 type: string
                 format: binary
         '206':
-          description: "partial"
+          description: Partial content was returned successfully.
           content:
             audio/*:
               schema:
                 type: string
                 format: binary
         '416':
-          description: "invalid range"
+          description: Invalid byte range.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
-          description: "unauthorized"
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "user can't have access to this track"
+          description: The user does not have access to this track.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: "no track found"
+          description: Track not found.
           content:
             application/json:
               schema:
@@ -593,7 +594,7 @@ paths:
 
   /tracks/{id}/download:
     head:
-      summary: getting track metadata, needed for download
+      summary: Gets track metadata required for download.
       operationId: downloadTrackHead
       parameters:
         - in: path
@@ -606,76 +607,76 @@ paths:
           name: quality
           schema:
             type: string
-          description: preferred quality; the server falls back to the closest available preset and then to the original track file
+          description: Preferred quality. If unavailable, the server falls back to the closest available preset, then to the original track file.
           required: false
       responses:
         '200':
-          description: "metadata was fetched"
+          description: Download metadata was fetched successfully.
           headers:
             Content-Type:
-              description: information about track format
+              description: Media type of the downloadable track file.
               schema:
                 type: string
               example: audio/mpeg
             Content-Length:
-              description: Full downloadable file size in bytes
+              description: Full downloadable file size in bytes.
               schema:
                 type: integer
                 format: int64
               example: 8423912
             Accept-Ranges:
-              description: Indicates whether byte-range requests are supported
+              description: Indicates that byte-range requests are supported.
               schema:
                 type: string
                 enum: [bytes]
               example: bytes
             ETag:
-              description: Opaque identifier of this exact downloadable file version
+              description: Opaque identifier for this exact downloadable file version.
               schema:
                 type: string
               example: '"track-123-standard-v5"'
             Content-Disposition:
-              description: Suggested filename for saving the track
+              description: Suggested filename for saving the track.
               schema:
                 type: string
               example: attachment; filename*=UTF-8''artist-title.mp3
             X-Track-Quality-Requested:
-              description: Quality requested by the client
+              description: Quality requested by the client.
               schema:
                 type: string
                 enum: [fast, standard, high, lossless]
               example: standard
             X-Track-Quality-Resolved:
-              description: Actual quality selected by the server
+              description: Actual quality selected by the server.
               schema:
                 type: string
                 enum: [fast, standard, high, lossless, original]
               example: standard
             X-Track-Checksum-Sha256:
-              description: SHA-256 checksum of the full downloadable file
+              description: SHA-256 checksum of the full downloadable file.
               schema:
                 type: string
               example: 0b4f0c7a...
         '401':
-          description: "unauthorized"
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "user can't have access to this track"
+          description: The user does not have access to this track.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: "no track found"
+          description: Track not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
-      summary: downloading track file
+      summary: Downloads a track file.
       operationId: downloadTrack
       parameters:
         - in: path
@@ -688,43 +689,43 @@ paths:
           name: quality
           schema:
             type: string
-          description: preferred quality; the server falls back to the closest available preset and then to the original track file
+          description: Preferred quality. If unavailable, the server falls back to the closest available preset, then to the original track file.
           required: false
       responses:
         '200':
-          description: "start downloading"
+          description: The track file was returned successfully.
           content:
             audio/*:
               schema:
                 type: string
                 format: binary
         '206':
-          description: "partial"
+          description: Partial content was returned successfully.
           content:
             audio/*:
               schema:
                 type: string
                 format: binary
         '416':
-          description: "invalid range"
+          description: Invalid byte range.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
-          description: "unauthorized"
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "user can't have access to this track"
+          description: The user does not have access to this track.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: "no track found"
+          description: Track not found.
           content:
             application/json:
               schema:
@@ -732,7 +733,7 @@ paths:
 
   /artists:
     post:
-      summary: creates new artist
+      summary: Creates a new artist.
       operationId: createArtist
       requestBody:
         content:
@@ -741,40 +742,40 @@ paths:
               $ref: '#/components/schemas/ArtistCreateRequest'
       responses:
         '201':
-          description: artist was created
+          description: The artist was created successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ArtistCreateResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: conflict, artist already exist
+          description: Conflict. The artist already exists.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
-      summary: get list of all artists
+      summary: Gets a list of all artists.
       operationId: getAllArtists
       parameters:
         - in: query
           name: starts_with
           schema:
             type: string
-          description: query parameter for searching/filtering artists
+          description: Query parameter for searching or filtering artists.
         - in: query
           name: limit
           schema:
             type: integer
-          description: limit on a number of artists
+          description: Maximum number of artists to return.
       responses:
         '200':
-          description: success
+          description: Artists were fetched successfully.
           content:
             application/json:
               schema:
@@ -782,7 +783,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/ArtistInfoResponse'
         '401':
-          description: Unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
@@ -790,7 +791,7 @@ paths:
 
   /artists/{artistId}:
     get:
-      summary: get info about artist
+      summary: Gets artist information.
       operationId: getArtist
       parameters:
         - in: path
@@ -801,25 +802,25 @@ paths:
           required: true
       responses:
         '200':
-          description: artist info was successfully fetched
+          description: Artist information was fetched successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ArtistInfoResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no artist was found
+          description: Artist not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
-      summary: deletes artist by id
+      summary: Deletes an artist by ID.
       operationId: deleteArtist
       parameters:
         - in: path
@@ -830,13 +831,13 @@ paths:
           required: true
       responses:
         '200':
-          description: artist was successfully deleted
+          description: The artist was deleted successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ArtistDeleteResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
@@ -844,7 +845,7 @@ paths:
 
   /artists/{artistId}/image:
     post:
-      description: uploads a new image of an artist
+      description: Uploads a new image for the artist.
       operationId: uploadArtistImage
       parameters:
         - in: path
@@ -861,25 +862,25 @@ paths:
               format: binary
       responses:
         '201':
-          description: image of an artist was successfully uploaded
+          description: The artist image was uploaded successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ArtistImageResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no artist was found
+          description: Artist not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
-      description: deletes an image of an artist, if there's none no-op
+      description: Deletes the artist image. If no image exists, the operation is a no-op.
       operationId: deleteArtistImage
       parameters:
         - in: path
@@ -890,25 +891,25 @@ paths:
           required: true
       responses:
         '200':
-          description: image of an artist was successfully deleted
+          description: The artist image was deleted successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ArtistImageResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no artist was found
+          description: Artist not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
-      description: fetching image of an artist
+      description: Fetches the artist image.
       operationId: getArtistImage
       parameters:
         - in: path
@@ -919,20 +920,20 @@ paths:
           required: true
       responses:
         '200':
-          description: image of an artist was successfully fetched
+          description: The artist image was fetched successfully.
           content:
             image/webp:
               schema:
                 type: string
                 format: binary
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no artist was found
+          description: Artist not found.
           content:
             application/json:
               schema:
@@ -940,7 +941,7 @@ paths:
 
   /playlists:
     post:
-      summary: creates new playlist
+      summary: Creates a new playlist.
       operationId: createPlaylist
       requestBody:
         content:
@@ -949,31 +950,31 @@ paths:
               $ref: '#/components/schemas/PlaylistCreateRequest'
       responses:
         '201':
-          description: playlist was created
+          description: The playlist was created successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlaylistCreateResponse'
         '400':
-          description: can't find required params
+          description: Required parameters are missing.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: conflict, playlist with this name already exists
+          description: Conflict. A playlist with this name already exists.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
-      summary: get all playlists available to the user
+      summary: Gets all playlists available to the user.
       operationId: getPlaylists
       parameters:
         - in: query
@@ -988,15 +989,15 @@ paths:
           name: include_owned
           schema:
             type: boolean
-      responses :
+      responses:
         '200':
-          description: playlists was fetched
+          description: Playlists were fetched successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Playlists'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
@@ -1004,12 +1005,12 @@ paths:
 
   /playlists/{playlistId}:
     post:
-      summary: add track to playlist
+      summary: Adds a track to a playlist.
       operationId: addTrackToPlaylist
       parameters:
         - in: path
           name: playlistId
-          schema: 
+          schema:
             type: integer
             format: int32
           required: true
@@ -1026,27 +1027,27 @@ paths:
                   format: int32
       responses:
         '200':
-          description: track was successfully added to playlist
+          description: The track was added to the playlist successfully.
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: you have no permition to change this playlist
+          description: You do not have permission to modify this playlist.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no playlist found
+          description: Playlist not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     patch:
-      summary: update playlist
+      summary: Updates a playlist.
       operationId: updatePlaylist
       parameters:
         - in: path
@@ -1062,31 +1063,31 @@ paths:
               $ref: '#/components/schemas/PlaylistUpdateRequest'
       responses:
         '200':
-          description: playlist was successfully updated
+          description: The playlist was updated successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlaylistResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: you have no permition to change this playlist
+          description: You do not have permission to modify this playlist.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no playlist found
+          description: Playlist not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
-      summary: get info about playlist
+      summary: Gets playlist information.
       operationId: getPlaylist
       parameters:
         - in: path
@@ -1097,25 +1098,25 @@ paths:
           required: true
       responses:
         '200':
-          description: playlist data was successfully fetched
+          description: Playlist data was fetched successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlaylistWithTracksResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no playlist found
+          description: Playlist not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
-      summary: deletes playlist by id
+      summary: Deletes a playlist by ID.
       operationId: deletePlaylist
       parameters:
         - in: path
@@ -1126,32 +1127,33 @@ paths:
           required: true
       responses:
         '200':
-          description: playlist was successfully deleted
+          description: The playlist was deleted successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlaylistDeleteResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: you have no permition to change this playlist
+          description: You do not have permission to modify this playlist.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no playlist found
+          description: Playlist not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
   /playlists/{playlistId}/share:
     post:
-      description: share this playlist with other users
+      description: Shares this playlist with other users.
       operationId: sharePlaylist
       parameters:
         - in: path
@@ -1167,25 +1169,25 @@ paths:
               $ref: '#/components/schemas/PlaylistShareRequest'
       responses:
         '200':
-          description: playlist was shared with users
+          description: The playlist was shared with the specified users.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: you can't change someone else's playlist
+          description: You do not have permission to modify this playlist.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no playlist was found
+          description: Playlist not found.
           content:
             application/json:
               schema:
@@ -1193,7 +1195,7 @@ paths:
 
   /playlists/{playlistId}/revoke:
     post:
-      description: revoke access to playlist
+      description: Revokes access to the playlist.
       operationId: revokePlaylist
       parameters:
         - in: path
@@ -1209,25 +1211,25 @@ paths:
               $ref: '#/components/schemas/PlaylistRevokeAccessRequest'
       responses:
         '200':
-          description: successfully revoke access
+          description: Access was revoked successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: you can't change someone else's playlist
+          description: You do not have permission to modify this playlist.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no playlist was found
+          description: Playlist not found.
           content:
             application/json:
               schema:
@@ -1235,7 +1237,7 @@ paths:
 
   /playlists/{playlistId}/cover:
     post:
-      description: uploads a new cover for the playlist
+      description: Uploads a new cover image for the playlist.
       operationId: uploadPlaylistCover
       parameters:
         - in: path
@@ -1252,31 +1254,31 @@ paths:
               format: binary
       responses:
         '201':
-          description: cover of the playlist was successfully uploaded
+          description: The playlist cover was uploaded successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlaylistCoverResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: you can't change someone else's playlist
+          description: You do not have permission to modify this playlist.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no playlist was found
+          description: Playlist not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
-      description: deletes the playlist's cover, if there's none no-op
+      description: Deletes the playlist cover. If no cover exists, the operation is a no-op.
       operationId: deletePlaylistCover
       parameters:
         - in: path
@@ -1287,31 +1289,31 @@ paths:
           required: true
       responses:
         '200':
-          description: cover of the playlist was successfully deleted
+          description: The playlist cover was deleted successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlaylistCoverResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: you can't change someone else's playlist
+          description: You do not have permission to modify this playlist.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no playlist was found
+          description: Playlist not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
-      description: fetching cover of the playlist
+      description: Fetches the playlist cover image.
       operationId: getPlaylistCover
       parameters:
         - in: path
@@ -1322,20 +1324,20 @@ paths:
           required: true
       responses:
         '200':
-          description: cover of the playlist was successfully fetched
+          description: The playlist cover was fetched successfully.
           content:
             image/webp:
               schema:
                 type: string
                 format: binary
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no playlist was found
+          description: Playlist not found.
           content:
             application/json:
               schema:
@@ -1343,7 +1345,7 @@ paths:
 
   /albums:
     post:
-      summary: creates new album
+      summary: Creates a new album.
       operationId: createAlbum
       requestBody:
         content:
@@ -1352,19 +1354,19 @@ paths:
               $ref: '#/components/schemas/AlbumCreateRequest'
       responses:
         '201':
-          description: album was created
+          description: The album was created successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AlbumCreateResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: conflict, artist already has album with this name
+          description: Conflict. The artist already has an album with this name.
           content:
             application/json:
               schema:
@@ -1372,7 +1374,7 @@ paths:
 
   /albums/{albumId}:
     get:
-      summary: get info about the album
+      summary: Gets album information.
       operationId: getAlbum
       parameters:
         - in: path
@@ -1383,25 +1385,25 @@ paths:
           required: true
       responses:
         '200':
-          description: album data was successfully fetched
+          description: Album data was fetched successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AlbumInfoResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no album found
+          description: Album not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
-      summary: deletes album by id
+      summary: Deletes an album by ID.
       operationId: deleteAlbum
       parameters:
         - in: path
@@ -1412,13 +1414,13 @@ paths:
           required: true
       responses:
         '200':
-          description: album was successfully deleted
+          description: The album was deleted successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AlbumDeleteResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
@@ -1426,7 +1428,7 @@ paths:
 
   /albums/{albumId}/cover:
     post:
-      description: uploads a new cover for the album
+      description: Uploads a new cover image for the album.
       operationId: uploadAlbumCover
       parameters:
         - in: path
@@ -1443,25 +1445,25 @@ paths:
               format: binary
       responses:
         '201':
-          description: cover of the album was successfully uploaded
+          description: The album cover was uploaded successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AlbumCoverResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no album was found
+          description: Album not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
-      description: deletes the album's cover, if there's none no-op
+      description: Deletes the album cover. If no cover exists, the operation is a no-op.
       operationId: deleteAlbumCover
       parameters:
         - in: path
@@ -1472,25 +1474,25 @@ paths:
           required: true
       responses:
         '200':
-          description: cover of the album was successfully deleted
+          description: The album cover was deleted successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AlbumCoverResponse'
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no album was found
+          description: Album not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
-      description: fetching cover of the album
+      description: Fetches the album cover image.
       operationId: getAlbumCover
       parameters:
         - in: path
@@ -1501,20 +1503,20 @@ paths:
           required: true
       responses:
         '200':
-          description: cover of the album was successfully fetched
+          description: The album cover was fetched successfully.
           content:
             image/webp:
               schema:
                 type: string
                 format: binary
         '401':
-          description: unauthorized
+          description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: no album was found
+          description: Album not found.
           content:
             application/json:
               schema:
@@ -1522,7 +1524,7 @@ paths:
 
   /backup:
     get:
-      description: download full application backup
+      description: Downloads a full application backup.
       operationId: backup
       parameters:
         - in: query
@@ -1535,15 +1537,15 @@ paths:
             type: boolean
       responses:
         '200':
-          description: backup received
+          description: The backup archive was returned successfully.
           headers:
             Content-Disposition:
-              description: attachment filename
+              description: Suggested filename for the backup archive.
               schema:
                 type: string
                 example: attachment; filename="ym-backup-2026-04-12T10-00-00Z.zip"
             Cache-Control:
-              description: prevent backup archive caching
+              description: Prevents caching of the backup archive.
               schema:
                 type: string
                 example: no-store
@@ -1553,13 +1555,13 @@ paths:
                 type: string
                 format: binary
         '401':
-          description: Authentication required
+          description: Authentication required.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Superuser access required
+          description: Superuser access required.
           content:
             application/json:
               schema:
@@ -1567,7 +1569,7 @@ paths:
 
   /restore:
     post:
-      description: Restore application data from the backup
+      description: Restores application data from a backup archive.
       operationId: restore
       requestBody:
         required: true
@@ -1578,25 +1580,25 @@ paths:
               format: binary
       responses:
         '202':
-          description: archive received and validated
+          description: The archive was received and validated.
           content:
             application/json:
               schema:
                 type: string
         '401':
-          description: Authentication required
+          description: Authentication required.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: superuser access required
+          description: Superuser access required.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: restore operation was already started
+          description: A restore operation has already been started.
           content:
             application/json:
               schema:
@@ -1604,7 +1606,7 @@ paths:
 
   /restore/{restoreId}:
     get:
-      description: Get restore operation status
+      description: Gets the status of a restore operation.
       operationId: getRestoreStatus
       parameters:
         - in: path
@@ -1614,31 +1616,31 @@ paths:
             type: string
       responses:
         '200':
-          description: restore status fetched
+          description: Restore status was fetched successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RestoreStatusResponse'
         '400':
-          description: found invalid state
+          description: Invalid restore state.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
-          description: Authentication required
+          description: Authentication required.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: superuser access required
+          description: Superuser access required.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: restore operation not found
+          description: Restore operation not found.
           content:
             application/json:
               schema:
@@ -2029,24 +2031,24 @@ components:
           type: string
 
     ExtendedPlaylist:
-        type: object
-        required:
-          - playlist_id
-          - playlist_name
-          - playlist_owner_id
-          - playlist_type
-        properties:
-          playlist_id:
-            type: integer
-            format: int32
-          playlist_name:
-            type: string
-          playlist_owner_id:
-            type: integer
-            format: int32
-          playlist_type:
-            type: string
-            enum: [owned, public, shared]
+      type: object
+      required:
+        - playlist_id
+        - playlist_name
+        - playlist_owner_id
+        - playlist_type
+      properties:
+        playlist_id:
+          type: integer
+          format: int32
+        playlist_name:
+          type: string
+        playlist_owner_id:
+          type: integer
+          format: int32
+        playlist_type:
+          type: string
+          enum: [owned, public, shared]
 
     Playlists:
       type: array
