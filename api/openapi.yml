@@ -1033,6 +1033,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: you have no permition to change this playlist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no playlist found
           content:
@@ -1127,6 +1133,18 @@ paths:
                 $ref: '#/components/schemas/PlaylistDeleteResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: you have no permition to change this playlist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: no playlist found
           content:
             application/json:
               schema:
@@ -1245,6 +1263,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: you can't change someone else's playlist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: no playlist was found
           content:
@@ -1270,6 +1294,12 @@ paths:
                 $ref: '#/components/schemas/PlaylistCoverResponse'
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: you can't change someone else's playlist
           content:
             application/json:
               schema:
