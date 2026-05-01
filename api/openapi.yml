@@ -1138,6 +1138,7 @@ paths:
       parameters:
         - in: path
           name: playlistId
+          required: true
           schema:
             type: integer
             format: int32
@@ -1179,6 +1180,7 @@ paths:
       parameters:
         - in: path
           name: playlistId
+          required: true
           schema:
             type: integer
             format: int32
