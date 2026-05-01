@@ -74,10 +74,7 @@ func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trac
 }
 
 func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request) {
-	userID, ok := requireAuthenticatedUserID(w, r)
-	if !ok {
-		return
-	}
+	userID, _ := requireAuthenticatedUserID(w, r)
 	tracks, err := h.trackService.GetUserTracks(r.Context(), userID)
 	if err != nil {
 		_ = WriteError(w, http.StatusInternalServerError, err)

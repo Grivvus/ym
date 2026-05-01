@@ -39,7 +39,7 @@ func requireCurrentUser(w http.ResponseWriter, r *http.Request, targetUserID int
 	}
 	if userID != targetUserID {
 		_ = WriteError(
-			w, http.StatusUnauthorized,
+			w, http.StatusForbidden,
 			fmt.Errorf("user is not allowed to access this resource"),
 		)
 		return false

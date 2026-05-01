@@ -120,6 +120,53 @@ func (q *Queries) GetAllArtists(ctx context.Context) ([]GetAllArtistsRow, error)
 	return items, nil
 }
 
+const getAllTracks = `-- name: GetAllTracks :many
+SELECT t.id, t.name, t.artist_id, duration_ms,
+t.fast_preset_fname, t.standard_preset_fname,
+t.high_preset_fname, t.lossless_preset_fname
+    FROM "track" AS t
+`
+
+type GetAllTracksRow struct {
+	ID                  int32
+	Name                string
+	ArtistID            int32
+	DurationMs          pgtype.Int4
+	FastPresetFname     pgtype.Text
+	StandardPresetFname pgtype.Text
+	HighPresetFname     pgtype.Text
+	LosslessPresetFname pgtype.Text
+}
+
+func (q *Queries) GetAllTracks(ctx context.Context) ([]GetAllTracksRow, error) {
+	rows, err := q.db.Query(ctx, getAllTracks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllTracksRow
+	for rows.Next() {
+		var i GetAllTracksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ArtistID,
+			&i.DurationMs,
+			&i.FastPresetFname,
+			&i.StandardPresetFname,
+			&i.HighPresetFname,
+			&i.LosslessPresetFname,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAllUsernames = `-- name: GetAllUsernames :many
 SELECT id, username FROM "user"
 `
