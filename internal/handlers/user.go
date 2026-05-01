@@ -21,10 +21,7 @@ func (u UserHandlers) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err)
 	}
-	err = json.NewEncoder(w).Encode(users)
-	if err != nil {
-		u.logger.Error("can't encode response", "err", err)
-	}
+	WriteJSON(w, http.StatusOK, users)
 }
 
 func (u UserHandlers) GetUser(

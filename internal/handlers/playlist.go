@@ -105,7 +105,6 @@ func (h PlaylistHandlers) GetPlaylists(
 	w http.ResponseWriter, r *http.Request,
 	params api.GetPlaylistsParams,
 ) {
-	h.logger.Warn("functional with different type of playlists is not implemented yet")
 	userID, ok := requireAuthenticatedUserID(w, r)
 	if !ok {
 		return
@@ -164,6 +163,9 @@ func (h PlaylistHandlers) SharePlaylist(w http.ResponseWriter, r *http.Request, 
 		WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
+	WriteJSON(w, http.StatusOK, api.MessageResponse{
+		Msg: "playlist was shared with some users",
+	})
 }
 
 func (h PlaylistHandlers) RevokePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
@@ -187,6 +189,9 @@ func (h PlaylistHandlers) RevokePlaylist(w http.ResponseWriter, r *http.Request,
 		WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
+	WriteJSON(w, http.StatusOK, api.MessageResponse{
+		Msg: "playlist access was revoked from this user",
+	})
 }
 
 func (h PlaylistHandlers) DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
@@ -221,7 +226,7 @@ func (h PlaylistHandlers) GetPlaylistCover(w http.ResponseWriter, r *http.Reques
 
 func (h PlaylistHandlers) UploadPlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	userID, _ := requireAuthenticatedUserID(w, r)
-	err := h.playlistService.UploadCover(r.Context(), playlistId, userID, r.Body)
+	err := h.playlistService.UploadCover(r.Context(), userID, playlistId, r.Body)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = WriteError(w, http.StatusNotFound, err)
@@ -230,6 +235,9 @@ func (h PlaylistHandlers) UploadPlaylistCover(w http.ResponseWriter, r *http.Req
 		if errors.Is(err, service.ErrBadParams) {
 			_ = WriteError(w, http.StatusBadRequest, err)
 			return
+		}
+		if errors.Is(err, service.ErrUnauthorized) {
+			_ = WriteError(w, http.StatusForbidden, err)
 		}
 		_ = WriteError(
 			w, http.StatusInternalServerError,

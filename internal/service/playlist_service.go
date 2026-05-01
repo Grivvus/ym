@@ -159,6 +159,9 @@ func (s *PlaylistService) Get(
 	if err != nil {
 		return ret, fmt.Errorf("%w caused by: %w", err)
 	}
+	if usersSharedWith == nil {
+		usersSharedWith = make([]int32, 0)
+	}
 	ret.PlaylistId = playlist.ID
 	ret.PlaylistName = playlist.Name
 	ret.SharedWith = usersSharedWith
@@ -223,6 +226,7 @@ func (s *PlaylistService) GetUserPlaylists(
 			return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 		}
 	}
+	unique := make(map[int32]struct{}, len(shared))
 	ret := make(api.Playlists, 0, len(owned)+len(global)+len(shared))
 	for _, playlist := range owned {
 		ret = append(ret, api.ExtendedPlaylist{
@@ -232,20 +236,24 @@ func (s *PlaylistService) GetUserPlaylists(
 			PlaylistType:    api.Owned,
 		})
 	}
-	for _, playlist := range global {
-		ret = append(ret, api.ExtendedPlaylist{
-			PlaylistId:      playlist.ID,
-			PlaylistName:    playlist.Name,
-			PlaylistOwnerId: playlist.OwnerID,
-			PlaylistType:    api.Public,
-		})
-	}
 	for _, playlist := range shared {
+		unique[playlist.ID] = struct{}{}
 		ret = append(ret, api.ExtendedPlaylist{
 			PlaylistId:      playlist.ID,
 			PlaylistName:    playlist.Name,
 			PlaylistOwnerId: playlist.OwnerID,
 			PlaylistType:    api.Shared,
+		})
+	}
+	for _, playlist := range global {
+		if _, ok := unique[playlist.ID]; ok {
+			continue
+		}
+		ret = append(ret, api.ExtendedPlaylist{
+			PlaylistId:      playlist.ID,
+			PlaylistName:    playlist.Name,
+			PlaylistOwnerId: playlist.OwnerID,
+			PlaylistType:    api.Public,
 		})
 	}
 	return ret, nil
