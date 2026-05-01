@@ -193,6 +193,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: The user does not have access to this information.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: User not found.
           content:
@@ -223,14 +229,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserReturn'
+        '400':
+          description: Invalid request data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '400':
-          description: Invalid request data.
+        '403':
+          description: You do not have permission to modify this user.
           content:
             application/json:
               schema:
@@ -309,6 +321,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: You can not modify this user's avatar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: User not found.
           content:
@@ -334,6 +352,12 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
         '401':
           description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: You can not modify this user's avatar.
           content:
             application/json:
               schema:
@@ -366,18 +390,20 @@ paths:
       responses:
         '200':
           description: The user's password was changed successfully.
-        '401':
-          description: Unauthorized.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '400':
           description: Invalid old password.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: You can not modify this user's password
 
   /tracks:
     post:
@@ -419,8 +445,18 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/TrackMetadata'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /tracks/{trackId}:
     delete:
@@ -439,6 +475,12 @@ paths:
           description: The track was deleted successfully.
         '401':
           description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: The user can not delete this track.
           content:
             application/json:
               schema:
@@ -1105,6 +1147,12 @@ paths:
                 $ref: '#/components/schemas/PlaylistWithTracksResponse'
         '401':
           description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: You can not have access to this playlist.
           content:
             application/json:
               schema:
