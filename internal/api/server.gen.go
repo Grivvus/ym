@@ -513,6 +513,9 @@ type ServerInterface interface {
 	// Changes a user's password.
 	// (PATCH /users/{userId}/change_password)
 	ChangePassword(w http.ResponseWriter, r *http.Request, userId int32)
+	// Gets a user by ID.
+	// (GET /users/{userId}/simple)
+	GetSimpleUser(w http.ResponseWriter, r *http.Request, userId int32)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -790,6 +793,12 @@ func (_ Unimplemented) UploadUserAvatar(w http.ResponseWriter, r *http.Request, 
 // Changes a user's password.
 // (PATCH /users/{userId}/change_password)
 func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request, userId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Gets a user by ID.
+// (GET /users/{userId}/simple)
+func (_ Unimplemented) GetSimpleUser(w http.ResponseWriter, r *http.Request, userId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2193,6 +2202,37 @@ func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// GetSimpleUser operation middleware
+func (siw *ServerInterfaceWrapper) GetSimpleUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userId" -------------
+	var userId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSimpleUser(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -2449,6 +2489,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/users/{userId}/change_password", wrapper.ChangePassword)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/users/{userId}/simple", wrapper.GetSimpleUser)
 	})
 
 	return r

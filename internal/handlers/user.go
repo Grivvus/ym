@@ -28,6 +28,7 @@ func (u UserHandlers) GetUser(
 	w http.ResponseWriter, r *http.Request, userId int32,
 ) {
 	if !requireCurrentUser(w, r, userId) {
+		_ = WriteError(w, http.StatusForbidden, fmt.Errorf("you can't read this user's data, use /user/{id}/simple"))
 		return
 	}
 	user, err := u.userService.GetUser(r.Context(), userId)
@@ -46,8 +47,26 @@ func (u UserHandlers) GetUser(
 	}
 }
 
+func (u UserHandlers) GetSimpleUser(w http.ResponseWriter, r *http.Request, userId int32) {
+	user, err := u.userService.GetUser(r.Context(), userId)
+	if err != nil {
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("can't find user with this id"))
+		} else {
+			_ = WriteError(w, http.StatusInternalServerError, err)
+		}
+		return
+	}
+	simpleUser := api.SimpleUser{
+		Id:       userId,
+		Username: user.Username,
+	}
+	_ = WriteJSON(w, http.StatusOK, simpleUser)
+}
+
 func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId int32) {
 	if !requireCurrentUser(w, r, userId) {
+		_ = WriteError(w, http.StatusForbidden, fmt.Errorf("you can not change this user"))
 		return
 	}
 	var toUpdate api.UserUpdate
@@ -84,6 +103,7 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 
 func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, userId int32) {
 	if !requireCurrentUser(w, r, userId) {
+		_ = WriteError(w, http.StatusForbidden, fmt.Errorf("you can not change this user's password"))
 		return
 	}
 	var updatePassword api.UserChangePassword
@@ -112,6 +132,7 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 
 func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	if !requireCurrentUser(w, r, userId) {
+		_ = WriteError(w, http.StatusForbidden, fmt.Errorf("you can not change this user's avatar"))
 		return
 	}
 	err := u.userService.UploadAvatar(r.Context(), userId, r.Body)
@@ -134,9 +155,6 @@ func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, u
 }
 
 func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
-	if !requireCurrentUser(w, r, userId) {
-		return
-	}
 	img, err := u.userService.GetAvatar(r.Context(), userId)
 	if err != nil {
 		if _, t := errors.AsType[service.ErrNotFound](err); t {
@@ -155,6 +173,7 @@ func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, user
 
 func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, userId int32) {
 	if !requireCurrentUser(w, r, userId) {
+		_ = WriteError(w, http.StatusForbidden, fmt.Errorf("you can not delete this user's avatar"))
 		return
 	}
 	err := u.userService.DeleteAvatar(r.Context(), userId)

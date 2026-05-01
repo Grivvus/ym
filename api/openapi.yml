@@ -254,6 +254,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /users/{userId}/simple:
+    get:
+      summary: Gets a user by ID.
+      operationId: getSimpleUser
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: integer
+            format: int32
+          required: true
+          description: User ID represented as an integer.
+      responses:
+        '200':
+          description: User data was fetched successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleUser'
+        '401':
+          description: Unauthorized access.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /users/{userId}/avatar:
     get:
       summary: Gets the uploaded user avatar.
