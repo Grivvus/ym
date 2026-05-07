@@ -157,7 +157,7 @@ func (s *PlaylistService) Get(
 	}
 	usersSharedWith, err := s.queries.GetSharedUsers(ctx, playlistID)
 	if err != nil {
-		return ret, fmt.Errorf("%w caused by: %w", err)
+		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	if usersSharedWith == nil {
 		usersSharedWith = make([]int32, 0)
@@ -271,13 +271,11 @@ func (s *PlaylistService) SharePlaylistWithUsers(
 		ctx, playlistID, shareInfo.HasWritePermission, shareInfo.ShareWithUsers,
 	)
 	if err != nil {
-		if pgerr, ok := errors.AsType[*pgconn.PgError](err); ok {
-			if pgerr.Code == "23505" {
-				return fmt.Errorf(
-					"%w - playlist already shared with some users you chose",
-					NewErrAlreadyExists("playlist-shared_user", playlistID),
-				)
-			}
+		if errors.Is(err, repository.ErrAlreadyExists) {
+			return fmt.Errorf(
+				"%w - playlist already shared with some users you chose",
+				NewErrAlreadyExists("playlist-shared_user", playlistID),
+			)
 		}
 		return fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
 	}
@@ -300,7 +298,7 @@ func (s *PlaylistService) RevokePlaylistAccess(
 		return fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
 	}
 	err = s.repo.RevokePlaylistAccess(ctx, playlistID, userID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
 	}
 	return nil
@@ -340,7 +338,7 @@ func (s *PlaylistService) requireToBeOwner(ctx context.Context, playlistID, user
 		}
 	}
 	if playlist.OwnerID != userID {
-		return fmt.Errorf("you can't manage someone else's playlist", ErrUnauthorized)
+		return fmt.Errorf("%w: you can't manage someone else's playlist", ErrUnauthorized)
 	}
 	return nil
 }
@@ -367,5 +365,5 @@ func (s *PlaylistService) checkUserHasWritePermissions(
 			return nil
 		}
 	}
-	return fmt.Errorf("you can't manage someone else's playlist", ErrUnauthorized)
+	return fmt.Errorf("%w: you can't manage someone else's playlist", ErrUnauthorized)
 }

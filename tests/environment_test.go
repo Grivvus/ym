@@ -17,6 +17,7 @@ import (
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/handlers"
+	"github.com/Grivvus/ym/internal/repository"
 	"github.com/Grivvus/ym/internal/service"
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/Grivvus/ym/internal/utils"
@@ -64,13 +65,16 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		AcceptedMessage: "if an account with that email exists, a reset code has been sent",
 	}
 
-	authService := service.NewAuthService(env.Queries, logger, &env.Config)
+	authRepo := repository.NewAuthRepository(env.DB)
+	playlistRepo := repository.NewPlaylistRepository(env.DB)
+
+	authService := service.NewAuthService(authRepo, logger, &env.Config)
 	passwordResetService := service.NewPasswordResetService(
 		env.Queries, logger, s.resetMailer, passwordResetCfg,
 	)
 	userService := service.NewUserService(env.Queries, env.Storage, logger)
 	albumService := service.NewAlbumService(env.Queries, env.Storage, logger)
-	playlistService := service.NewPlaylistService(env.Queries, env.Storage, logger)
+	playlistService := service.NewPlaylistService(env.Queries, playlistRepo, env.Storage, logger)
 	trackService := service.NewTrackService(env.Queries, env.Storage, logger, queueNotificationChan)
 	artistService := service.NewArtistService(env.Queries, env.Storage, logger)
 	backupService := service.NewBackupService(logger, env.Queries, env.Storage)

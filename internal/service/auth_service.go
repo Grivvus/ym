@@ -7,25 +7,24 @@ import (
 	"log/slog"
 
 	"github.com/Grivvus/ym/internal/api"
-	"github.com/Grivvus/ym/internal/db"
+	"github.com/Grivvus/ym/internal/repository"
 	"github.com/Grivvus/ym/internal/utils"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var ErrUnauthorized = errors.New("unauthorized")
 var ErrSuperuserRequired = errors.New("forbidden: required superuser rights")
 
 type AuthService struct {
-	queries   *db.Queries
+	repo      repository.AuthRepository
 	logger    *slog.Logger
 	jwtSecret []byte
 }
 
-func NewAuthService(q *db.Queries, logger *slog.Logger, cfg *utils.Config) AuthService {
+func NewAuthService(
+	repo repository.AuthRepository, logger *slog.Logger, cfg *utils.Config,
+) AuthService {
 	return AuthService{
-		queries:   q,
+		repo:      repo,
 		logger:    logger,
 		jwtSecret: []byte(cfg.JWTSecret),
 	}
@@ -34,22 +33,15 @@ func NewAuthService(q *db.Queries, logger *slog.Logger, cfg *utils.Config) AuthS
 func (a AuthService) Register(
 	ctx context.Context, user api.UserAuth,
 ) (api.TokenResponse, error) {
-	usersCnt, err := a.queries.GetUserCount(ctx)
-	if err != nil {
-		return api.TokenResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
-	}
 	hashed, salt := utils.HashPassword(user.Password)
-	arg := db.CreateUserParams{
-		Username:    user.Username,
-		Email:       pgtype.Text{Valid: false},
-		Password:    hashed,
-		Salt:        salt,
-		IsSuperuser: usersCnt == 0,
-	}
-	createdUser, err := a.queries.CreateUser(ctx, arg)
+	createdUser, err := a.repo.CreateUserWithInitialRole(ctx, repository.CreateAuthUserParams{
+		Username: user.Username,
+		Password: hashed,
+		Salt:     salt,
+	})
 	if err != nil {
 		a.logger.Error("can't create user", "error", err)
-		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+		if errors.Is(err, repository.ErrAlreadyExists) {
 			return api.TokenResponse{}, NewErrAlreadyExists("user", user.Username)
 		}
 		return api.TokenResponse{}, fmt.Errorf("%w cause: %w", ErrUnknownDBError, err)
@@ -70,10 +62,10 @@ func (a AuthService) Register(
 func (a AuthService) Login(
 	ctx context.Context, user api.UserAuth,
 ) (api.TokenResponse, error) {
-	dbuser, err := a.queries.GetUserByUsername(ctx, user.Username)
+	dbuser, err := a.repo.GetUserByUsername(ctx, user.Username)
 	if err != nil {
 		a.logger.Error("can't get user from db", "error", err)
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return api.TokenResponse{}, NewErrNotFound("user", user.Username)
 		}
 		return api.TokenResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -105,10 +97,10 @@ func (a AuthService) UpdateTokens(
 		return api.TokenResponse{}, ErrUnauthorized
 	}
 
-	dbuser, err := a.queries.GetUserByID(ctx, userID)
+	dbuser, err := a.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		a.logger.Error("can't get user from db", "error", err)
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return api.TokenResponse{}, ErrUnauthorized
 		}
 		return api.TokenResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -137,8 +129,11 @@ func (a AuthService) RevokeTokens(ctx context.Context) error {
 }
 
 func (a AuthService) AuthorizeSuperuser(ctx context.Context, userID int32) error {
-	user, err := a.queries.GetUserByID(ctx, userID)
+	user, err := a.repo.GetUserByID(ctx, userID)
 	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ErrUnauthorized
+		}
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	if !user.IsSuperuser {

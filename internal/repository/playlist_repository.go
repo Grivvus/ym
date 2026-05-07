@@ -36,18 +36,19 @@ func (repo *PlaylistRepository) SharePlaylistWithMany(
 		}
 		return 0, nil
 	})
-	return err
+	return wrapDBError(err)
 }
 
 func (repo *PlaylistRepository) SharePlaylist(
 	ctx context.Context, playlistID int32,
 	hasWritePermission bool, userID int32,
 ) error {
-	return repo.q.SharePlaylistWith(ctx, db.SharePlaylistWithParams{
+	err := repo.q.SharePlaylistWith(ctx, db.SharePlaylistWithParams{
 		SharedWithUser:     userID,
 		PlaylistID:         playlistID,
 		HasWritePermission: hasWritePermission,
 	})
+	return wrapDBError(err)
 }
 
 func (repo *PlaylistRepository) RevokePlaylistAccess(
@@ -57,5 +58,5 @@ func (repo *PlaylistRepository) RevokePlaylistAccess(
 		PlaylistID:     playlistID,
 		SharedWithUser: userID,
 	})
-	return err
+	return wrapDBError(err)
 }

@@ -115,8 +115,9 @@ func main() {
 	tcoder.StartListener(ctx)
 
 	playlistRepo := repository.NewPlaylistRepository(pool)
+	authRepo := repository.NewAuthRepository(pool)
 
-	authService := service.NewAuthService(dbInst, logger, cfg)
+	authService := service.NewAuthService(authRepo, logger, cfg)
 	passwordResetService := service.NewPasswordResetService(
 		dbInst, logger, passwordResetMailer, passwordResetCfg,
 	)

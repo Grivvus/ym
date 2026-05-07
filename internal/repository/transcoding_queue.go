@@ -42,7 +42,7 @@ func (repo *TranscodingQueueRepository) GetTranscodingQueue(
 				Limit: pageSize,
 			})
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				errc <- err
+				errc <- wrapDBError(err)
 				return
 			}
 
@@ -92,7 +92,7 @@ func (repo *TranscodingQueueRepository) RemoveFromQueueAndUpdateTrack(
 			})
 			return queue.ID, err
 		})
-	return err
+	return wrapDBError(err)
 }
 
 func (repo *TranscodingQueueRepository) OnFailedTranscoding(
@@ -111,5 +111,5 @@ func (repo *TranscodingQueueRepository) OnFailedTranscoding(
 		})
 		return 0, err
 	})
-	return err
+	return wrapDBError(err)
 }
