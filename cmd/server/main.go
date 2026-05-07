@@ -124,7 +124,7 @@ func main() {
 	)
 	userService := service.NewUserService(userRepo, storageClient, logger)
 	albumService := service.NewAlbumService(dbInst, storageClient, logger)
-	playlistService := service.NewPlaylistService(dbInst, playlistRepo, storageClient, logger)
+	playlistService := service.NewPlaylistService(playlistRepo, storageClient, logger)
 	trackService := service.NewTrackService(dbInst, storageClient, logger, queueNotificationChan)
 	artistService := service.NewArtistService(dbInst, storageClient, logger)
 	backupService := service.NewBackupService(logger, dbInst, storageClient)

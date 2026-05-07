@@ -75,7 +75,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	)
 	userService := service.NewUserService(userRepo, env.Storage, logger)
 	albumService := service.NewAlbumService(env.Queries, env.Storage, logger)
-	playlistService := service.NewPlaylistService(env.Queries, playlistRepo, env.Storage, logger)
+	playlistService := service.NewPlaylistService(playlistRepo, env.Storage, logger)
 	trackService := service.NewTrackService(env.Queries, env.Storage, logger, queueNotificationChan)
 	artistService := service.NewArtistService(env.Queries, env.Storage, logger)
 	backupService := service.NewBackupService(logger, env.Queries, env.Storage)
