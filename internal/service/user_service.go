@@ -9,24 +9,23 @@ import (
 	"strings"
 
 	"github.com/Grivvus/ym/internal/api"
-	"github.com/Grivvus/ym/internal/db"
+	"github.com/Grivvus/ym/internal/repository"
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/Grivvus/ym/internal/utils"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type UserService struct {
-	queries        *db.Queries
+	repo           repository.UserRepository
 	objStorage     storage.Storage
 	logger         *slog.Logger
 	artworkService ArtworkManager
 }
 
-func NewUserService(q *db.Queries, st storage.Storage, logger *slog.Logger) UserService {
+func NewUserService(
+	repo repository.UserRepository, st storage.Storage, logger *slog.Logger,
+) UserService {
 	svc := UserService{
-		queries:    q,
+		repo:       repo,
 		objStorage: st,
 		logger:     logger,
 	}
@@ -51,7 +50,7 @@ func (u *UserService) loadArtworkOwner(
 }
 
 func (u *UserService) GetAllUsers(ctx context.Context) (api.Users, error) {
-	users, err := u.queries.GetAllUsernames(ctx)
+	users, err := u.repo.GetAllUsers(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
 	}
@@ -70,25 +69,16 @@ func (u *UserService) GetUser(
 ) (api.UserReturn, error) {
 	var ret api.UserReturn
 
-	user, err := u.queries.GetUserByID(ctx, userID)
+	user, err := u.repo.GetUserByID(ctx, userID)
 	if err != nil {
-		slog.Error("Get-userByID", "err", err)
-		if errors.Is(err, pgx.ErrNoRows) {
+		u.logger.Error("Get-userByID", "err", err)
+		if errors.Is(err, repository.ErrNotFound) {
 			return ret, NewErrNotFound("user", userID)
 		}
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
-	ret.Username = user.Username
-	ret.Id = user.ID
-	ret.IsSuperuser = user.IsSuperuser
-	if user.Email.Valid {
-		ret.Email = &user.Email.String
-	} else {
-		ret.Email = nil
-	}
-
-	return ret, nil
+	return apiUserFromRepositoryUser(user), nil
 }
 
 func (u *UserService) ChangeUser(
@@ -96,10 +86,10 @@ func (u *UserService) ChangeUser(
 	userID int32,
 	newUserParams api.UserUpdate,
 ) (api.UserReturn, error) {
-	currentUser, err := u.queries.GetUserByID(ctx, userID)
+	currentUser, err := u.repo.GetUserByID(ctx, userID)
 	var ret api.UserReturn
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return ret, NewErrNotFound("user", userID)
 		}
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -116,46 +106,32 @@ func (u *UserService) ChangeUser(
 	email := currentUser.Email
 	if newUserParams.NewEmail != nil {
 		if strings.TrimSpace(string(*newUserParams.NewEmail)) == "" {
-			email = pgtype.Text{Valid: false}
+			email = nil
 		} else {
 			normalizedEmail, err := utils.NormalizeEmailAddress(string(*newUserParams.NewEmail))
 			if err != nil {
 				return ret, fmt.Errorf("%w: %w", ErrBadParams, err)
 			}
-			email = pgtype.Text{
-				String: normalizedEmail,
-				Valid:  true,
-			}
+			email = &normalizedEmail
 		}
 	}
 
-	updateParamsDB := db.UpdateUserParams{
+	updatedUser, err := u.repo.UpdateUser(ctx, repository.UpdateUserParams{
 		ID:       userID,
 		Username: username,
 		Email:    email,
-	}
-
-	updatedUser, err := u.queries.UpdateUser(ctx, updateParamsDB)
+	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return ret, NewErrNotFound("user", userID)
 		}
-		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+		if errors.Is(err, repository.ErrAlreadyExists) {
 			return ret, NewErrAlreadyExists("user", username)
 		}
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
-	ret.Username = updatedUser.Username
-	ret.Id = updatedUser.ID
-	ret.IsSuperuser = updatedUser.IsSuperuser
-	if updatedUser.Email.Valid {
-		ret.Email = &updatedUser.Email.String
-	} else {
-		ret.Email = nil
-	}
-
-	return ret, nil
+	return apiUserFromRepositoryUser(updatedUser), nil
 }
 
 func (u *UserService) ChangePassword(
@@ -164,9 +140,9 @@ func (u *UserService) ChangePassword(
 	if strings.TrimSpace(newPasswordParams.NewPassword) == "" {
 		return fmt.Errorf("%w: new password is required", ErrBadParams)
 	}
-	user, err := u.queries.GetUserByID(ctx, userID)
+	user, err := u.repo.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return NewErrNotFound("user", userID)
 		}
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -175,12 +151,15 @@ func (u *UserService) ChangePassword(
 		return fmt.Errorf("%w: old password is wrong", ErrBadParams)
 	}
 	newHashed, newSalt := utils.HashPassword(newPasswordParams.NewPassword)
-	err = u.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+	err = u.repo.UpdateUserPassword(ctx, repository.UpdateUserPasswordParams{
 		ID:       userID,
 		Password: newHashed,
 		Salt:     newSalt,
 	})
 	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return NewErrNotFound("user", userID)
+		}
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return nil
@@ -200,4 +179,13 @@ func (u *UserService) DeleteAvatar(
 	ctx context.Context, userID int32,
 ) error {
 	return u.artworkService.Delete(ctx, userID)
+}
+
+func apiUserFromRepositoryUser(user repository.User) api.UserReturn {
+	return api.UserReturn{
+		Id:          user.ID,
+		Username:    user.Username,
+		Email:       user.Email,
+		IsSuperuser: user.IsSuperuser,
+	}
 }

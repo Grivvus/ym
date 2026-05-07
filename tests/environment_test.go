@@ -67,12 +67,13 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	authRepo := repository.NewAuthRepository(env.DB)
 	playlistRepo := repository.NewPlaylistRepository(env.DB)
+	userRepo := repository.NewUserRepository(env.DB)
 
 	authService := service.NewAuthService(authRepo, logger, &env.Config)
 	passwordResetService := service.NewPasswordResetService(
 		env.Queries, logger, s.resetMailer, passwordResetCfg,
 	)
-	userService := service.NewUserService(env.Queries, env.Storage, logger)
+	userService := service.NewUserService(userRepo, env.Storage, logger)
 	albumService := service.NewAlbumService(env.Queries, env.Storage, logger)
 	playlistService := service.NewPlaylistService(env.Queries, playlistRepo, env.Storage, logger)
 	trackService := service.NewTrackService(env.Queries, env.Storage, logger, queueNotificationChan)
