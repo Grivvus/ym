@@ -10,11 +10,8 @@ import (
 	"time"
 
 	"github.com/Grivvus/ym/internal/api"
-	"github.com/Grivvus/ym/internal/db"
+	"github.com/Grivvus/ym/internal/repository"
 	"github.com/Grivvus/ym/internal/storage"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/oapi-codegen/runtime/types"
 )
 
@@ -26,15 +23,17 @@ type AlbumCreateParams struct {
 }
 
 type AlbumService struct {
-	queries        *db.Queries
+	repo           repository.AlbumRepository
 	objStorage     storage.Storage
 	logger         *slog.Logger
 	artworkService ArtworkManager
 }
 
-func NewAlbumService(q *db.Queries, st storage.Storage, logger *slog.Logger) AlbumService {
+func NewAlbumService(
+	repo repository.AlbumRepository, st storage.Storage, logger *slog.Logger,
+) AlbumService {
 	svc := AlbumService{
-		queries:    q,
+		repo:       repo,
 		objStorage: st,
 		logger:     logger,
 	}
@@ -46,9 +45,9 @@ func NewAlbumService(q *db.Queries, st storage.Storage, logger *slog.Logger) Alb
 func (s *AlbumService) loadArtworkOwner(
 	ctx context.Context, albumID int32,
 ) (ArtworkOwner, error) {
-	album, err := s.queries.GetAlbum(ctx, albumID)
+	album, err := s.repo.GetAlbum(ctx, albumID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return ArtworkOwner{}, NewErrNotFound("album", albumID)
 		}
 		return ArtworkOwner{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -61,15 +60,15 @@ func (s *AlbumService) Create(
 	coverFileHeader *multipart.FileHeader,
 ) (api.AlbumCreateResponse, error) {
 	var ret api.AlbumCreateResponse
-	var album = db.CreateAlbumParams{
-		Name:            albumInfo.Name,
-		ArtistID:        albumInfo.ArtistID,
-		ReleaseYear:     intPtrToDBInt(albumInfo.ReleaseYear),
-		ReleaseFullDate: datePtrToDBDate(albumInfo.ReleaseDate),
+	var album = repository.CreateAlbumParams{
+		Name:        albumInfo.Name,
+		ArtistID:    albumInfo.ArtistID,
+		ReleaseYear: albumInfo.ReleaseYear,
+		ReleaseDate: albumInfo.ReleaseDate,
 	}
-	albumRet, err := s.queries.CreateAlbum(ctx, album)
+	albumRet, err := s.repo.CreateAlbum(ctx, album)
 	if err != nil {
-		if e, ok := errors.AsType[*pgconn.PgError](err); ok && e.Code == "23505" {
+		if errors.Is(err, repository.ErrAlreadyExists) {
 			return ret, NewErrAlreadyExists("album", albumInfo.Name)
 		}
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -99,26 +98,19 @@ func (s *AlbumService) Get(
 ) (api.AlbumInfoResponse, error) {
 	var ret api.AlbumInfoResponse
 
-	// check if album exists
-	album, err := s.queries.GetAlbum(ctx, albumID)
+	album, err := s.repo.GetAlbumInfo(ctx, albumID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return ret, NewErrNotFound("album", albumID)
 		}
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
-	albumTracks, err := s.queries.GetAlbumWithTracks(ctx, albumID)
-	if err != nil {
-		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
-	}
 	ret.AlbumId = album.ID
 	ret.AlbumName = album.Name
-	ret.ReleaseYear = dbIntToIntPtr(album.ReleaseYear)
-	ret.ReleaseFullDate = dbDateToSwaggerDate(album.ReleaseFullDate)
-	for _, t := range albumTracks {
-		ret.Tracks = append(ret.Tracks, t.TrackID)
-	}
+	ret.ReleaseYear = album.ReleaseYear
+	ret.ReleaseFullDate = timePtrToSwaggerDate(album.ReleaseDate)
+	ret.Tracks = album.TrackIDs
 	return ret, nil
 }
 
@@ -132,7 +124,7 @@ func (s *AlbumService) Delete(
 			return ret, err
 		}
 	}
-	err = s.queries.DeleteAlbum(ctx, albumID)
+	err = s.repo.DeleteAlbum(ctx, albumID)
 	if err != nil {
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
@@ -157,32 +149,11 @@ func (s *AlbumService) GetCover(
 	return s.artworkService.Get(ctx, albumID)
 }
 
-func intPtrToDBInt(iptr *int32) pgtype.Int4 {
-	if iptr == nil {
-		return pgtype.Int4{Valid: false}
-	}
-	return pgtype.Int4{Valid: true, Int32: *iptr}
-}
-
-func datePtrToDBDate(dt *time.Time) pgtype.Date {
+func timePtrToSwaggerDate(dt *time.Time) *types.Date {
 	if dt == nil {
-		return pgtype.Date{Valid: false}
-	}
-	return pgtype.Date{Valid: true, Time: *dt}
-}
-
-func dbDateToSwaggerDate(dt pgtype.Date) *types.Date {
-	if !dt.Valid {
 		return nil
 	}
 	return &types.Date{
-		Time: dt.Time,
+		Time: *dt,
 	}
-}
-
-func dbIntToIntPtr(i pgtype.Int4) *int32 {
-	if !i.Valid {
-		return nil
-	}
-	return &i.Int32
 }
