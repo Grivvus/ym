@@ -9,23 +9,22 @@ import (
 	"mime/multipart"
 
 	"github.com/Grivvus/ym/internal/api"
-	"github.com/Grivvus/ym/internal/db"
+	"github.com/Grivvus/ym/internal/repository"
 	"github.com/Grivvus/ym/internal/storage"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ArtistService struct {
-	queries        *db.Queries
+	repo           repository.ArtistRepository
 	objStorage     storage.Storage
 	logger         *slog.Logger
 	artworkService ArtworkManager
 }
 
-func NewArtistService(q *db.Queries, st storage.Storage, logger *slog.Logger) ArtistService {
+func NewArtistService(
+	repo repository.ArtistRepository, st storage.Storage, logger *slog.Logger,
+) ArtistService {
 	svc := ArtistService{
-		queries:    q,
+		repo:       repo,
 		objStorage: st,
 		logger:     logger,
 	}
@@ -38,9 +37,9 @@ func NewArtistService(q *db.Queries, st storage.Storage, logger *slog.Logger) Ar
 func (s *ArtistService) loadArtworkOwner(
 	ctx context.Context, artistID int32,
 ) (ArtworkOwner, error) {
-	artist, err := s.queries.GetArtist(ctx, artistID)
+	artist, err := s.repo.GetArtist(ctx, artistID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return ArtworkOwner{}, NewErrNotFound("artist", artistID)
 		}
 		return ArtworkOwner{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -55,94 +54,32 @@ func (s *ArtistService) loadArtworkOwner(
 func (s *ArtistService) Get(ctx context.Context, id int32) (api.ArtistInfoResponse, error) {
 	var ret api.ArtistInfoResponse
 
-	var (
-		artistID   int32
-		artistName string
-	)
-
-	artistWithAlbums, err := s.queries.GetArtistWithAlbums(ctx, id)
-	if len(artistWithAlbums) == 0 || errors.Is(err, pgx.ErrNoRows) {
-		artist, err := s.queries.GetArtist(ctx, id)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return ret, NewErrNotFound("artist", id)
-			}
-			return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	artist, err := s.repo.GetArtistInfo(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ret, NewErrNotFound("artist", id)
 		}
-		artistID = artist.ID
-		artistName = artist.Name
-	} else if err != nil {
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
-
-	albums := make([]int32, len(artistWithAlbums))
-	for i, album := range artistWithAlbums {
-		albums[i] = album.AlbumID
-	}
-
-	if len(artistWithAlbums) > 0 {
-		artistID = artistWithAlbums[0].ArtistID
-		artistName = artistWithAlbums[0].ArtistName
-	}
-
-	ret.ArtistId = artistID
-	ret.ArtistName = artistName
-	ret.ArtistAlbums = albums
-
-	return ret, nil
+	return apiArtistInfoFromRepositoryArtistInfo(artist), nil
 }
 
 func (s *ArtistService) GetAll(ctx context.Context) ([]api.ArtistInfoResponse, error) {
-	dbArtists, err := s.queries.GetAllArtists(ctx)
+	artists, err := s.repo.GetAllArtists(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
-	artists := make([]api.ArtistInfoResponse, len(dbArtists))
-	for i, artist := range dbArtists {
-		albums, err := s.queries.GetArtistWithAlbums(ctx, artist.ID)
-		if err != nil {
-			return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
-		}
-		artistAlbums := make([]int32, len(albums))
-		for j, album := range albums {
-			artistAlbums[j] = album.AlbumID
-		}
-		artists[i] = api.ArtistInfoResponse{
-			ArtistId:     artist.ID,
-			ArtistName:   artist.Name,
-			ArtistAlbums: artistAlbums,
-		}
-	}
-	return artists, nil
+	return apiArtistsFromRepositoryArtists(artists), nil
 }
 
 func (s *ArtistService) GetWithFilters(
 	ctx context.Context, nameStartsWith string, limit int,
 ) ([]api.ArtistInfoResponse, error) {
-	dbArtists, err := s.queries.GetArtistsWithFilter(ctx, db.GetArtistsWithFilterParams{
-		Column1: pgtype.Text{Valid: true, String: nameStartsWith},
-		Limit:   int32(limit),
-	})
+	artists, err := s.repo.GetArtistsWithFilter(ctx, nameStartsWith, limit)
 	if err != nil {
 		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
-	artists := make([]api.ArtistInfoResponse, len(dbArtists))
-	for i, artist := range dbArtists {
-		albums, err := s.queries.GetArtistWithAlbums(ctx, artist.ID)
-		if err != nil {
-			return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
-		}
-		artistAlbums := make([]int32, len(albums))
-		for j, album := range albums {
-			artistAlbums[j] = album.AlbumID
-		}
-		artists[i] = api.ArtistInfoResponse{
-			ArtistId:     artist.ID,
-			ArtistName:   artist.Name,
-			ArtistAlbums: artistAlbums,
-		}
-	}
-	return artists, nil
+	return apiArtistsFromRepositoryArtists(artists), nil
 }
 
 func (s *ArtistService) Delete(ctx context.Context, id int32) (api.ArtistDeleteResponse, error) {
@@ -153,7 +90,7 @@ func (s *ArtistService) Delete(ctx context.Context, id int32) (api.ArtistDeleteR
 			return ret, err
 		}
 	}
-	err = s.queries.DeleteArtist(ctx, id)
+	err = s.repo.DeleteArtist(ctx, id)
 	if err != nil {
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
@@ -165,9 +102,9 @@ func (s *ArtistService) Create(
 	artistImage *multipart.FileHeader,
 ) (api.ArtistCreateResponse, error) {
 	var ret api.ArtistCreateResponse
-	artist, err := s.queries.CreateArtist(ctx, artistName)
+	artist, err := s.repo.CreateArtist(ctx, artistName)
 	if err != nil {
-		if e, ok := errors.AsType[*pgconn.PgError](err); ok && e.Code == "23505" {
+		if errors.Is(err, repository.ErrAlreadyExists) {
 			return ret, NewErrAlreadyExists("artist", artistName)
 		}
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -208,4 +145,24 @@ func (s *ArtistService) GetImage(
 	ctx context.Context, artistID int32,
 ) ([]byte, error) {
 	return s.artworkService.Get(ctx, artistID)
+}
+
+func apiArtistsFromRepositoryArtists(
+	artists []repository.ArtistInfo,
+) []api.ArtistInfoResponse {
+	result := make([]api.ArtistInfoResponse, len(artists))
+	for i, artist := range artists {
+		result[i] = apiArtistInfoFromRepositoryArtistInfo(artist)
+	}
+	return result
+}
+
+func apiArtistInfoFromRepositoryArtistInfo(
+	artist repository.ArtistInfo,
+) api.ArtistInfoResponse {
+	return api.ArtistInfoResponse{
+		ArtistId:     artist.ID,
+		ArtistName:   artist.Name,
+		ArtistAlbums: artist.AlbumIDs,
+	}
 }
