@@ -13,17 +13,15 @@ import (
 	"time"
 
 	"github.com/Grivvus/ym/internal/api"
-	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/mailer"
+	"github.com/Grivvus/ym/internal/repository"
 	"github.com/Grivvus/ym/internal/utils"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const defaultPasswordResetAcceptedMessage = "if an account with that email exists, a reset code has been sent"
 
 type PasswordResetService struct {
-	queries         *db.Queries
+	repo            repository.PasswordResetRepository
 	logger          *slog.Logger
 	mailer          mailer.Mailer
 	available       bool
@@ -36,13 +34,13 @@ type PasswordResetService struct {
 }
 
 func NewPasswordResetService(
-	q *db.Queries,
+	repo repository.PasswordResetRepository,
 	logger *slog.Logger,
 	m mailer.Mailer,
 	cfg *utils.PasswordResetConfig,
 ) PasswordResetService {
 	service := PasswordResetService{
-		queries:         q,
+		repo:            repo,
 		logger:          logger,
 		mailer:          m,
 		acceptedMessage: defaultPasswordResetAcceptedMessage,
@@ -82,9 +80,9 @@ func (s PasswordResetService) RequestPasswordReset(
 		return fmt.Errorf("%w: %w", ErrBadParams, err)
 	}
 
-	user, err := s.queries.GetUserByEmail(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			s.logger.Info("no user found for email", "email", email)
 			return nil
 		}
@@ -92,16 +90,16 @@ func (s PasswordResetService) RequestPasswordReset(
 	}
 
 	now := time.Now()
-	resetCode, err := s.queries.GetPasswordResetCodeByUserID(ctx, user.ID)
+	resetCode, err := s.repo.GetPasswordResetCode(ctx, user.ID)
 	switch {
 	case err == nil:
-		if resetCode.AttemptsLeft > 0 && resetCode.ExpiresAt.Valid && resetCode.ExpiresAt.Time.After(now) {
-			if resetCode.ResendAvailableAt.Valid && resetCode.ResendAvailableAt.Time.After(now) {
+		if resetCode.AttemptsLeft > 0 && resetCode.ExpiresAt != nil && resetCode.ExpiresAt.After(now) {
+			if resetCode.ResendAvailableAt != nil && resetCode.ResendAvailableAt.After(now) {
 				s.logger.Info("resend is not available yet")
 				return nil
 			}
 		}
-	case errors.Is(err, pgx.ErrNoRows):
+	case errors.Is(err, repository.ErrNotFound):
 	default:
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
@@ -111,12 +109,12 @@ func (s PasswordResetService) RequestPasswordReset(
 		return fmt.Errorf("generate password reset code: %w", err)
 	}
 
-	err = s.queries.UpsertPasswordResetCode(ctx, db.UpsertPasswordResetCodeParams{
+	err = s.repo.UpsertPasswordResetCode(ctx, repository.UpsertPasswordResetCodeParams{
 		UserID:            user.ID,
 		CodeHash:          hashPasswordResetCode(s.codeSecret, code),
-		ExpiresAt:         toPGTimestamptz(now.Add(s.codeTTL)),
+		ExpiresAt:         now.Add(s.codeTTL),
 		AttemptsLeft:      s.maxAttempts,
-		ResendAvailableAt: toPGTimestamptz(now.Add(s.resendCooldown)),
+		ResendAvailableAt: now.Add(s.resendCooldown),
 	})
 	if err != nil {
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -124,7 +122,7 @@ func (s PasswordResetService) RequestPasswordReset(
 
 	if err := s.mailer.SendPasswordResetCode(ctx, email, code, s.codeTTL); err != nil {
 		s.logger.Error("failed to send password reset email", "email", email, "err", err)
-		if deleteErr := s.queries.DeletePasswordResetCodeByUserID(ctx, user.ID); deleteErr != nil {
+		if deleteErr := s.repo.DeletePasswordResetCode(ctx, user.ID); deleteErr != nil {
 			s.logger.Error(
 				"failed to delete unsent password reset code",
 				"user_id", user.ID,
@@ -156,40 +154,34 @@ func (s PasswordResetService) ConfirmPasswordReset(
 		return fmt.Errorf("%w: new password is required", ErrBadParams)
 	}
 
-	user, err := s.queries.GetUserByEmail(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return invalidPasswordResetCodeError()
 		}
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
-	resetCode, err := s.queries.GetPasswordResetCodeByUserID(ctx, user.ID)
+	resetCode, err := s.repo.GetPasswordResetCode(ctx, user.ID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return invalidPasswordResetCodeError()
 		}
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	now := time.Now()
-	if resetCode.AttemptsLeft <= 0 || !resetCode.ExpiresAt.Valid || !resetCode.ExpiresAt.Time.After(now) {
-		_ = s.queries.DeletePasswordResetCodeByUserID(ctx, user.ID)
+	if resetCode.AttemptsLeft <= 0 || resetCode.ExpiresAt == nil || !resetCode.ExpiresAt.After(now) {
+		_ = s.repo.DeletePasswordResetCode(ctx, user.ID)
 		return invalidPasswordResetCodeError()
 	}
 
 	expectedHash := hashPasswordResetCode(s.codeSecret, code)
 	if subtle.ConstantTimeCompare(expectedHash, resetCode.CodeHash) != 1 {
 		if resetCode.AttemptsLeft <= 1 {
-			_ = s.queries.DeletePasswordResetCodeByUserID(ctx, user.ID)
+			_ = s.repo.DeletePasswordResetCode(ctx, user.ID)
 		} else {
-			err := s.queries.UpdatePasswordResetCodeAttempts(
-				ctx,
-				db.UpdatePasswordResetCodeAttemptsParams{
-					UserID:       user.ID,
-					AttemptsLeft: resetCode.AttemptsLeft - 1,
-				},
-			)
+			err := s.repo.UpdatePasswordResetCodeAttempts(ctx, user.ID, resetCode.AttemptsLeft-1)
 			if err != nil {
 				return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 			}
@@ -198,8 +190,8 @@ func (s PasswordResetService) ConfirmPasswordReset(
 	}
 
 	hashedPassword, salt := utils.HashPassword(req.NewPassword)
-	err = s.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
-		ID:       user.ID,
+	err = s.repo.UpdateUserPassword(ctx, repository.PasswordResetUpdatePasswordParams{
+		UserID:   user.ID,
 		Password: hashedPassword,
 		Salt:     salt,
 	})
@@ -237,11 +229,4 @@ func hashPasswordResetCode(secret []byte, code string) []byte {
 	mac := hmac.New(sha256.New, secret)
 	_, _ = mac.Write([]byte(code))
 	return mac.Sum(nil)
-}
-
-func toPGTimestamptz(value time.Time) pgtype.Timestamptz {
-	return pgtype.Timestamptz{
-		Time:  value,
-		Valid: true,
-	}
 }
