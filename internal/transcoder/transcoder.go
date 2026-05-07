@@ -34,7 +34,7 @@ const perPresetTimeout = 60 * time.Second
 type Transcoder struct {
 	logger            *slog.Logger
 	storage           storage.Storage
-	repo              *repository.TranscodingQueueRepository
+	repo              repository.TranscodingQueueRepository
 	transcodingSignal <-chan struct{}
 	isWorkerStarted   atomic.Bool
 	tickerChan        <-chan time.Time
@@ -43,7 +43,7 @@ type Transcoder struct {
 func NewTranscoder(
 	logger *slog.Logger,
 	storage storage.Storage,
-	repo *repository.TranscodingQueueRepository,
+	repo repository.TranscodingQueueRepository,
 	transcodingQueue <-chan struct{},
 ) *Transcoder {
 	return &Transcoder{

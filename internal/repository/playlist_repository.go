@@ -7,19 +7,31 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type PlaylistRepository struct {
+type PlaylistRepository interface {
+	SharePlaylistWithMany(
+		ctx context.Context, playlistID int32,
+		hasWritePermission bool, users []int32,
+	) error
+	SharePlaylist(
+		ctx context.Context, playlistID int32,
+		hasWritePermission bool, userID int32,
+	) error
+	RevokePlaylistAccess(ctx context.Context, playlistID, userID int32) error
+}
+
+type PostgresPlaylistRepository struct {
 	pool *pgxpool.Pool
 	q    *db.Queries
 }
 
-func NewPlaylistRepository(pool *pgxpool.Pool) *PlaylistRepository {
-	return &PlaylistRepository{
+func NewPlaylistRepository(pool *pgxpool.Pool) *PostgresPlaylistRepository {
+	return &PostgresPlaylistRepository{
 		pool: pool,
 		q:    db.New(pool),
 	}
 }
 
-func (repo *PlaylistRepository) SharePlaylistWithMany(
+func (repo *PostgresPlaylistRepository) SharePlaylistWithMany(
 	ctx context.Context, playlistID int32,
 	hasWritePermission bool, users []int32,
 ) error {
@@ -39,7 +51,7 @@ func (repo *PlaylistRepository) SharePlaylistWithMany(
 	return wrapDBError(err)
 }
 
-func (repo *PlaylistRepository) SharePlaylist(
+func (repo *PostgresPlaylistRepository) SharePlaylist(
 	ctx context.Context, playlistID int32,
 	hasWritePermission bool, userID int32,
 ) error {
@@ -51,7 +63,7 @@ func (repo *PlaylistRepository) SharePlaylist(
 	return wrapDBError(err)
 }
 
-func (repo *PlaylistRepository) RevokePlaylistAccess(
+func (repo *PostgresPlaylistRepository) RevokePlaylistAccess(
 	ctx context.Context, playlistID, userID int32,
 ) error {
 	_, err := repo.q.RevokePlaylistAccess(ctx, db.RevokePlaylistAccessParams{

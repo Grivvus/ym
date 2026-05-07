@@ -13,21 +13,30 @@ import (
 
 const pageSize = 10
 
-type TranscodingQueueRepository struct {
+type TranscodingQueueRepository interface {
+	GetTranscodingQueue(ctx context.Context) (<-chan db.GetTranscodingQueueRow, <-chan error)
+	RemoveFromQueueAndUpdateTrack(
+		ctx context.Context, queueID int64, trackDuration int32,
+		presetsToName map[audio.Preset]string,
+	) error
+	OnFailedTranscoding(ctx context.Context, queueID int64, errorMsg error) error
+}
+
+type PostgresTranscodingQueueRepository struct {
 	pool    *pgxpool.Pool
 	queries *db.Queries
 }
 
 func NewTranscodingQueueRepository(
 	pool *pgxpool.Pool, queries *db.Queries,
-) *TranscodingQueueRepository {
-	return &TranscodingQueueRepository{
+) *PostgresTranscodingQueueRepository {
+	return &PostgresTranscodingQueueRepository{
 		pool:    pool,
 		queries: queries,
 	}
 }
 
-func (repo *TranscodingQueueRepository) GetTranscodingQueue(
+func (repo *PostgresTranscodingQueueRepository) GetTranscodingQueue(
 	ctx context.Context,
 ) (<-chan db.GetTranscodingQueueRow, <-chan error) {
 	queue := make(chan db.GetTranscodingQueueRow)
@@ -59,7 +68,7 @@ func (repo *TranscodingQueueRepository) GetTranscodingQueue(
 	return queue, errc
 }
 
-func (repo *TranscodingQueueRepository) RemoveFromQueueAndUpdateTrack(
+func (repo *PostgresTranscodingQueueRepository) RemoveFromQueueAndUpdateTrack(
 	ctx context.Context, queueID int64, trackDuration int32,
 	presetsToName map[audio.Preset]string,
 ) error {
@@ -95,7 +104,7 @@ func (repo *TranscodingQueueRepository) RemoveFromQueueAndUpdateTrack(
 	return wrapDBError(err)
 }
 
-func (repo *TranscodingQueueRepository) OnFailedTranscoding(
+func (repo *PostgresTranscodingQueueRepository) OnFailedTranscoding(
 	ctx context.Context, queueID int64, errorMsg error,
 ) error {
 	_, err := withTx(ctx, repo.pool, repo.queries, func(q *db.Queries) (int64, error) {
