@@ -12,12 +12,9 @@ import (
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/audio"
-	"github.com/Grivvus/ym/internal/db"
+	"github.com/Grivvus/ym/internal/repository"
 	"github.com/Grivvus/ym/internal/storage"
 	"github.com/Grivvus/ym/internal/utils"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type TrackUploadParams struct {
@@ -54,18 +51,18 @@ type TrackStream struct {
 }
 
 type TrackService struct {
-	queries                *db.Queries
+	repo                   repository.TrackRepository
 	objStorage             storage.Storage
 	logger                 *slog.Logger
 	transcodingQueueSignal chan<- struct{}
 }
 
 func NewTrackService(
-	q *db.Queries, st storage.Storage, logger *slog.Logger,
+	repo repository.TrackRepository, st storage.Storage, logger *slog.Logger,
 	transcodingQueueSignal chan<- struct{},
 ) TrackService {
 	return TrackService{
-		queries:                q,
+		repo:                   repo,
 		objStorage:             st,
 		logger:                 logger,
 		transcodingQueueSignal: transcodingQueueSignal,
@@ -77,60 +74,46 @@ func (s *TrackService) UploadTrack(
 	trackFileHeader *multipart.FileHeader,
 ) (api.TrackUploadSuccessResponse, error) {
 	var ret api.TrackUploadSuccessResponse
-	var userID int32
-	if params.UploadBy != nil {
-		userID = *params.UploadBy
-	}
-	track, err := s.queries.CreateTrack(ctx, db.CreateTrackParams{
-		Name:                params.Name,
-		ArtistID:            params.ArtistID,
-		IsGloballyAvailable: params.IsGloballyAvailable,
-		UploadByUser:        pgtype.Int4{Valid: params.UploadBy != nil, Int32: userID},
-	})
-	if err != nil {
-		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
-	}
-
-	ret.TrackId = track.ID
-
-	var albumID int32
+	var albumID *int32
+	var newAlbum *repository.CreateTrackAlbumParams
 	if params.IsSingle {
-		single, err := s.queries.CreateAlbum(ctx, db.CreateAlbumParams{
-			Name:     track.Name,
-			ArtistID: track.ArtistID,
-		})
-		if err != nil {
-			if e, ok := errors.AsType[*pgconn.PgError](err); ok && e.Code == "23505" {
-				return ret, fmt.Errorf(
-					"%w: album with this name already exists",
-					NewErrAlreadyExists("album", track.Name),
-				)
-			}
-			return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		newAlbum = &repository.CreateTrackAlbumParams{
+			Name:     params.Name,
+			ArtistID: params.ArtistID,
 		}
-		albumID = single.ID
 	} else {
 		if params.AlbumID == nil {
 			return ret, fmt.Errorf(
 				"%w: albumID is required if track is not a single", ErrBadParams,
 			)
 		}
-		albumID = *params.AlbumID
+		albumID = params.AlbumID
 	}
 
-	err = s.queries.AddTrackToAlbum(ctx, db.AddTrackToAlbumParams{
-		TrackID: track.ID,
-		AlbumID: albumID,
+	track, err := s.repo.CreateTrackWithAlbum(ctx, repository.CreateTrackParams{
+		Name:                params.Name,
+		ArtistID:            params.ArtistID,
+		UploadBy:            params.UploadBy,
+		IsGloballyAvailable: params.IsGloballyAvailable,
+		AlbumID:             albumID,
+		NewAlbum:            newAlbum,
 	})
 	if err != nil {
-		if e, ok := errors.AsType[*pgconn.PgError](err); ok && e.Code == "23505" {
+		if errors.Is(err, repository.ErrAlreadyExists) {
+			if params.IsSingle {
+				return ret, fmt.Errorf(
+					"%w: album with this name already exists",
+					NewErrAlreadyExists("album", params.Name),
+				)
+			}
 			return ret, fmt.Errorf(
 				"%w: album already has this track",
-				NewErrAlreadyExists("track", track.ID),
+				NewErrAlreadyExists("track", params.Name),
 			)
 		}
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
+	ret.TrackId = track.ID
 
 	rc, err := trackFileHeader.Open()
 	if err != nil {
@@ -158,11 +141,7 @@ func (s *TrackService) UploadTrack(
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
-	_, err = s.queries.AddToTranscodingQueue(
-		ctx, db.AddToTranscodingQueueParams{
-			TrackID:               track.ID,
-			TrackOriginalFileName: tmpFname,
-		})
+	err = s.repo.AddToTranscodingQueue(ctx, track.ID, tmpFname)
 	if err != nil {
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
@@ -206,59 +185,29 @@ func (s *TrackService) DeleteTrack(ctx context.Context, trackID int32) error {
 func (s *TrackService) GetMeta(
 	ctx context.Context, trackID int32,
 ) (api.TrackMetadata, error) {
-	trackInfo, err := s.queries.GetTrack(ctx, trackID)
+	trackInfo, err := s.repo.GetTrack(ctx, trackID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return api.TrackMetadata{}, NewErrNotFound("track", trackID)
 		}
 		return api.TrackMetadata{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
-	var (
-		fastPreset     *string
-		standardPreset *string
-		highPreset     *string
-		losslessPreset *string
-	)
-	if trackInfo.FastPresetFname.Valid {
-		fastPreset = &trackInfo.FastPresetFname.String
-	}
-	if trackInfo.StandardPresetFname.Valid {
-		standardPreset = &trackInfo.StandardPresetFname.String
-	}
-	if trackInfo.HighPresetFname.Valid {
-		highPreset = &trackInfo.HighPresetFname.String
-	}
-	if trackInfo.LosslessPresetFname.Valid {
-		losslessPreset = &trackInfo.LosslessPresetFname.String
-	}
-
-	return api.TrackMetadata{
-		TrackId:             trackInfo.ID,
-		ArtistId:            trackInfo.ArtistID,
-		AlbumId:             trackInfo.AlbumID,
-		Name:                trackInfo.Name,
-		DurationMs:          trackInfo.DurationMs.Int32,
-		TrackFastPreset:     fastPreset,
-		TrackStandardPreset: standardPreset,
-		TrackHighPreset:     highPreset,
-		TrackLosslessPreset: losslessPreset,
-	}, nil
+	return apiTrackMetadataFromRepositoryTrack(trackInfo), nil
 }
 
 func (s *TrackService) GetUserTracks(
 	ctx context.Context, userID int32,
 ) ([]api.TrackMetadata, error) {
-	// tracks, err := s.queries.GetUserTracks(ctx, pgtype.Int4{Int32: userID, Valid: true})
-	tracks, err := s.queries.GetAllTracks(ctx)
+	tracks, err := s.repo.GetAllTracks(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	ret := make([]api.TrackMetadata, len(tracks))
 	for i, track := range tracks {
-		albumID, err := s.queries.GetAlbumByTrackID(ctx, track.ID)
+		albumID, err := s.repo.GetAlbumIDByTrackID(ctx, track.ID)
 		if err != nil {
-			if errors.Is(pgx.ErrNoRows, err) {
+			if errors.Is(err, repository.ErrNotFound) {
 				s.logger.Warn(
 					"track without assosiated album",
 					slog.Int("trackID", int(track.ID)),
@@ -267,16 +216,17 @@ func (s *TrackService) GetUserTracks(
 			}
 			return nil, fmt.Errorf("%w: exact - %w", ErrUnknownDBError, err)
 		}
+		track.AlbumID = albumID
 		ret[i] = api.TrackMetadata{
 			ArtistId:            track.ArtistID,
 			Name:                track.Name,
 			AlbumId:             albumID,
-			DurationMs:          track.DurationMs.Int32,
+			DurationMs:          track.DurationMs,
 			TrackId:             track.ID,
-			TrackFastPreset:     &track.FastPresetFname.String,
-			TrackStandardPreset: &track.StandardPresetFname.String,
-			TrackHighPreset:     &track.HighPresetFname.String,
-			TrackLosslessPreset: nil,
+			TrackFastPreset:     track.FastPresetName,
+			TrackStandardPreset: track.StandardPresetName,
+			TrackHighPreset:     track.HighPresetName,
+			TrackLosslessPreset: track.LosslessPresetName,
 		}
 	}
 	return ret, nil
@@ -378,10 +328,10 @@ func (s *TrackService) getTrackFile(
 	return ret, nil
 }
 
-func (s *TrackService) getTrack(ctx context.Context, trackID int32) (db.GetTrackRow, error) {
-	track, err := s.queries.GetTrack(ctx, trackID)
+func (s *TrackService) getTrack(ctx context.Context, trackID int32) (repository.Track, error) {
+	track, err := s.repo.GetTrack(ctx, trackID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return track, NewErrNotFound("track", trackID)
 		}
 		return track, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -417,43 +367,43 @@ type selectedTrackFile struct {
 }
 
 func findClosestExistingTrackFile(
-	track db.GetTrackRow, chosenPreset audio.Preset,
+	track repository.Track, chosenPreset audio.Preset,
 ) (selectedTrackFile, error) {
 	switch chosenPreset {
 	// lossless->orig
 	case audio.PresetLossless:
-		if track.LosslessPresetFname.Valid {
-			return selectedPresetTrackFile(track.LosslessPresetFname.String, audio.PresetLossless), nil
+		if track.LosslessPresetName != nil {
+			return selectedPresetTrackFile(*track.LosslessPresetName, audio.PresetLossless), nil
 		}
 		return selectedOriginalTrackFile(track.ID), nil
 	// H->S->F->orig
 	case audio.PresetHigh:
-		if track.HighPresetFname.Valid {
-			return selectedPresetTrackFile(track.HighPresetFname.String, audio.PresetHigh), nil
-		} else if track.StandardPresetFname.Valid {
-			return selectedPresetTrackFile(track.StandardPresetFname.String, audio.PresetStandard), nil
-		} else if track.FastPresetFname.Valid {
-			return selectedPresetTrackFile(track.FastPresetFname.String, audio.PresetFast), nil
+		if track.HighPresetName != nil {
+			return selectedPresetTrackFile(*track.HighPresetName, audio.PresetHigh), nil
+		} else if track.StandardPresetName != nil {
+			return selectedPresetTrackFile(*track.StandardPresetName, audio.PresetStandard), nil
+		} else if track.FastPresetName != nil {
+			return selectedPresetTrackFile(*track.FastPresetName, audio.PresetFast), nil
 		}
 		return selectedOriginalTrackFile(track.ID), nil
 	// S->F->H->orig
 	case audio.PresetStandard:
-		if track.StandardPresetFname.Valid {
-			return selectedPresetTrackFile(track.StandardPresetFname.String, audio.PresetStandard), nil
-		} else if track.FastPresetFname.Valid {
-			return selectedPresetTrackFile(track.FastPresetFname.String, audio.PresetFast), nil
-		} else if track.HighPresetFname.Valid {
-			return selectedPresetTrackFile(track.HighPresetFname.String, audio.PresetHigh), nil
+		if track.StandardPresetName != nil {
+			return selectedPresetTrackFile(*track.StandardPresetName, audio.PresetStandard), nil
+		} else if track.FastPresetName != nil {
+			return selectedPresetTrackFile(*track.FastPresetName, audio.PresetFast), nil
+		} else if track.HighPresetName != nil {
+			return selectedPresetTrackFile(*track.HighPresetName, audio.PresetHigh), nil
 		}
 		return selectedOriginalTrackFile(track.ID), nil
 	// F->S->H->orig
 	case audio.PresetFast:
-		if track.FastPresetFname.Valid {
-			return selectedPresetTrackFile(track.FastPresetFname.String, audio.PresetFast), nil
-		} else if track.StandardPresetFname.Valid {
-			return selectedPresetTrackFile(track.StandardPresetFname.String, audio.PresetStandard), nil
-		} else if track.HighPresetFname.Valid {
-			return selectedPresetTrackFile(track.HighPresetFname.String, audio.PresetHigh), nil
+		if track.FastPresetName != nil {
+			return selectedPresetTrackFile(*track.FastPresetName, audio.PresetFast), nil
+		} else if track.StandardPresetName != nil {
+			return selectedPresetTrackFile(*track.StandardPresetName, audio.PresetStandard), nil
+		} else if track.HighPresetName != nil {
+			return selectedPresetTrackFile(*track.HighPresetName, audio.PresetHigh), nil
 		}
 		return selectedOriginalTrackFile(track.ID), nil
 	default:
@@ -462,7 +412,7 @@ func findClosestExistingTrackFile(
 }
 
 func findClosestExistingTrackKey(
-	track db.GetTrackRow, chosenPreset audio.Preset,
+	track repository.Track, chosenPreset audio.Preset,
 ) (string, error) {
 	selected, err := findClosestExistingTrackFile(track, chosenPreset)
 	if err != nil {
@@ -482,11 +432,25 @@ func selectedOriginalTrackFile(trackID int32) selectedTrackFile {
 	}
 }
 
-func canAccessTrack(track db.GetTrackRow, userID int32) bool {
+func canAccessTrack(track repository.Track, userID int32) bool {
 	if track.IsGloballyAvailable {
 		return true
 	}
-	return track.UploadByUser.Valid && track.UploadByUser.Int32 == userID
+	return track.UploadBy != nil && *track.UploadBy == userID
+}
+
+func apiTrackMetadataFromRepositoryTrack(track repository.Track) api.TrackMetadata {
+	return api.TrackMetadata{
+		TrackId:             track.ID,
+		ArtistId:            track.ArtistID,
+		AlbumId:             track.AlbumID,
+		Name:                track.Name,
+		DurationMs:          track.DurationMs,
+		TrackFastPreset:     track.FastPresetName,
+		TrackStandardPreset: track.StandardPresetName,
+		TrackHighPreset:     track.HighPresetName,
+		TrackLosslessPreset: track.LosslessPresetName,
+	}
 }
 
 func detectTrackUploadContentType(

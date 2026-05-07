@@ -4,8 +4,7 @@ import (
 	"testing"
 
 	"github.com/Grivvus/ym/internal/audio"
-	"github.com/Grivvus/ym/internal/db"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/Grivvus/ym/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,29 +12,25 @@ import (
 func TestFindClosestExistingTrackKey(t *testing.T) {
 	t.Parallel()
 
-	text := func(s string) pgtype.Text {
-		return pgtype.Text{String: s, Valid: true}
+	text := func(s string) *string {
+		return &s
 	}
 
-	baseTrack := db.GetTrackRow{
-		ID:                  42,
-		FastPresetFname:     pgtype.Text{},
-		StandardPresetFname: pgtype.Text{},
-		HighPresetFname:     pgtype.Text{},
-		LosslessPresetFname: pgtype.Text{},
+	baseTrack := repository.Track{
+		ID: 42,
 	}
 
 	testCases := []struct {
 		name   string
-		track  db.GetTrackRow
+		track  repository.Track
 		preset audio.Preset
 		want   string
 	}{
 		{
 			name: "lossless exact match",
-			track: db.GetTrackRow{
-				ID:                  42,
-				LosslessPresetFname: text("track42_lossless"),
+			track: repository.Track{
+				ID:                 42,
+				LosslessPresetName: text("track42_lossless"),
 			},
 			preset: audio.PresetLossless,
 			want:   "track42_lossless",
@@ -48,19 +43,19 @@ func TestFindClosestExistingTrackKey(t *testing.T) {
 		},
 		{
 			name: "high falls back to standard",
-			track: db.GetTrackRow{
-				ID:                  42,
-				StandardPresetFname: text("track42_standard"),
-				FastPresetFname:     text("track42_fast"),
+			track: repository.Track{
+				ID:                 42,
+				StandardPresetName: text("track42_standard"),
+				FastPresetName:     text("track42_fast"),
 			},
 			preset: audio.PresetHigh,
 			want:   "track42_standard",
 		},
 		{
 			name: "high falls back to fast",
-			track: db.GetTrackRow{
-				ID:              42,
-				FastPresetFname: text("track42_fast"),
+			track: repository.Track{
+				ID:             42,
+				FastPresetName: text("track42_fast"),
 			},
 			preset: audio.PresetHigh,
 			want:   "track42_fast",
@@ -73,18 +68,18 @@ func TestFindClosestExistingTrackKey(t *testing.T) {
 		},
 		{
 			name: "standard falls back to fast",
-			track: db.GetTrackRow{
-				ID:              42,
-				FastPresetFname: text("track42_fast"),
+			track: repository.Track{
+				ID:             42,
+				FastPresetName: text("track42_fast"),
 			},
 			preset: audio.PresetStandard,
 			want:   "track42_fast",
 		},
 		{
 			name: "standard falls back to high",
-			track: db.GetTrackRow{
-				ID:              42,
-				HighPresetFname: text("track42_high"),
+			track: repository.Track{
+				ID:             42,
+				HighPresetName: text("track42_high"),
 			},
 			preset: audio.PresetStandard,
 			want:   "track42_high",
@@ -97,18 +92,18 @@ func TestFindClosestExistingTrackKey(t *testing.T) {
 		},
 		{
 			name: "fast falls back to standard",
-			track: db.GetTrackRow{
-				ID:                  42,
-				StandardPresetFname: text("track42_standard"),
+			track: repository.Track{
+				ID:                 42,
+				StandardPresetName: text("track42_standard"),
 			},
 			preset: audio.PresetFast,
 			want:   "track42_standard",
 		},
 		{
 			name: "fast falls back to high",
-			track: db.GetTrackRow{
-				ID:              42,
-				HighPresetFname: text("track42_high"),
+			track: repository.Track{
+				ID:             42,
+				HighPresetName: text("track42_high"),
 			},
 			preset: audio.PresetFast,
 			want:   "track42_high",
@@ -146,22 +141,22 @@ func TestFindClosestExistingTrackKey(t *testing.T) {
 func TestFindClosestExistingTrackFileResolvedQuality(t *testing.T) {
 	t.Parallel()
 
-	text := func(s string) pgtype.Text {
-		return pgtype.Text{String: s, Valid: true}
+	text := func(s string) *string {
+		return &s
 	}
 
 	testCases := []struct {
 		name        string
-		track       db.GetTrackRow
+		track       repository.Track
 		preset      audio.Preset
 		wantKey     string
 		wantQuality string
 	}{
 		{
 			name: "standard falls back to fast",
-			track: db.GetTrackRow{
-				ID:              42,
-				FastPresetFname: text("track42_fast"),
+			track: repository.Track{
+				ID:             42,
+				FastPresetName: text("track42_fast"),
 			},
 			preset:      audio.PresetStandard,
 			wantKey:     "track42_fast",
@@ -169,9 +164,9 @@ func TestFindClosestExistingTrackFileResolvedQuality(t *testing.T) {
 		},
 		{
 			name: "high exact match",
-			track: db.GetTrackRow{
-				ID:              42,
-				HighPresetFname: text("track42_high"),
+			track: repository.Track{
+				ID:             42,
+				HighPresetName: text("track42_high"),
 			},
 			preset:      audio.PresetHigh,
 			wantKey:     "track42_high",
@@ -179,7 +174,7 @@ func TestFindClosestExistingTrackFileResolvedQuality(t *testing.T) {
 		},
 		{
 			name:        "lossless falls back to original",
-			track:       db.GetTrackRow{ID: 42},
+			track:       repository.Track{ID: 42},
 			preset:      audio.PresetLossless,
 			wantKey:     "track42",
 			wantQuality: "original",
@@ -203,28 +198,28 @@ func TestCanAccessTrack(t *testing.T) {
 
 	testCases := []struct {
 		name   string
-		track  db.GetTrackRow
+		track  repository.Track
 		userID int32
 		want   bool
 	}{
 		{
 			name:   "globally available track is accessible",
-			track:  db.GetTrackRow{IsGloballyAvailable: true},
+			track:  repository.Track{IsGloballyAvailable: true},
 			userID: 10,
 			want:   true,
 		},
 		{
 			name: "uploaded private track is accessible to uploader",
-			track: db.GetTrackRow{
-				UploadByUser: pgtype.Int4{Int32: 10, Valid: true},
+			track: repository.Track{
+				UploadBy: ptr(int32(10)),
 			},
 			userID: 10,
 			want:   true,
 		},
 		{
 			name: "private track is forbidden for another user",
-			track: db.GetTrackRow{
-				UploadByUser: pgtype.Int4{Int32: 10, Valid: true},
+			track: repository.Track{
+				UploadBy: ptr(int32(10)),
 			},
 			userID: 11,
 			want:   false,
@@ -246,4 +241,8 @@ func TestTrackDownloadFileName(t *testing.T) {
 	assert.Equal(t, "track-42-standard.opus", trackDownloadFileName(42, "standard", "audio/ogg"))
 	assert.Equal(t, "track-42-high.m4a", trackDownloadFileName(42, "high", "audio/mp4"))
 	assert.Equal(t, "track-42-original.mp3", trackDownloadFileName(42, "original", "audio/mpeg"))
+}
+
+func ptr[T any](value T) *T {
+	return &value
 }

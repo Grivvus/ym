@@ -119,6 +119,7 @@ func main() {
 	userRepo := repository.NewUserRepository(pool)
 	artistRepo := repository.NewArtistRepository(pool)
 	albumRepo := repository.NewAlbumRepository(pool)
+	trackRepo := repository.NewTrackRepository(pool)
 
 	authService := service.NewAuthService(authRepo, logger, cfg)
 	passwordResetService := service.NewPasswordResetService(
@@ -127,7 +128,7 @@ func main() {
 	userService := service.NewUserService(userRepo, storageClient, logger)
 	albumService := service.NewAlbumService(albumRepo, storageClient, logger)
 	playlistService := service.NewPlaylistService(playlistRepo, storageClient, logger)
-	trackService := service.NewTrackService(dbInst, storageClient, logger, queueNotificationChan)
+	trackService := service.NewTrackService(trackRepo, storageClient, logger, queueNotificationChan)
 	artistService := service.NewArtistService(artistRepo, storageClient, logger)
 	backupService := service.NewBackupService(logger, dbInst, storageClient)
 
