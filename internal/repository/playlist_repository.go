@@ -18,6 +18,8 @@ type PlaylistRepository interface {
 	GetUserOwnedPlaylists(ctx context.Context, ownerID int32) ([]PlaylistSummary, error)
 	GetPublicPlaylists(ctx context.Context, userID int32) ([]PlaylistSummary, error)
 	GetSharedPlaylists(ctx context.Context, userID int32) ([]PlaylistSummary, error)
+	UserCanReadPlaylist(ctx context.Context, userID, playlistID int32) (bool, error)
+	UserCanWritePlaylist(ctx context.Context, userID, playlistID int32) (bool, error)
 	SharePlaylistWithMany(
 		ctx context.Context, playlistID int32,
 		hasWritePermission bool, users []int32,
@@ -199,6 +201,26 @@ func (repo *PostgresPlaylistRepository) GetSharedPlaylists(
 		}
 	}
 	return summaries, nil
+}
+
+func (repo *PostgresPlaylistRepository) UserCanReadPlaylist(
+	ctx context.Context, userID, playlistID int32,
+) (bool, error) {
+	canRead, err := repo.q.UserCanReadPlaylist(ctx, db.UserCanReadPlaylistParams{
+		UserID:     userID,
+		PlaylistID: playlistID,
+	})
+	return canRead, wrapDBError(err)
+}
+
+func (repo *PostgresPlaylistRepository) UserCanWritePlaylist(
+	ctx context.Context, userID, playlistID int32,
+) (bool, error) {
+	canWrite, err := repo.q.UserCanWritePlaylist(ctx, db.UserCanWritePlaylistParams{
+		UserID:     userID,
+		PlaylistID: playlistID,
+	})
+	return canWrite, wrapDBError(err)
 }
 
 func (repo *PostgresPlaylistRepository) SharePlaylistWithMany(

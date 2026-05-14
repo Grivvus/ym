@@ -21,17 +21,21 @@ type PlaylistCreateParams struct {
 
 type PlaylistService struct {
 	repo           repository.PlaylistRepository
+	trackRepo      repository.TrackRepository
 	objStorage     storage.Storage
 	logger         *slog.Logger
 	artworkService ArtworkManager
 }
 
 func NewPlaylistService(
-	playlistRepository repository.PlaylistRepository, st storage.Storage,
+	playlistRepository repository.PlaylistRepository,
+	trackRepository repository.TrackRepository,
+	st storage.Storage,
 	logger *slog.Logger,
 ) PlaylistService {
 	svc := PlaylistService{
 		repo:       playlistRepository,
+		trackRepo:  trackRepository,
 		objStorage: st,
 		logger:     logger,
 	}
@@ -103,6 +107,13 @@ func (s *PlaylistService) AddTrack(ctx context.Context, playlistID, userID, trac
 	if err != nil {
 		return err
 	}
+	canAccessTrack, err := s.trackRepo.CanUserAccessTrack(ctx, userID, trackID)
+	if err != nil {
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	if !canAccessTrack {
+		return fmt.Errorf("%w: you can't add an inaccessible track to playlist", ErrUnauthorized)
+	}
 	err = s.repo.AddTrackToPlaylist(ctx, playlistID, trackID)
 	if err != nil {
 		if errors.Is(err, repository.ErrAlreadyExists) {
@@ -137,9 +148,13 @@ func (s *PlaylistService) Delete(
 }
 
 func (s *PlaylistService) Get(
-	ctx context.Context, playlistID int32,
+	ctx context.Context, userID, playlistID int32,
 ) (api.PlaylistWithTracksResponse, error) {
 	var ret api.PlaylistWithTracksResponse
+	err := s.checkUserHasReadPermissions(ctx, playlistID, userID)
+	if err != nil {
+		return ret, err
+	}
 	playlist, err := s.repo.GetPlaylist(ctx, playlistID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -348,14 +363,35 @@ func (s *PlaylistService) checkUserHasWritePermissions(
 	if playlist.OwnerID == userID {
 		return nil
 	}
-	sharedWith, err := s.repo.GetSharedUsers(ctx, playlistID)
+	canWrite, err := s.repo.UserCanWritePlaylist(ctx, userID, playlistID)
 	if err != nil {
 		return fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
 	}
-	for _, id := range sharedWith {
-		if id == userID {
-			return nil
-		}
+	if canWrite {
+		return nil
 	}
 	return fmt.Errorf("%w: you can't manage someone else's playlist", ErrUnauthorized)
+}
+
+func (s *PlaylistService) checkUserHasReadPermissions(
+	ctx context.Context, playlistID, userID int32,
+) error {
+	playlist, err := s.repo.GetPlaylist(ctx, playlistID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return NewErrNotFound("playlist", playlistID)
+		}
+		return fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
+	}
+	if playlist.OwnerID == userID {
+		return nil
+	}
+	canRead, err := s.repo.UserCanReadPlaylist(ctx, userID, playlistID)
+	if err != nil {
+		return fmt.Errorf("%w, caused by - %w", ErrUnknownDBError, err)
+	}
+	if canRead {
+		return nil
+	}
+	return fmt.Errorf("%w: you can't read someone else's playlist", ErrUnauthorized)
 }

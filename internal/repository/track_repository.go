@@ -12,6 +12,8 @@ type TrackRepository interface {
 	CreateTrackWithAlbum(ctx context.Context, params CreateTrackParams) (Track, error)
 	AddToTranscodingQueue(ctx context.Context, trackID int32, originalFileName string) error
 	GetTrack(ctx context.Context, trackID int32) (Track, error)
+	GetUserTracks(ctx context.Context, userID int32) ([]Track, error)
+	CanUserAccessTrack(ctx context.Context, userID, trackID int32) (bool, error)
 	GetAllTracks(ctx context.Context) ([]Track, error)
 	GetAlbumIDByTrackID(ctx context.Context, trackID int32) (int32, error)
 }
@@ -121,6 +123,30 @@ func (repo *PostgresTrackRepository) GetTrack(ctx context.Context, trackID int32
 	return trackFromGetTrackRow(track), nil
 }
 
+func (repo *PostgresTrackRepository) GetUserTracks(
+	ctx context.Context, userID int32,
+) ([]Track, error) {
+	tracks, err := repo.queries.GetUserTracks(ctx, userID)
+	if err != nil {
+		return nil, wrapDBError(err)
+	}
+	result := make([]Track, len(tracks))
+	for i, track := range tracks {
+		result[i] = trackFromGetUserTracksRow(track)
+	}
+	return result, nil
+}
+
+func (repo *PostgresTrackRepository) CanUserAccessTrack(
+	ctx context.Context, userID, trackID int32,
+) (bool, error) {
+	canAccess, err := repo.queries.CanUserAccessTrack(ctx, db.CanUserAccessTrackParams{
+		UserID:  userID,
+		TrackID: trackID,
+	})
+	return canAccess, wrapDBError(err)
+}
+
 func (repo *PostgresTrackRepository) GetAllTracks(ctx context.Context) ([]Track, error) {
 	tracks, err := repo.queries.GetAllTracks(ctx)
 	if err != nil {
@@ -172,6 +198,19 @@ func trackFromGetTrackRow(track db.GetTrackRow) Track {
 		LosslessPresetName:  stringPtrFromPGText(track.LosslessPresetFname),
 		IsGloballyAvailable: track.IsGloballyAvailable,
 		UploadBy:            int32PtrFromPGInt(track.UploadByUser),
+	}
+}
+
+func trackFromGetUserTracksRow(track db.GetUserTracksRow) Track {
+	return Track{
+		ID:                 track.ID,
+		Name:               track.Name,
+		ArtistID:           track.ArtistID,
+		DurationMs:         int32FromPGInt(track.DurationMs),
+		FastPresetName:     stringPtrFromPGText(track.FastPresetFname),
+		StandardPresetName: stringPtrFromPGText(track.StandardPresetFname),
+		HighPresetName:     stringPtrFromPGText(track.HighPresetFname),
+		LosslessPresetName: stringPtrFromPGText(track.LosslessPresetFname),
 	}
 }
 

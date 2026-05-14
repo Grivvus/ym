@@ -86,10 +86,16 @@ func (h PlaylistHandlers) DeletePlaylist(w http.ResponseWriter, r *http.Request,
 }
 
 func (h PlaylistHandlers) GetPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	playlistInfo, err := h.playlistService.Get(r.Context(), playlistId)
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+	playlistInfo, err := h.playlistService.Get(r.Context(), userID, playlistId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = WriteError(w, http.StatusNotFound, fmt.Errorf("can't find playlist with this id"))
+		} else if errors.Is(err, service.ErrUnauthorized) {
+			_ = WriteError(w, http.StatusForbidden, err)
 		} else {
 			_ = WriteError(w, http.StatusInternalServerError, err)
 		}
@@ -135,6 +141,14 @@ func (h PlaylistHandlers) AddTrackToPlaylist(
 	if err != nil {
 		if e, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
 			_ = WriteError(w, http.StatusConflict, e)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		if errors.Is(err, service.ErrUnauthorized) {
+			_ = WriteError(w, http.StatusForbidden, err)
 			return
 		}
 		_ = WriteError(w, http.StatusInternalServerError, err)

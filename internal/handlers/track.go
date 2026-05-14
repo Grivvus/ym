@@ -58,10 +58,18 @@ func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, track
 }
 
 func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32) {
-	metadata, err := h.trackService.GetMeta(r.Context(), trackId)
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+	metadata, err := h.trackService.GetUserMeta(r.Context(), userID, trackId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		if errors.Is(err, service.ErrUnauthorized) {
+			_ = WriteError(w, http.StatusForbidden, err)
 			return
 		}
 		_ = WriteError(w, http.StatusInternalServerError, err)

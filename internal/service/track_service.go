@@ -196,10 +196,21 @@ func (s *TrackService) GetMeta(
 	return apiTrackMetadataFromRepositoryTrack(trackInfo), nil
 }
 
+func (s *TrackService) GetUserMeta(
+	ctx context.Context, userID, trackID int32,
+) (api.TrackMetadata, error) {
+	trackInfo, err := s.getTrackForUser(ctx, userID, trackID)
+	if err != nil {
+		return api.TrackMetadata{}, err
+	}
+
+	return apiTrackMetadataFromRepositoryTrack(trackInfo), nil
+}
+
 func (s *TrackService) GetUserTracks(
 	ctx context.Context, userID int32,
 ) ([]api.TrackMetadata, error) {
-	tracks, err := s.repo.GetAllTracks(ctx)
+	tracks, err := s.repo.GetUserTracks(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
@@ -264,12 +275,9 @@ func (s *TrackService) getTrackFile(
 			"%w: invalid name of trackQuality: %v", ErrBadParams, requestedQuality,
 		)
 	}
-	track, err := s.getTrack(ctx, trackID)
+	track, err := s.getTrackForUser(ctx, userID, trackID)
 	if err != nil {
 		return TrackStream{}, err
-	}
-	if !canAccessTrack(track, userID) {
-		return TrackStream{}, fmt.Errorf("%w: user can't have access to this track", ErrUnauthorized)
 	}
 	selected, err := findClosestExistingTrackFile(track, preset)
 	if err != nil {
@@ -335,6 +343,23 @@ func (s *TrackService) getTrack(ctx context.Context, trackID int32) (repository.
 			return track, NewErrNotFound("track", trackID)
 		}
 		return track, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	return track, nil
+}
+
+func (s *TrackService) getTrackForUser(
+	ctx context.Context, userID, trackID int32,
+) (repository.Track, error) {
+	track, err := s.getTrack(ctx, trackID)
+	if err != nil {
+		return repository.Track{}, err
+	}
+	canAccess, err := s.repo.CanUserAccessTrack(ctx, userID, trackID)
+	if err != nil {
+		return repository.Track{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	if !canAccess {
+		return repository.Track{}, fmt.Errorf("%w: user can't have access to this track", ErrUnauthorized)
 	}
 	return track, nil
 }

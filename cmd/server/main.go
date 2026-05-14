@@ -128,8 +128,8 @@ func main() {
 	)
 	userService := service.NewUserService(userRepo, storageClient, logger)
 	albumService := service.NewAlbumService(albumRepo, storageClient, logger)
-	playlistService := service.NewPlaylistService(playlistRepo, storageClient, logger)
 	trackService := service.NewTrackService(trackRepo, storageClient, logger, queueNotificationChan)
+	playlistService := service.NewPlaylistService(playlistRepo, trackRepo, storageClient, logger)
 	artistService := service.NewArtistService(artistRepo, storageClient, logger)
 	backupService := service.NewBackupService(logger, dbInst, storageClient)
 
