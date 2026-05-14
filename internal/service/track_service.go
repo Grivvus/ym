@@ -151,31 +151,34 @@ func (s *TrackService) UploadTrack(
 	return ret, nil
 }
 
-func (s *TrackService) DeleteTrack(ctx context.Context, trackID int32) error {
-	metadata, err := s.GetMeta(ctx, trackID)
+func (s *TrackService) DeleteTrack(ctx context.Context, userID, trackID int32) error {
+	track, err := s.getTrack(ctx, trackID)
 	if err != nil {
 		return err
 	}
+	if track.UploadBy == nil || *track.UploadBy != userID {
+		return fmt.Errorf("%w: user can't delete this track", ErrUnauthorized)
+	}
+
 	errs := make([]error, 0, 5)
-	if metadata.TrackFastPreset != nil {
-		errs = append(errs, s.objStorage.RemoveTrack(ctx, *metadata.TrackFastPreset))
+	if track.FastPresetName != nil {
+		errs = append(errs, s.objStorage.RemoveTrack(ctx, *track.FastPresetName))
 	}
-	if metadata.TrackStandardPreset != nil {
-		errs = append(errs, s.objStorage.RemoveTrack(ctx, *metadata.TrackStandardPreset))
+	if track.StandardPresetName != nil {
+		errs = append(errs, s.objStorage.RemoveTrack(ctx, *track.StandardPresetName))
 	}
-	if metadata.TrackHighPreset != nil {
-		errs = append(errs, s.objStorage.RemoveTrack(ctx, *metadata.TrackHighPreset))
+	if track.HighPresetName != nil {
+		errs = append(errs, s.objStorage.RemoveTrack(ctx, *track.HighPresetName))
 	}
-	if metadata.TrackLosslessPreset != nil {
-		errs = append(errs, s.objStorage.RemoveTrack(ctx, *metadata.TrackLosslessPreset))
+	if track.LosslessPresetName != nil {
+		errs = append(errs, s.objStorage.RemoveTrack(ctx, *track.LosslessPresetName))
 	}
-	errs = append(errs, s.objStorage.RemoveTrack(ctx, metadata.Name))
 	for _, err := range errs {
 		if err != nil {
 			return fmt.Errorf("can't remove track file: %w", err)
 		}
 	}
-	err = s.objStorage.RemoveTrack(ctx, originalTrackStorageKey(metadata.TrackId))
+	err = s.objStorage.RemoveTrack(ctx, originalTrackStorageKey(track.ID))
 	if err != nil {
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}

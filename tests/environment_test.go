@@ -292,6 +292,43 @@ func (s *IntegrationTestSuite) TestDownloadTrackForbidsPrivateTrackForAnotherUse
 	s.Contains(errorResp.Error, "user can't have access to this track")
 }
 
+func (s *IntegrationTestSuite) TestDeleteTrackOnlyOwnerCanDelete() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	ownerResp := s.registerUser(api.UserAuth{
+		Username: "delete-owner",
+		Password: "password-1",
+	})
+	otherResp := s.registerUser(api.UserAuth{
+		Username: "delete-other",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusCreated, ownerResp.StatusCode)
+	s.Equal(http.StatusCreated, otherResp.StatusCode)
+
+	trackID, _ := s.createDownloadableTrack(ctx, ownerResp.Body.UserId)
+
+	statusCode, respBody := s.performJSONRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/tracks/%d", trackID),
+		nil,
+		otherResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusForbidden, statusCode)
+	var errorResp api.ErrorResponse
+	s.Require().NoError(json.Unmarshal(respBody, &errorResp))
+	s.Contains(errorResp.Error, "user can't delete this track")
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/tracks/%d", trackID),
+		nil,
+		ownerResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+}
+
 func (s *IntegrationTestSuite) TestSharedPlaylistGrantsAndRevokesPrivateTrackAccess() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

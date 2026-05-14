@@ -50,8 +50,20 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, trackId int32) {
-	err := h.trackService.DeleteTrack(r.Context(), trackId)
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+	err := h.trackService.DeleteTrack(r.Context(), userID, trackId)
 	if err != nil {
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		if errors.Is(err, service.ErrUnauthorized) {
+			_ = WriteError(w, http.StatusForbidden, err)
+			return
+		}
 		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
