@@ -67,6 +67,32 @@ func (q *Queries) GetAllArtistsForBackup(ctx context.Context) ([]Artist, error) 
 	return items, nil
 }
 
+const getAllPlaylistSharesForBackup = `-- name: GetAllPlaylistSharesForBackup :many
+SELECT playlist_id, shared_with_user, has_write_permission
+FROM public."playlist_share_info"
+ORDER BY playlist_id, shared_with_user
+`
+
+func (q *Queries) GetAllPlaylistSharesForBackup(ctx context.Context) ([]PlaylistShareInfo, error) {
+	rows, err := q.db.Query(ctx, getAllPlaylistSharesForBackup)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlaylistShareInfo
+	for rows.Next() {
+		var i PlaylistShareInfo
+		if err := rows.Scan(&i.PlaylistID, &i.SharedWithUser, &i.HasWritePermission); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAllPlaylistsForBackup = `-- name: GetAllPlaylistsForBackup :many
 SELECT id, name, is_public, owner_id
 FROM public."playlist"

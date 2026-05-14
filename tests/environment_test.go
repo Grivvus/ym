@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -592,6 +593,15 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 	})
 	s.Require().NoError(err)
 
+	sharedUser, err := s.env.Queries.CreateUser(ctx, db.CreateUserParams{
+		Username:    "backup-shared-user",
+		Email:       pgtype.Text{String: "backup-shared@example.com", Valid: true},
+		Password:    []byte("password-hash"),
+		Salt:        []byte("password-salt"),
+		IsSuperuser: false,
+	})
+	s.Require().NoError(err)
+
 	artist, err := s.env.Queries.CreateArtist(ctx, "backup-artist")
 	s.Require().NoError(err)
 
@@ -623,6 +633,11 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 	s.Require().NoError(s.env.Queries.AddTrackToPlaylist(ctx, db.AddTrackToPlaylistParams{
 		TrackID:    track.ID,
 		PlaylistID: playlist.ID,
+	}))
+	s.Require().NoError(s.env.Queries.SharePlaylistWith(ctx, db.SharePlaylistWithParams{
+		PlaylistID:         playlist.ID,
+		SharedWithUser:     sharedUser.ID,
+		HasWritePermission: true,
 	}))
 
 	originalTrackKey := fmt.Sprintf("track%d", track.ID)
@@ -713,8 +728,15 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 
 	users, err := s.env.Queries.GetAllUsersForBackup(ctx)
 	s.Require().NoError(err)
-	s.Len(users, 1)
+	s.Len(users, 2)
 	s.Equal("backup-user", users[0].Username)
+
+	playlistShares, err := s.env.Queries.GetAllPlaylistSharesForBackup(ctx)
+	s.Require().NoError(err)
+	s.Len(playlistShares, 1)
+	s.Equal(playlist.ID, playlistShares[0].PlaylistID)
+	s.Equal(sharedUser.ID, playlistShares[0].SharedWithUser)
+	s.True(playlistShares[0].HasWritePermission)
 
 	tracks, err := s.env.Queries.GetAllTracksForBackup(ctx)
 	s.Require().NoError(err)
@@ -740,6 +762,109 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 	fastPayload, err := io.ReadAll(fastReader)
 	s.Require().NoError(err)
 	s.Equal(fastTrack, fastPayload)
+}
+
+func (s *IntegrationTestSuite) TestRestoreQueuesTracksWhenTranscodedFilesMissingFromBackup() {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	backupService := service.NewBackupService(logger, s.env.Queries, s.env.Storage)
+
+	user, err := s.env.Queries.CreateUser(ctx, db.CreateUserParams{
+		Username: "missing-transcoded-user",
+		Password: []byte("password-hash"),
+		Salt:     []byte("password-salt"),
+	})
+	s.Require().NoError(err)
+
+	artist, err := s.env.Queries.CreateArtist(ctx, "missing-transcoded-artist")
+	s.Require().NoError(err)
+
+	album, err := s.env.Queries.CreateAlbum(ctx, db.CreateAlbumParams{
+		Name:     "missing-transcoded-album",
+		ArtistID: artist.ID,
+	})
+	s.Require().NoError(err)
+
+	track, err := s.env.Queries.CreateTrack(ctx, db.CreateTrackParams{
+		Name:                "missing-transcoded-track",
+		ArtistID:            artist.ID,
+		IsGloballyAvailable: false,
+		UploadByUser:        pgtype.Int4{Int32: user.ID, Valid: true},
+	})
+	s.Require().NoError(err)
+
+	s.Require().NoError(s.env.Queries.AddTrackToAlbum(ctx, db.AddTrackToAlbumParams{
+		TrackID: track.ID,
+		AlbumID: album.ID,
+	}))
+
+	originalTrackKey := fmt.Sprintf("track%d", track.ID)
+	fastTrackKey := originalTrackKey + "_fast"
+	_, err = s.env.Queries.AddPostTranscodingInfo(ctx, db.AddPostTranscodingInfoParams{
+		ID:                  track.ID,
+		DurationMs:          pgtype.Int4{Int32: 12345, Valid: true},
+		FastPresetFname:     pgtype.Text{String: fastTrackKey, Valid: true},
+		StandardPresetFname: pgtype.Text{Valid: false},
+		HighPresetFname:     pgtype.Text{Valid: false},
+		LosslessPresetFname: pgtype.Text{Valid: false},
+	})
+	s.Require().NoError(err)
+
+	s.Require().NoError(s.env.Storage.PutTrack(
+		ctx,
+		originalTrackKey,
+		bytes.NewReader([]byte("original-track-payload")),
+		storage.PutTrackOptions{Size: int64(len("original-track-payload"))},
+	))
+	s.Require().NoError(s.env.Storage.PutTrack(
+		ctx,
+		fastTrackKey,
+		bytes.NewReader([]byte("fast-track-payload")),
+		storage.PutTrackOptions{Size: int64(len("fast-track-payload"))},
+	))
+
+	backupReader, _, err := backupService.MakeBackup(ctx, service.BackupSettings{
+		IncludeTranscodedTracks: true,
+	})
+	s.Require().NoError(err)
+	archiveBytes, err := io.ReadAll(backupReader)
+	s.Require().NoError(err)
+	s.Require().NoError(backupReader.Close())
+
+	archiveBytes = s.zipWithoutEntriesWithPrefix(archiveBytes, "tracks/transcoded/")
+
+	restoreID, err := backupService.StartRestoreOperation(ctx, bytes.NewReader(archiveBytes))
+	s.Require().NoError(err)
+
+	var status api.RestoreStatusResponse
+	s.Eventually(func() bool {
+		var statusErr error
+		status, statusErr = backupService.CheckRestoreOperation(context.Background(), restoreID)
+		s.Require().NoError(statusErr)
+		if status.Status == api.Error {
+			s.T().Logf("restore failed: %s", *status.Error)
+			return true
+		}
+		return status.Status == api.Finished
+	}, 10*time.Second, 100*time.Millisecond)
+	s.Equal(api.Finished, status.Status)
+
+	tracks, err := s.env.Queries.GetAllTracksForBackup(ctx)
+	s.Require().NoError(err)
+	s.Len(tracks, 1)
+	s.False(tracks[0].FastPresetFname.Valid)
+	s.False(tracks[0].StandardPresetFname.Valid)
+	s.False(tracks[0].HighPresetFname.Valid)
+	s.False(tracks[0].LosslessPresetFname.Valid)
+
+	queueRows, err := s.env.Queries.GetAllTranscodingQueueForBackup(ctx)
+	s.Require().NoError(err)
+	s.Len(queueRows, 1)
+	s.Equal(track.ID, queueRows[0].TrackID)
+	s.Equal(originalTrackKey, queueRows[0].TrackOriginalFileName)
+	s.False(queueRows[0].WasFailed)
 }
 
 func (s *IntegrationTestSuite) TestPasswordReset_RequestReturnsAcceptedForUnknownEmail() {
@@ -890,6 +1015,33 @@ func trackListContains(tracks []api.TrackMetadata, trackID int32) bool {
 		}
 	}
 	return false
+}
+
+func (s *IntegrationTestSuite) zipWithoutEntriesWithPrefix(payload []byte, prefix string) []byte {
+	reader, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
+	s.Require().NoError(err)
+
+	var output bytes.Buffer
+	writer := zip.NewWriter(&output)
+	for _, file := range reader.File {
+		if strings.HasPrefix(file.Name, prefix) {
+			continue
+		}
+
+		header := file.FileHeader
+		entryWriter, err := writer.CreateHeader(&header)
+		s.Require().NoError(err)
+
+		entryReader, err := file.Open()
+		s.Require().NoError(err)
+		_, copyErr := io.Copy(entryWriter, entryReader)
+		closeErr := entryReader.Close()
+		s.Require().NoError(copyErr)
+		s.Require().NoError(closeErr)
+	}
+	s.Require().NoError(writer.Close())
+
+	return output.Bytes()
 }
 
 type tokenResponse struct {

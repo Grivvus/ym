@@ -45,6 +45,12 @@ type TrackPlaylist struct {
 	PlaylistID int32 `json:"playlist_id"`
 }
 
+type PlaylistShareInfo struct {
+	PlaylistID         int32 `json:"playlist_id"`
+	SharedWithUser     int32 `json:"shared_with_user"`
+	HasWritePermission bool  `json:"has_write_permission"`
+}
+
 type User struct {
 	ID             int32     `json:"id"`
 	Username       string    `json:"username"`
@@ -74,5 +80,6 @@ type FullDBBackup struct {
 	Tracks           []Track               `json:"tracks"`
 	TrackAlbums      []TrackAlbum          `json:"track_albums"`
 	TrackPlaylists   []TrackPlaylist       `json:"track_playlists"`
+	PlaylistShares   []PlaylistShareInfo   `json:"playlist_shares"`
 	TranscodingQueue []TranscodingQueueRow `json:"transcoding_queue"`
 }

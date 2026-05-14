@@ -36,6 +36,11 @@ SELECT track_id, playlist_id
 FROM public."track_playlist"
 ORDER BY track_id, playlist_id;
 
+-- name: GetAllPlaylistSharesForBackup :many
+SELECT playlist_id, shared_with_user, has_write_permission
+FROM public."playlist_share_info"
+ORDER BY playlist_id, shared_with_user;
+
 -- name: GetAllTranscodingQueueForBackup :many
 SELECT id, added_at, track_original_file_name, track_id, was_failed, error_msg
 FROM public."transcoding_queue"

@@ -99,7 +99,7 @@ func (service BackupService) MakeBackup(
 
 	createdAt := time.Now().UTC()
 	if !settings.IncludeTranscodedTracks {
-		service.prepareOriginalOnlyBackup(&snapshot, createdAt)
+		service.prepareOriginalOnlySnapshot(&snapshot, createdAt)
 	}
 
 	manifest := backupManifest{
@@ -197,6 +197,10 @@ func (service BackupService) backupDB(ctx context.Context) (dto.FullDBBackup, er
 	if err != nil {
 		return dto.FullDBBackup{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
+	playlistShares, err := service.queries.GetAllPlaylistSharesForBackup(ctx)
+	if err != nil {
+		return dto.FullDBBackup{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
 	queueRows, err := service.queries.GetAllTranscodingQueueForBackup(ctx)
 	if err != nil {
 		return dto.FullDBBackup{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -210,6 +214,7 @@ func (service BackupService) backupDB(ctx context.Context) (dto.FullDBBackup, er
 		Tracks:           make([]dto.Track, 0, len(tracks)),
 		TrackAlbums:      make([]dto.TrackAlbum, 0, len(trackAlbums)),
 		TrackPlaylists:   make([]dto.TrackPlaylist, 0, len(trackPlaylists)),
+		PlaylistShares:   make([]dto.PlaylistShareInfo, 0, len(playlistShares)),
 		TranscodingQueue: make([]dto.TranscodingQueueRow, 0, len(queueRows)),
 	}
 
@@ -279,6 +284,14 @@ func (service BackupService) backupDB(ctx context.Context) (dto.FullDBBackup, er
 		backup.TrackPlaylists = append(backup.TrackPlaylists, dto.TrackPlaylist{
 			TrackID:    row.TrackID,
 			PlaylistID: row.PlaylistID,
+		})
+	}
+
+	for _, row := range playlistShares {
+		backup.PlaylistShares = append(backup.PlaylistShares, dto.PlaylistShareInfo{
+			PlaylistID:         row.PlaylistID,
+			SharedWithUser:     row.SharedWithUser,
+			HasWritePermission: row.HasWritePermission,
 		})
 	}
 
@@ -482,6 +495,13 @@ func (service BackupService) restoreArchive(ctx context.Context, archivePath str
 			ErrBadParams, manifest.FormatVersion,
 		)
 	}
+	if !manifest.IncludeTranscodedFiles || !archiveHasEntriesWithPrefix(&archive.Reader, backupTranscodedPrefix) {
+		queuedAt := manifest.CreatedAt
+		if queuedAt.IsZero() {
+			queuedAt = time.Now().UTC()
+		}
+		service.prepareOriginalOnlySnapshot(&dump, queuedAt)
+	}
 
 	currentSnapshot, err := service.backupDB(ctx)
 	if err != nil {
@@ -564,6 +584,17 @@ func (service BackupService) restoreDBSnapshot(
 			Name:     playlist.Name,
 			IsPublic: playlist.IsPublic,
 			OwnerID:  playlist.OwnerID,
+		})
+		if err != nil {
+			return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		}
+	}
+
+	for _, row := range snapshot.PlaylistShares {
+		err := service.queries.RestorePlaylistShareInfo(ctx, db.RestorePlaylistShareInfoParams{
+			PlaylistID:         row.PlaylistID,
+			SharedWithUser:     row.SharedWithUser,
+			HasWritePermission: row.HasWritePermission,
 		})
 		if err != nil {
 			return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -741,7 +772,7 @@ func (service BackupService) writeTrackToArchive(
 	return nil
 }
 
-func (service BackupService) prepareOriginalOnlyBackup(
+func (service BackupService) prepareOriginalOnlySnapshot(
 	snapshot *dto.FullDBBackup, queuedAt time.Time,
 ) {
 	queuedTrackIDs := make(map[int32]struct{}, len(snapshot.TranscodingQueue))
@@ -775,6 +806,18 @@ func (service BackupService) prepareOriginalOnlyBackup(
 			ErrorMsg:              nil,
 		})
 	}
+}
+
+func archiveHasEntriesWithPrefix(archive *zip.Reader, prefix string) bool {
+	for _, file := range archive.File {
+		if file.FileInfo().IsDir() {
+			continue
+		}
+		if strings.HasPrefix(file.Name, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func (service BackupService) finishRestoreWithError(
