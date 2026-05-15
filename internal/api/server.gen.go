@@ -95,6 +95,16 @@ type ArtistInfoResponse struct {
 	ArtistName   string  `json:"artist_name"`
 }
 
+// BackupStatusResponse defines model for BackupStatusResponse.
+type BackupStatusResponse struct {
+	BackupId                string  `json:"backup_id"`
+	Error                   *string `json:"error"`
+	IncludeImages           bool    `json:"include_images"`
+	IncludeTranscodedTracks bool    `json:"include_transcoded_tracks"`
+	SizeBytes               *int64  `json:"size_bytes,omitempty"`
+	Status                  string  `json:"status"`
+}
+
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
 	Error string `json:"error"`
@@ -424,8 +434,14 @@ type ServerInterface interface {
 	// (POST /auth/register)
 	Register(w http.ResponseWriter, r *http.Request)
 
-	// (GET /backup)
+	// (POST /backup)
 	Backup(w http.ResponseWriter, r *http.Request, params BackupParams)
+
+	// (GET /backup/{backupId})
+	GetBackupStatus(w http.ResponseWriter, r *http.Request, backupId string)
+
+	// (GET /backup/{backupId}/download)
+	DownloadBackup(w http.ResponseWriter, r *http.Request, backupId string)
 	// Checks whether the server is alive.
 	// (GET /ping)
 	Ping(w http.ResponseWriter, r *http.Request)
@@ -624,8 +640,18 @@ func (_ Unimplemented) Register(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// (GET /backup)
+// (POST /backup)
 func (_ Unimplemented) Backup(w http.ResponseWriter, r *http.Request, params BackupParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /backup/{backupId})
+func (_ Unimplemented) GetBackupStatus(w http.ResponseWriter, r *http.Request, backupId string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /backup/{backupId}/download)
+func (_ Unimplemented) DownloadBackup(w http.ResponseWriter, r *http.Request, backupId string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1304,6 +1330,68 @@ func (siw *ServerInterfaceWrapper) Backup(w http.ResponseWriter, r *http.Request
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Backup(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetBackupStatus operation middleware
+func (siw *ServerInterfaceWrapper) GetBackupStatus(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "backupId" -------------
+	var backupId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "backupId", chi.URLParam(r, "backupId"), &backupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "backupId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetBackupStatus(w, r, backupId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DownloadBackup operation middleware
+func (siw *ServerInterfaceWrapper) DownloadBackup(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "backupId" -------------
+	var backupId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "backupId", chi.URLParam(r, "backupId"), &backupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "backupId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DownloadBackup(w, r, backupId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2401,7 +2489,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/auth/register", wrapper.Register)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/backup", wrapper.Backup)
+		r.Post(options.BaseURL+"/backup", wrapper.Backup)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/backup/{backupId}", wrapper.GetBackupStatus)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/backup/{backupId}/download", wrapper.DownloadBackup)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/ping", wrapper.Ping)

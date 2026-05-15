@@ -45,6 +45,7 @@ type BackupService struct {
 	logger     *slog.Logger
 	queries    *db.Queries
 	objStorage storage.Storage
+	backupMu   *sync.Mutex
 	restoreMu  *sync.Mutex
 }
 
@@ -85,6 +86,7 @@ func NewBackupService(
 		logger:     logger,
 		queries:    queries,
 		objStorage: storage,
+		backupMu:   &sync.Mutex{},
 		restoreMu:  &sync.Mutex{},
 	}
 }
@@ -92,9 +94,155 @@ func NewBackupService(
 func (service BackupService) MakeBackup(
 	ctx context.Context, settings BackupSettings,
 ) (backup io.ReadCloser, clen uint, err error) {
-	snapshot, err := service.backupDB(ctx)
+	archivePath, size, err := service.makeBackupArchive(ctx, settings)
 	if err != nil {
 		return emptyBackupReader(), 0, err
+	}
+
+	reader, err := os.Open(archivePath)
+	if err != nil {
+		_ = os.Remove(archivePath)
+		return emptyBackupReader(), 0, fmt.Errorf("can't open backup archive: %w", err)
+	}
+
+	return removeOnCloseFile{
+		File: reader,
+		path: archivePath,
+	}, uint(size), nil
+}
+
+func (service BackupService) StartBackupOperation(
+	ctx context.Context, settings BackupSettings,
+) (backupID string, err error) {
+	service.backupMu.Lock()
+	defer service.backupMu.Unlock()
+
+	activeBackup, err := service.queries.GetActiveBackupOperation(ctx)
+	if err == nil {
+		return "", NewErrAlreadyExists("backup operation", activeBackup.ID)
+	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+
+	backupID, err = newBackupID()
+	if err != nil {
+		return "", err
+	}
+
+	backupID, err = service.queries.StartBackupOperation(ctx, db.StartBackupOperationParams{
+		ID:                      backupID,
+		IncludeImages:           settings.IncludeImages,
+		IncludeTranscodedTracks: settings.IncludeTranscodedTracks,
+	})
+	if err != nil {
+		return "", fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+
+	go service.runBackupOperation(context.WithoutCancel(ctx), backupID, settings)
+
+	return backupID, nil
+}
+
+func (service BackupService) CheckBackupOperation(
+	ctx context.Context, backupID string,
+) (response api.BackupStatusResponse, err error) {
+	status, err := service.queries.GetBackupStatus(ctx, backupID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return response, NewErrNotFound("backup_status", backupID)
+		}
+		return response, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+
+	return backupStatusResponse(status)
+}
+
+func (service BackupService) DownloadBackup(
+	ctx context.Context, backupID string,
+) (backup io.ReadCloser, clen uint, err error) {
+	status, err := service.queries.GetBackupStatus(ctx, backupID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return emptyBackupReader(), 0, NewErrNotFound("backup_status", backupID)
+		}
+		return emptyBackupReader(), 0, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+
+	if status.Status != db.StatusFinished {
+		return emptyBackupReader(), 0, fmt.Errorf("%w: backup %s is not finished", ErrBadParams, backupID)
+	}
+	if !status.ArchivePath.Valid || status.ArchivePath.String == "" {
+		return emptyBackupReader(), 0, fmt.Errorf("backup %s finished without archive path", backupID)
+	}
+
+	reader, err := os.Open(status.ArchivePath.String)
+	if err != nil {
+		return emptyBackupReader(), 0, fmt.Errorf("can't open backup archive: %w", err)
+	}
+
+	size := status.SizeBytes.Int64
+	if !status.SizeBytes.Valid {
+		info, statErr := reader.Stat()
+		if statErr != nil {
+			_ = reader.Close()
+			return emptyBackupReader(), 0, fmt.Errorf("can't stat backup archive: %w", statErr)
+		}
+		size = info.Size()
+	}
+
+	return reader, uint(size), nil
+}
+
+func (service BackupService) runBackupOperation(
+	ctx context.Context, backupID string, settings BackupSettings,
+) {
+	defer func() {
+		if recoverValue := recover(); recoverValue != nil {
+			err := fmt.Errorf("backup panicked: %v", recoverValue)
+			service.logger.Error("backup panicked", "backup_id", backupID, "error", err)
+			service.finishBackupWithError(context.Background(), backupID, err)
+		}
+	}()
+
+	if err := service.queries.MarkBackupOperationStarted(ctx, backupID); err != nil {
+		service.logger.Error("can't mark backup as started", "backup_id", backupID, "error", err)
+		service.finishBackupWithError(context.Background(), backupID, err)
+		return
+	}
+
+	service.logger.Info("backup started", "backup_id", backupID)
+
+	archivePath, size, err := service.makeBackupArchive(ctx, settings)
+	if err != nil {
+		service.logger.Error("backup failed", "backup_id", backupID, "error", err)
+		service.finishBackupWithError(context.Background(), backupID, err)
+		return
+	}
+
+	if err := service.queries.ConfirmBackup(ctx, db.ConfirmBackupParams{
+		ID:          backupID,
+		ArchivePath: pgtype.Text{String: archivePath, Valid: true},
+		SizeBytes:   pgtype.Int8{Int64: size, Valid: true},
+	}); err != nil {
+		_ = os.Remove(archivePath)
+		service.logger.Error(
+			"backup finished but status update failed",
+			"backup_id", backupID,
+			"error", err,
+		)
+		return
+	}
+
+	service.logger.Info("backup finished", "backup_id", backupID)
+}
+
+func (service BackupService) makeBackupArchive(
+	ctx context.Context, settings BackupSettings,
+) (archivePath string, size int64, err error) {
+	snapshot, err := service.backupDB(ctx)
+	if err != nil {
+		return "", 0, err
 	}
 
 	createdAt := time.Now().UTC()
@@ -112,60 +260,52 @@ func (service BackupService) MakeBackup(
 
 	tmpFile, err := os.CreateTemp("", "ym-backup-*.zip")
 	if err != nil {
-		return emptyBackupReader(), 0, fmt.Errorf("can't create backup archive: %w", err)
+		return "", 0, fmt.Errorf("can't create backup archive: %w", err)
 	}
+	archivePath = tmpFile.Name()
 
 	cleanupTmp := func() {
 		_ = tmpFile.Close()
-		_ = os.Remove(tmpFile.Name())
+		_ = os.Remove(archivePath)
 	}
 
 	zipWriter := zip.NewWriter(tmpFile)
 
 	if err := writeZipJSON(zipWriter, backupManifestPath, manifest); err != nil {
 		cleanupTmp()
-		return emptyBackupReader(), 0, fmt.Errorf("can't write backup manifest: %w", err)
+		return "", 0, fmt.Errorf("can't write backup manifest: %w", err)
 	}
 	if err := writeZipJSON(zipWriter, backupDBPath, snapshot); err != nil {
 		cleanupTmp()
-		return emptyBackupReader(), 0, fmt.Errorf("can't write database backup: %w", err)
+		return "", 0, fmt.Errorf("can't write database backup: %w", err)
 	}
 	if settings.IncludeImages {
 		if err := service.backupImages(ctx, zipWriter, snapshot); err != nil {
 			cleanupTmp()
-			return emptyBackupReader(), 0, err
+			return "", 0, err
 		}
 	}
 	if err := service.backupTracks(ctx, zipWriter, snapshot, settings.IncludeTranscodedTracks); err != nil {
 		cleanupTmp()
-		return emptyBackupReader(), 0, err
+		return "", 0, err
 	}
 
 	if err := zipWriter.Close(); err != nil {
 		cleanupTmp()
-		return emptyBackupReader(), 0, fmt.Errorf("can't finalize backup archive: %w", err)
+		return "", 0, fmt.Errorf("can't finalize backup archive: %w", err)
 	}
 	if err := tmpFile.Close(); err != nil {
 		cleanupTmp()
-		return emptyBackupReader(), 0, fmt.Errorf("can't close backup archive: %w", err)
+		return "", 0, fmt.Errorf("can't close backup archive: %w", err)
 	}
 
-	info, err := os.Stat(tmpFile.Name())
+	info, err := os.Stat(archivePath)
 	if err != nil {
 		cleanupTmp()
-		return emptyBackupReader(), 0, fmt.Errorf("can't stat backup archive: %w", err)
+		return "", 0, fmt.Errorf("can't stat backup archive: %w", err)
 	}
 
-	reader, err := os.Open(tmpFile.Name())
-	if err != nil {
-		cleanupTmp()
-		return emptyBackupReader(), 0, fmt.Errorf("can't open backup archive: %w", err)
-	}
-
-	return removeOnCloseFile{
-		File: reader,
-		path: tmpFile.Name(),
-	}, uint(info.Size()), nil
+	return archivePath, info.Size(), nil
 }
 
 func (service BackupService) backupDB(ctx context.Context) (dto.FullDBBackup, error) {
@@ -836,6 +976,51 @@ func (service BackupService) finishRestoreWithError(
 	}
 }
 
+func (service BackupService) finishBackupWithError(
+	ctx context.Context, backupID string, err error,
+) {
+	updateErr := service.queries.ErrorBackup(ctx, db.ErrorBackupParams{
+		ID:    backupID,
+		Error: pgtype.Text{String: err.Error(), Valid: true},
+	})
+	if updateErr != nil {
+		service.logger.Error(
+			"can't mark backup as failed",
+			"backup_id", backupID,
+			"error", updateErr,
+		)
+	}
+}
+
+func backupStatusResponse(status db.GetBackupStatusRow) (
+	api.BackupStatusResponse, error,
+) {
+	response := api.BackupStatusResponse{
+		BackupId:                status.ID,
+		Status:                  string(status.Status),
+		IncludeImages:           status.IncludeImages,
+		IncludeTranscodedTracks: status.IncludeTranscodedTracks,
+	}
+
+	switch status.Status {
+	case db.StatusPending, db.StatusStarted, db.StatusFinished:
+	case db.StatusError:
+		if status.Error.Valid {
+			response.Error = &status.Error.String
+		}
+	default:
+		return response, fmt.Errorf(
+			"%w: invalid status - %v", ErrBadParams, status.Status,
+		)
+	}
+
+	if status.SizeBytes.Valid {
+		response.SizeBytes = &status.SizeBytes.Int64
+	}
+
+	return response, nil
+}
+
 func openZipArchive(path string) (*zip.ReadCloser, error) {
 	reader, err := zip.OpenReader(path)
 	if err != nil {
@@ -1024,6 +1209,14 @@ func newRestoreID() (string, error) {
 		return "", fmt.Errorf("can't generate restore id: %w", err)
 	}
 	return "restore_" + hex.EncodeToString(payload[:]), nil
+}
+
+func newBackupID() (string, error) {
+	var payload [8]byte
+	if _, err := rand.Read(payload[:]); err != nil {
+		return "", fmt.Errorf("can't generate backup id: %w", err)
+	}
+	return "backup_" + hex.EncodeToString(payload[:]), nil
 }
 
 func textToPtr(value pgtype.Text) *string {

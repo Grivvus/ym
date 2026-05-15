@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -132,6 +133,7 @@ func (s *IntegrationTestSuite) SetupTest() {
 			"album",
 			"artist",
 			"user",
+			"backup_status",
 			"restore_status"
 		RESTART IDENTITY CASCADE
 	`)
@@ -698,6 +700,7 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 			"album",
 			"artist",
 			"user",
+			"backup_status",
 			"restore_status"
 		RESTART IDENTITY CASCADE
 	`)
@@ -762,6 +765,109 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 	fastPayload, err := io.ReadAll(fastReader)
 	s.Require().NoError(err)
 	s.Equal(fastTrack, fastPayload)
+}
+
+func (s *IntegrationTestSuite) TestBackupEndpointStartsAsyncOperationAndDownloadsArchive() {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	userResp := s.registerUser(api.UserAuth{
+		Username: "async-backup-user",
+		Password: "password",
+	})
+	s.Require().Equal(http.StatusCreated, userResp.StatusCode)
+
+	artist, err := s.env.Queries.CreateArtist(ctx, "async-backup-artist")
+	s.Require().NoError(err)
+
+	track, err := s.env.Queries.CreateTrack(ctx, db.CreateTrackParams{
+		Name:                "async-backup-track",
+		ArtistID:            artist.ID,
+		IsGloballyAvailable: false,
+		UploadByUser:        pgtype.Int4{Int32: userResp.Body.UserId, Valid: true},
+	})
+	s.Require().NoError(err)
+
+	originalTrackKey := fmt.Sprintf("track%d", track.ID)
+	originalTrackPayload := []byte("async-original-track-payload")
+	s.Require().NoError(s.env.Storage.PutTrack(
+		ctx,
+		originalTrackKey,
+		bytes.NewReader(originalTrackPayload),
+		storage.PutTrackOptions{Size: int64(len(originalTrackPayload))},
+	))
+	s.T().Cleanup(func() {
+		_ = s.env.Storage.RemoveTrack(context.Background(), originalTrackKey)
+	})
+
+	statusCode, respBody := s.performJSONRequest(
+		http.MethodPost,
+		"/backup?include_transcoded_tracks=false",
+		nil,
+		userResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusAccepted, statusCode)
+
+	var startResp api.BackupStatusResponse
+	s.Require().NoError(json.Unmarshal(respBody, &startResp))
+	s.NotEmpty(startResp.BackupId)
+	s.Equal("pending", startResp.Status)
+	s.False(startResp.IncludeImages)
+	s.False(startResp.IncludeTranscodedTracks)
+
+	s.T().Cleanup(func() {
+		status, err := s.env.Queries.GetBackupStatus(context.Background(), startResp.BackupId)
+		if err == nil && status.ArchivePath.Valid {
+			_ = os.Remove(status.ArchivePath.String)
+		}
+	})
+
+	var statusResp api.BackupStatusResponse
+	s.Eventually(func() bool {
+		statusCode, respBody := s.performJSONRequest(
+			http.MethodGet,
+			"/backup/"+startResp.BackupId,
+			nil,
+			userResp.Body.AccessToken,
+		)
+		s.Require().Equal(http.StatusOK, statusCode)
+		s.Require().NoError(json.Unmarshal(respBody, &statusResp))
+		if statusResp.Status == "error" {
+			if statusResp.Error != nil {
+				s.T().Logf("backup failed: %s", *statusResp.Error)
+			}
+			return true
+		}
+		return statusResp.Status == "finished"
+	}, 10*time.Second, 100*time.Millisecond)
+	s.Equal("finished", statusResp.Status)
+	s.Require().NotNil(statusResp.SizeBytes)
+	s.Positive(*statusResp.SizeBytes)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		s.server.URL+"/backup/"+startResp.BackupId+"/download",
+		nil,
+	)
+	s.Require().NoError(err)
+	req.Header.Set("Authorization", "Bearer "+userResp.Body.AccessToken)
+
+	downloadResp, err := s.client.Do(req)
+	s.Require().NoError(err)
+	defer func() { s.Require().NoError(downloadResp.Body.Close()) }()
+
+	s.Equal(http.StatusOK, downloadResp.StatusCode)
+	s.Equal("application/zip", downloadResp.Header.Get("Content-Type"))
+	archiveBytes, err := io.ReadAll(downloadResp.Body)
+	s.Require().NoError(err)
+	s.Positive(len(archiveBytes))
+
+	archive, err := zip.NewReader(bytes.NewReader(archiveBytes), int64(len(archiveBytes)))
+	s.Require().NoError(err)
+	s.NotNil(findZipEntry(archive, backupManifestPathForTest))
+	s.NotNil(findZipEntry(archive, backupDBPathForTest))
+	s.NotNil(findZipEntry(archive, "tracks/original/"+originalTrackKey))
 }
 
 func (s *IntegrationTestSuite) TestRestoreQueuesTracksWhenTranscodedFilesMissingFromBackup() {
@@ -1042,6 +1148,20 @@ func (s *IntegrationTestSuite) zipWithoutEntriesWithPrefix(payload []byte, prefi
 	s.Require().NoError(writer.Close())
 
 	return output.Bytes()
+}
+
+const (
+	backupManifestPathForTest = "manifest.json"
+	backupDBPathForTest       = "db/full.json"
+)
+
+func findZipEntry(archive *zip.Reader, name string) *zip.File {
+	for _, file := range archive.File {
+		if file.Name == name {
+			return file
+		}
+	}
+	return nil
 }
 
 type tokenResponse struct {

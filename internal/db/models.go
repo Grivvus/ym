@@ -69,6 +69,18 @@ type Artist struct {
 	Url  pgtype.Text
 }
 
+type BackupStatus struct {
+	ID                      string
+	CreatedAt               pgtype.Timestamptz
+	FinishedAt              pgtype.Timestamptz
+	Status                  Status
+	Error                   pgtype.Text
+	IncludeImages           bool
+	IncludeTranscodedTracks bool
+	ArchivePath             pgtype.Text
+	SizeBytes               pgtype.Int8
+}
+
 type PasswordResetCode struct {
 	UserID            int32
 	CodeHash          []byte
