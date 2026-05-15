@@ -24,12 +24,12 @@ const (
 	Shared ExtendedPlaylistPlaylistType = "shared"
 )
 
-// Defines values for RestoreStatusResponseStatus.
+// Defines values for OperationStatus.
 const (
-	Error    RestoreStatusResponseStatus = "error"
-	Finished RestoreStatusResponseStatus = "finished"
-	Pending  RestoreStatusResponseStatus = "pending"
-	Started  RestoreStatusResponseStatus = "started"
+	Error    OperationStatus = "error"
+	Finished OperationStatus = "finished"
+	Pending  OperationStatus = "pending"
+	Started  OperationStatus = "started"
 )
 
 // AlbumCoverResponse defines model for AlbumCoverResponse.
@@ -97,12 +97,12 @@ type ArtistInfoResponse struct {
 
 // BackupStatusResponse defines model for BackupStatusResponse.
 type BackupStatusResponse struct {
-	BackupId                string  `json:"backup_id"`
-	Error                   *string `json:"error"`
-	IncludeImages           bool    `json:"include_images"`
-	IncludeTranscodedTracks bool    `json:"include_transcoded_tracks"`
-	SizeBytes               *int64  `json:"size_bytes,omitempty"`
-	Status                  string  `json:"status"`
+	BackupId                string          `json:"backup_id"`
+	Error                   *string         `json:"error"`
+	IncludeImages           bool            `json:"include_images"`
+	IncludeTranscodedTracks bool            `json:"include_transcoded_tracks"`
+	SizeBytes               *int64          `json:"size_bytes,omitempty"`
+	Status                  OperationStatus `json:"status"`
 }
 
 // ErrorResponse defines model for ErrorResponse.
@@ -125,6 +125,9 @@ type ExtendedPlaylistPlaylistType string
 type MessageResponse struct {
 	Msg string `json:"msg"`
 }
+
+// OperationStatus defines model for OperationStatus.
+type OperationStatus string
 
 // PasswordResetConfirmRequest defines model for PasswordResetConfirmRequest.
 type PasswordResetConfirmRequest struct {
@@ -197,13 +200,10 @@ type Playlists = []ExtendedPlaylist
 
 // RestoreStatusResponse defines model for RestoreStatusResponse.
 type RestoreStatusResponse struct {
-	Error     *string                     `json:"error"`
-	RestoreId string                      `json:"restore_id"`
-	Status    RestoreStatusResponseStatus `json:"status"`
+	Error     *string         `json:"error"`
+	RestoreId string          `json:"restore_id"`
+	Status    OperationStatus `json:"status"`
 }
-
-// RestoreStatusResponseStatus defines model for RestoreStatusResponse.Status.
-type RestoreStatusResponseStatus string
 
 // SimpleUser defines model for SimpleUser.
 type SimpleUser struct {

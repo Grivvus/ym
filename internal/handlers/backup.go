@@ -39,7 +39,7 @@ func (h BackupHandlers) Backup(w http.ResponseWriter, r *http.Request, params ap
 
 	_ = WriteJSON(w, http.StatusAccepted, api.BackupStatusResponse{
 		BackupId:                backupID,
-		Status:                  "pending",
+		Status:                  api.Pending,
 		IncludeImages:           settings.IncludeImages,
 		IncludeTranscodedTracks: settings.IncludeTranscodedTracks,
 	})

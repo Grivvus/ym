@@ -811,7 +811,7 @@ func (s *IntegrationTestSuite) TestBackupEndpointStartsAsyncOperationAndDownload
 	var startResp api.BackupStatusResponse
 	s.Require().NoError(json.Unmarshal(respBody, &startResp))
 	s.NotEmpty(startResp.BackupId)
-	s.Equal("pending", startResp.Status)
+	s.Equal(api.Pending, startResp.Status)
 	s.False(startResp.IncludeImages)
 	s.False(startResp.IncludeTranscodedTracks)
 
@@ -832,15 +832,15 @@ func (s *IntegrationTestSuite) TestBackupEndpointStartsAsyncOperationAndDownload
 		)
 		s.Require().Equal(http.StatusOK, statusCode)
 		s.Require().NoError(json.Unmarshal(respBody, &statusResp))
-		if statusResp.Status == "error" {
+		if statusResp.Status == api.Error {
 			if statusResp.Error != nil {
 				s.T().Logf("backup failed: %s", *statusResp.Error)
 			}
 			return true
 		}
-		return statusResp.Status == "finished"
+		return statusResp.Status == api.Finished
 	}, 10*time.Second, 100*time.Millisecond)
-	s.Equal("finished", statusResp.Status)
+	s.Equal(api.Finished, statusResp.Status)
 	s.Require().NotNil(statusResp.SizeBytes)
 	s.Positive(*statusResp.SizeBytes)
 

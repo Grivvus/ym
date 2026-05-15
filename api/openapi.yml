@@ -1836,6 +1836,14 @@ components:
       bearerFormat: JWT
 
   schemas:
+    OperationStatus:
+      type: string
+      enum:
+        - pending
+        - started
+        - finished
+        - error
+
     BackupStatusResponse:
       type: object
       required:
@@ -1847,7 +1855,7 @@ components:
         backup_id:
           type: string
         status:
-          type: string
+          $ref: '#/components/schemas/OperationStatus'
         include_images:
           type: boolean
         include_transcoded_tracks:
@@ -1868,12 +1876,7 @@ components:
         restore_id:
           type: string
         status:
-          type: string
-          enum:
-            - pending
-            - started
-            - finished
-            - error
+          $ref: '#/components/schemas/OperationStatus'
         error:
           type: string
           nullable: true

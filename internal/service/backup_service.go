@@ -557,22 +557,15 @@ func (service BackupService) CheckRestoreOperation(
 	}
 	response.RestoreId = status.ID
 
-	switch status.Status {
-	case db.StatusPending:
-		response.Status = api.Pending
-	case db.StatusStarted:
-		response.Status = api.Started
-	case db.StatusFinished:
-		response.Status = api.Finished
-	case db.StatusError:
+	response.Status, err = operationStatusFromDB(status.Status)
+	if err != nil {
+		return response, err
+	}
+	if status.Status == db.StatusError {
 		response.Status = api.Error
 		if status.Error.Valid {
 			response.Error = &status.Error.String
 		}
-	default:
-		return response, fmt.Errorf(
-			"%w: invalid status - %v", ErrBadParams, status.Status,
-		)
 	}
 
 	return response, nil
@@ -995,23 +988,22 @@ func (service BackupService) finishBackupWithError(
 func backupStatusResponse(status db.GetBackupStatusRow) (
 	api.BackupStatusResponse, error,
 ) {
+	operationStatus, err := operationStatusFromDB(status.Status)
+	if err != nil {
+		return api.BackupStatusResponse{}, err
+	}
+
 	response := api.BackupStatusResponse{
 		BackupId:                status.ID,
-		Status:                  string(status.Status),
+		Status:                  operationStatus,
 		IncludeImages:           status.IncludeImages,
 		IncludeTranscodedTracks: status.IncludeTranscodedTracks,
 	}
 
-	switch status.Status {
-	case db.StatusPending, db.StatusStarted, db.StatusFinished:
-	case db.StatusError:
+	if status.Status == db.StatusError {
 		if status.Error.Valid {
 			response.Error = &status.Error.String
 		}
-	default:
-		return response, fmt.Errorf(
-			"%w: invalid status - %v", ErrBadParams, status.Status,
-		)
 	}
 
 	if status.SizeBytes.Valid {
@@ -1019,6 +1011,21 @@ func backupStatusResponse(status db.GetBackupStatusRow) (
 	}
 
 	return response, nil
+}
+
+func operationStatusFromDB(status db.Status) (api.OperationStatus, error) {
+	switch status {
+	case db.StatusPending:
+		return api.Pending, nil
+	case db.StatusStarted:
+		return api.Started, nil
+	case db.StatusFinished:
+		return api.Finished, nil
+	case db.StatusError:
+		return api.Error, nil
+	default:
+		return "", fmt.Errorf("%w: invalid status - %v", ErrBadParams, status)
+	}
 }
 
 func openZipArchive(path string) (*zip.ReadCloser, error) {
