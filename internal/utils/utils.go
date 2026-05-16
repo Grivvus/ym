@@ -14,19 +14,49 @@ import (
 )
 
 const (
-	saltLength      = 16
-	keyLength       = 32
-	iterations      = 3
-	memory          = 64 << 10 // ~64MB
-	accessTokenTTL  = 15 * time.Minute
-	refreshTokenTTL = 30 * 24 * time.Hour
+	SaltLength                = 16
+	DefaultPasswordKeyLength  = 32
+	DefaultPasswordIterations = 3
+	DefaultPasswordMemory     = 64 << 10 // ~64MB
+	maxPasswordParallelism    = 4
+	maxLegacyParallelism      = 32
+	accessTokenTTL            = 15 * time.Minute
+	refreshTokenTTL           = 30 * 24 * time.Hour
 )
 
-var threads = uint8(runtime.NumCPU())
+type PasswordHashParams struct {
+	Memory      uint32
+	Iterations  uint32
+	Parallelism uint8
+	KeyLength   uint32
+}
 
 type tokenClaims struct {
 	RefreshVersion int32 `json:"refresh_version,omitempty"`
 	jwt.RegisteredClaims
+}
+
+func DefaultPasswordHashParams() PasswordHashParams {
+	parallelism := runtime.NumCPU()
+	if parallelism < 1 {
+		parallelism = 1
+	}
+	if parallelism > maxPasswordParallelism {
+		parallelism = maxPasswordParallelism
+	}
+
+	return PasswordHashParams{
+		Memory:      DefaultPasswordMemory,
+		Iterations:  DefaultPasswordIterations,
+		Parallelism: uint8(parallelism),
+		KeyLength:   DefaultPasswordKeyLength,
+	}
+}
+
+func LegacyPasswordHashParams() PasswordHashParams {
+	params := DefaultPasswordHashParams()
+	params.Parallelism = 0
+	return params
 }
 
 func generateSalt(length int) []byte {
@@ -39,17 +69,80 @@ func generateSalt(length int) []byte {
 	return salt
 }
 
-func HashPassword(password string) (hashed []byte, salt []byte) {
-	salt = generateSalt(saltLength)
+func HashPassword(password string) (hashed []byte, salt []byte, params PasswordHashParams) {
+	params = DefaultPasswordHashParams()
+	salt = generateSalt(SaltLength)
+	hashed = passwordHash(password, salt, params)
 
-	hashed = argon2.IDKey([]byte(password), salt, iterations, memory, threads, keyLength)
-
-	return hashed, salt
+	return hashed, salt, params
 }
 
-func VerifyPassword(password string, salt []byte, expectedHash []byte) bool {
-	newHash := argon2.IDKey([]byte(password), salt, iterations, memory, threads, keyLength)
+func VerifyPassword(
+	password string, salt []byte, expectedHash []byte, params PasswordHashParams,
+) (bool, PasswordHashParams) {
+	params = normalizePasswordHashParams(params)
+	if params.Parallelism != 0 {
+		return verifyPasswordWithParams(password, salt, expectedHash, params), params
+	}
+
+	for _, candidateParallelism := range legacyPasswordParallelismCandidates() {
+		candidate := params
+		candidate.Parallelism = candidateParallelism
+		if verifyPasswordWithParams(password, salt, expectedHash, candidate) {
+			return true, candidate
+		}
+	}
+	return false, params
+}
+
+func normalizePasswordHashParams(params PasswordHashParams) PasswordHashParams {
+	if params.Memory == 0 {
+		params.Memory = DefaultPasswordMemory
+	}
+	if params.Iterations == 0 {
+		params.Iterations = DefaultPasswordIterations
+	}
+	if params.KeyLength == 0 {
+		params.KeyLength = DefaultPasswordKeyLength
+	}
+	return params
+}
+
+func verifyPasswordWithParams(
+	password string, salt []byte, expectedHash []byte, params PasswordHashParams,
+) bool {
+	newHash := passwordHash(password, salt, params)
 	return subtle.ConstantTimeCompare(newHash, expectedHash) == 1
+}
+
+func passwordHash(password string, salt []byte, params PasswordHashParams) []byte {
+	return argon2.IDKey(
+		[]byte(password), salt, params.Iterations,
+		params.Memory, params.Parallelism, params.KeyLength,
+	)
+}
+
+func legacyPasswordParallelismCandidates() []uint8 {
+	seen := make(map[uint8]struct{}, maxLegacyParallelism)
+	candidates := make([]uint8, 0, maxLegacyParallelism)
+	add := func(value int) {
+		if value <= 0 || value > 255 {
+			return
+		}
+		candidate := uint8(value)
+		if _, ok := seen[candidate]; ok {
+			return
+		}
+		seen[candidate] = struct{}{}
+		candidates = append(candidates, candidate)
+	}
+
+	add(runtime.NumCPU())
+	add(int(DefaultPasswordHashParams().Parallelism))
+	for parallelism := 1; parallelism <= maxLegacyParallelism; parallelism++ {
+		add(parallelism)
+	}
+	return candidates
 }
 
 func CreateTokens(

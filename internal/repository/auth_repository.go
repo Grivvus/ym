@@ -12,21 +12,24 @@ type AuthRepository interface {
 	CreateUserWithInitialRole(ctx context.Context, params CreateAuthUserParams) (AuthUser, error)
 	GetUserByUsername(ctx context.Context, username string) (AuthUser, error)
 	GetUserByID(ctx context.Context, userID int32) (AuthUser, error)
+	UpdateUserPasswordHashParams(ctx context.Context, userID int32, params PasswordHashParams) error
 }
 
 type CreateAuthUserParams struct {
-	Username string
-	Password []byte
-	Salt     []byte
+	Username           string
+	Password           []byte
+	Salt               []byte
+	PasswordHashParams PasswordHashParams
 }
 
 type AuthUser struct {
-	ID             int32
-	Username       string
-	Password       []byte
-	Salt           []byte
-	IsSuperuser    bool
-	RefreshVersion int32
+	ID                 int32
+	Username           string
+	Password           []byte
+	Salt               []byte
+	PasswordHashParams PasswordHashParams
+	IsSuperuser        bool
+	RefreshVersion     int32
 }
 
 type PostgresAuthRepository struct {
@@ -51,11 +54,15 @@ func (repo *PostgresAuthRepository) CreateUserWithInitialRole(
 		}
 
 		createdUser, err := q.CreateUser(ctx, db.CreateUserParams{
-			Username:    params.Username,
-			Email:       pgtype.Text{Valid: false},
-			Password:    params.Password,
-			Salt:        params.Salt,
-			IsSuperuser: usersCnt == 0,
+			Username:            params.Username,
+			Email:               pgtype.Text{Valid: false},
+			Password:            params.Password,
+			Salt:                params.Salt,
+			PasswordMemory:      params.PasswordHashParams.Memory,
+			PasswordIterations:  params.PasswordHashParams.Iterations,
+			PasswordParallelism: params.PasswordHashParams.Parallelism,
+			PasswordKeyLength:   params.PasswordHashParams.KeyLength,
+			IsSuperuser:         usersCnt == 0,
 		})
 		if err != nil {
 			return db.User{}, err
@@ -77,12 +84,13 @@ func (repo *PostgresAuthRepository) GetUserByUsername(
 		return AuthUser{}, wrapDBError(err)
 	}
 	return AuthUser{
-		ID:             user.ID,
-		Username:       user.Username,
-		Password:       user.Password,
-		Salt:           user.Salt,
-		IsSuperuser:    user.IsSuperuser,
-		RefreshVersion: user.RefreshVersion,
+		ID:                 user.ID,
+		Username:           user.Username,
+		Password:           user.Password,
+		Salt:               user.Salt,
+		PasswordHashParams: passwordHashParamsFromUserByUsernameRow(user),
+		IsSuperuser:        user.IsSuperuser,
+		RefreshVersion:     user.RefreshVersion,
 	}, nil
 }
 
@@ -94,22 +102,40 @@ func (repo *PostgresAuthRepository) GetUserByID(
 		return AuthUser{}, wrapDBError(err)
 	}
 	return AuthUser{
-		ID:             user.ID,
-		Username:       user.Username,
-		Password:       user.Password,
-		Salt:           user.Salt,
-		IsSuperuser:    user.IsSuperuser,
-		RefreshVersion: user.RefreshVersion,
+		ID:                 user.ID,
+		Username:           user.Username,
+		Password:           user.Password,
+		Salt:               user.Salt,
+		PasswordHashParams: passwordHashParamsFromUserByIDRow(user),
+		IsSuperuser:        user.IsSuperuser,
+		RefreshVersion:     user.RefreshVersion,
 	}, nil
+}
+
+func (repo *PostgresAuthRepository) UpdateUserPasswordHashParams(
+	ctx context.Context, userID int32, params PasswordHashParams,
+) error {
+	err := repo.queries.UpdateUserPasswordHashParams(
+		ctx,
+		db.UpdateUserPasswordHashParamsParams{
+			ID:                  userID,
+			PasswordMemory:      params.Memory,
+			PasswordIterations:  params.Iterations,
+			PasswordParallelism: params.Parallelism,
+			PasswordKeyLength:   params.KeyLength,
+		},
+	)
+	return wrapDBError(err)
 }
 
 func authUserFromDBUser(user db.User) AuthUser {
 	return AuthUser{
-		ID:             user.ID,
-		Username:       user.Username,
-		Password:       user.Password,
-		Salt:           user.Salt,
-		IsSuperuser:    user.IsSuperuser,
-		RefreshVersion: user.RefreshVersion,
+		ID:                 user.ID,
+		Username:           user.Username,
+		Password:           user.Password,
+		Salt:               user.Salt,
+		PasswordHashParams: passwordHashParamsFromDBUser(user),
+		IsSuperuser:        user.IsSuperuser,
+		RefreshVersion:     user.RefreshVersion,
 	}
 }

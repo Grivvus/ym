@@ -11,7 +11,7 @@ import (
 func TestHashPassword_HashNotEQPlain(t *testing.T) {
 	t.Parallel()
 	const plain = "password"
-	hashed, salt := utils.HashPassword(plain)
+	hashed, salt, _ := utils.HashPassword(plain)
 	assert.NotEqual(t, len(hashed), len(plain))
 	assert.NotEqual(t, []byte(plain), hashed)
 	assert.NotEqual(t, salt, hashed)
@@ -21,24 +21,26 @@ func TestHashPassword_HashNotEQPlain(t *testing.T) {
 func TestVerifyPassword_EqualPasswords(t *testing.T) {
 	t.Parallel()
 	const password = "password"
-	hash, salt := utils.HashPassword(password)
+	hash, salt, params := utils.HashPassword(password)
 	require.NotNil(t, hash)
 	require.NotNil(t, salt)
 	require.True(t, len(hash) > 0)
 	require.True(t, len(salt) > 0)
-	assert.True(t, utils.VerifyPassword(password, salt, hash))
+	verified, _ := utils.VerifyPassword(password, salt, hash, params)
+	assert.True(t, verified)
 }
 
 func TestVerifyPassword_NotEqualPasswords(t *testing.T) {
 	t.Parallel()
 	const password = "password"
 	const password2 = "password2"
-	hash, salt := utils.HashPassword(password)
+	hash, salt, params := utils.HashPassword(password)
 	require.NotNil(t, hash)
 	require.NotNil(t, salt)
 	require.True(t, len(hash) > 0)
 	require.True(t, len(salt) > 0)
-	assert.False(t, utils.VerifyPassword(password2, salt, hash))
+	verified, _ := utils.VerifyPassword(password2, salt, hash, params)
+	assert.False(t, verified)
 }
 
 func TestCreateTokens(t *testing.T) {

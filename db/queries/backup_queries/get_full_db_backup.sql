@@ -1,5 +1,7 @@
 -- name: GetAllUsersForBackup :many
-SELECT id, username, is_superuser, email, password, salt, refresh_version, created_at, updated_at
+SELECT id, username, is_superuser, email, password, salt,
+    password_memory, password_iterations, password_parallelism, password_key_length,
+    refresh_version, created_at, updated_at
 FROM public."user"
 ORDER BY id;
 

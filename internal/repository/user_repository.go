@@ -21,13 +21,14 @@ type UserSummary struct {
 }
 
 type User struct {
-	ID             int32
-	Username       string
-	Email          *string
-	Password       []byte
-	Salt           []byte
-	IsSuperuser    bool
-	RefreshVersion int32
+	ID                 int32
+	Username           string
+	Email              *string
+	Password           []byte
+	Salt               []byte
+	PasswordHashParams PasswordHashParams
+	IsSuperuser        bool
+	RefreshVersion     int32
 }
 
 type UpdateUserParams struct {
@@ -37,9 +38,10 @@ type UpdateUserParams struct {
 }
 
 type UpdateUserPasswordParams struct {
-	ID       int32
-	Password []byte
-	Salt     []byte
+	ID                 int32
+	Password           []byte
+	Salt               []byte
+	PasswordHashParams PasswordHashParams
 }
 
 type PostgresUserRepository struct {
@@ -94,34 +96,40 @@ func (repo *PostgresUserRepository) UpdateUserPassword(
 	ctx context.Context, params UpdateUserPasswordParams,
 ) error {
 	err := repo.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
-		ID:       params.ID,
-		Password: params.Password,
-		Salt:     params.Salt,
+		ID:                  params.ID,
+		Password:            params.Password,
+		Salt:                params.Salt,
+		PasswordMemory:      params.PasswordHashParams.Memory,
+		PasswordIterations:  params.PasswordHashParams.Iterations,
+		PasswordParallelism: params.PasswordHashParams.Parallelism,
+		PasswordKeyLength:   params.PasswordHashParams.KeyLength,
 	})
 	return wrapDBError(err)
 }
 
 func userFromGetUserByIDRow(user db.GetUserByIDRow) User {
 	return User{
-		ID:             user.ID,
-		Username:       user.Username,
-		Email:          stringPtrFromPGText(user.Email),
-		Password:       user.Password,
-		Salt:           user.Salt,
-		IsSuperuser:    user.IsSuperuser,
-		RefreshVersion: user.RefreshVersion,
+		ID:                 user.ID,
+		Username:           user.Username,
+		Email:              stringPtrFromPGText(user.Email),
+		Password:           user.Password,
+		Salt:               user.Salt,
+		PasswordHashParams: passwordHashParamsFromUserByIDRow(user),
+		IsSuperuser:        user.IsSuperuser,
+		RefreshVersion:     user.RefreshVersion,
 	}
 }
 
 func userFromDBUser(user db.User) User {
 	return User{
-		ID:             user.ID,
-		Username:       user.Username,
-		Email:          stringPtrFromPGText(user.Email),
-		Password:       user.Password,
-		Salt:           user.Salt,
-		IsSuperuser:    user.IsSuperuser,
-		RefreshVersion: user.RefreshVersion,
+		ID:                 user.ID,
+		Username:           user.Username,
+		Email:              stringPtrFromPGText(user.Email),
+		Password:           user.Password,
+		Salt:               user.Salt,
+		PasswordHashParams: passwordHashParamsFromDBUser(user),
+		IsSuperuser:        user.IsSuperuser,
+		RefreshVersion:     user.RefreshVersion,
 	}
 }
 

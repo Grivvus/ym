@@ -33,11 +33,12 @@ func NewAuthService(
 func (a AuthService) Register(
 	ctx context.Context, user api.UserAuth,
 ) (api.TokenResponse, error) {
-	hashed, salt := utils.HashPassword(user.Password)
+	hashed, salt, params := utils.HashPassword(user.Password)
 	createdUser, err := a.repo.CreateUserWithInitialRole(ctx, repository.CreateAuthUserParams{
-		Username: user.Username,
-		Password: hashed,
-		Salt:     salt,
+		Username:           user.Username,
+		Password:           hashed,
+		Salt:               salt,
+		PasswordHashParams: repositoryPasswordHashParams(params),
 	})
 	if err != nil {
 		a.logger.Error("can't create user", "error", err)
@@ -71,8 +72,21 @@ func (a AuthService) Login(
 		return api.TokenResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
-	if !utils.VerifyPassword(user.Password, dbuser.Salt, dbuser.Password) {
+	verified, usedParams := utils.VerifyPassword(
+		user.Password,
+		dbuser.Salt,
+		dbuser.Password,
+		utilsPasswordHashParams(dbuser.PasswordHashParams),
+	)
+	if !verified {
 		return api.TokenResponse{}, ErrUnauthorized
+	}
+	if dbuser.PasswordHashParams.Parallelism == 0 {
+		if err := a.repo.UpdateUserPasswordHashParams(
+			ctx, dbuser.ID, repositoryPasswordHashParams(usedParams),
+		); err != nil {
+			a.logger.Warn("can't persist legacy password hash params", "error", err)
+		}
 	}
 
 	accessToken, refreshToken, err := utils.CreateTokensWithRefreshVersion(

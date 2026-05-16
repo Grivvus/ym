@@ -39,9 +39,10 @@ type UpsertPasswordResetCodeParams struct {
 }
 
 type PasswordResetUpdatePasswordParams struct {
-	UserID   int32
-	Password []byte
-	Salt     []byte
+	UserID             int32
+	Password           []byte
+	Salt               []byte
+	PasswordHashParams PasswordHashParams
 }
 
 type PostgresPasswordResetRepository struct {
@@ -119,9 +120,13 @@ func (repo *PostgresPasswordResetRepository) UpdateUserPassword(
 	ctx context.Context, params PasswordResetUpdatePasswordParams,
 ) error {
 	err := repo.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
-		ID:       params.UserID,
-		Password: params.Password,
-		Salt:     params.Salt,
+		ID:                  params.UserID,
+		Password:            params.Password,
+		Salt:                params.Salt,
+		PasswordMemory:      params.PasswordHashParams.Memory,
+		PasswordIterations:  params.PasswordHashParams.Iterations,
+		PasswordParallelism: params.PasswordHashParams.Parallelism,
+		PasswordKeyLength:   params.PasswordHashParams.KeyLength,
 	})
 	return wrapDBError(err)
 }

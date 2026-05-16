@@ -14,7 +14,7 @@ UPDATE public."user" SET
     is_superuser = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, username, is_superuser, email, password, salt, refresh_version, created_at, updated_at
+RETURNING id, username, is_superuser, email, password, salt, password_memory, password_iterations, password_parallelism, password_key_length, refresh_version, created_at, updated_at
 `
 
 type UpdateToSuperuserParams struct {
@@ -32,6 +32,10 @@ func (q *Queries) UpdateToSuperuser(ctx context.Context, arg UpdateToSuperuserPa
 		&i.Email,
 		&i.Password,
 		&i.Salt,
+		&i.PasswordMemory,
+		&i.PasswordIterations,
+		&i.PasswordParallelism,
+		&i.PasswordKeyLength,
 		&i.RefreshVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,

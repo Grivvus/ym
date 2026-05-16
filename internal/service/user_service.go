@@ -147,14 +147,21 @@ func (u *UserService) ChangePassword(
 		}
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
-	if !utils.VerifyPassword(newPasswordParams.OldPassword, user.Salt, user.Password) {
+	verified, _ := utils.VerifyPassword(
+		newPasswordParams.OldPassword,
+		user.Salt,
+		user.Password,
+		utilsPasswordHashParams(user.PasswordHashParams),
+	)
+	if !verified {
 		return fmt.Errorf("%w: old password is wrong", ErrBadParams)
 	}
-	newHashed, newSalt := utils.HashPassword(newPasswordParams.NewPassword)
+	newHashed, newSalt, params := utils.HashPassword(newPasswordParams.NewPassword)
 	err = u.repo.UpdateUserPassword(ctx, repository.UpdateUserPasswordParams{
-		ID:       userID,
-		Password: newHashed,
-		Salt:     newSalt,
+		ID:                 userID,
+		Password:           newHashed,
+		Salt:               newSalt,
+		PasswordHashParams: repositoryPasswordHashParams(params),
 	})
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {

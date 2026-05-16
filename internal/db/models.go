@@ -146,13 +146,17 @@ type TranscodingQueue struct {
 }
 
 type User struct {
-	ID             int32
-	Username       string
-	IsSuperuser    bool
-	Email          pgtype.Text
-	Password       []byte
-	Salt           []byte
-	RefreshVersion int32
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID                  int32
+	Username            string
+	IsSuperuser         bool
+	Email               pgtype.Text
+	Password            []byte
+	Salt                []byte
+	PasswordMemory      int32
+	PasswordIterations  int32
+	PasswordParallelism int32
+	PasswordKeyLength   int32
+	RefreshVersion      int32
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }

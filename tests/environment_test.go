@@ -707,22 +707,31 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	backupService := service.NewBackupService(logger, s.env.Queries, s.env.Storage)
+	userPasswordHash, userPasswordSalt, userPasswordParams := utils.HashPassword("password-1")
 
 	user, err := s.env.Queries.CreateUser(ctx, db.CreateUserParams{
-		Username:    "backup-user",
-		Email:       pgtype.Text{String: "backup@example.com", Valid: true},
-		Password:    []byte("password-hash"),
-		Salt:        []byte("password-salt"),
-		IsSuperuser: true,
+		Username:            "backup-user",
+		Email:               pgtype.Text{String: "backup@example.com", Valid: true},
+		Password:            userPasswordHash,
+		Salt:                userPasswordSalt,
+		PasswordMemory:      int32(userPasswordParams.Memory),
+		PasswordIterations:  int32(userPasswordParams.Iterations),
+		PasswordParallelism: int32(userPasswordParams.Parallelism),
+		PasswordKeyLength:   int32(userPasswordParams.KeyLength),
+		IsSuperuser:         true,
 	})
 	s.Require().NoError(err)
 
 	sharedUser, err := s.env.Queries.CreateUser(ctx, db.CreateUserParams{
-		Username:    "backup-shared-user",
-		Email:       pgtype.Text{String: "backup-shared@example.com", Valid: true},
-		Password:    []byte("password-hash"),
-		Salt:        []byte("password-salt"),
-		IsSuperuser: false,
+		Username:            "backup-shared-user",
+		Email:               pgtype.Text{String: "backup-shared@example.com", Valid: true},
+		Password:            []byte("password-hash"),
+		Salt:                []byte("password-salt"),
+		PasswordMemory:      int32(utils.DefaultPasswordMemory),
+		PasswordIterations:  int32(utils.DefaultPasswordIterations),
+		PasswordParallelism: int32(utils.DefaultPasswordHashParams().Parallelism),
+		PasswordKeyLength:   int32(utils.DefaultPasswordKeyLength),
+		IsSuperuser:         false,
 	})
 	s.Require().NoError(err)
 
@@ -855,6 +864,13 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 	s.Require().NoError(err)
 	s.Len(users, 2)
 	s.Equal("backup-user", users[0].Username)
+
+	loginResp := s.loginUser(api.UserAuth{
+		Username: "backup-user",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusOK, loginResp.StatusCode)
+	s.NotEmpty(loginResp.Body.AccessToken)
 
 	playlistShares, err := s.env.Queries.GetAllPlaylistSharesForBackup(ctx)
 	s.Require().NoError(err)
@@ -1000,9 +1016,13 @@ func (s *IntegrationTestSuite) TestRestoreQueuesTracksWhenTranscodedFilesMissing
 	backupService := service.NewBackupService(logger, s.env.Queries, s.env.Storage)
 
 	user, err := s.env.Queries.CreateUser(ctx, db.CreateUserParams{
-		Username: "missing-transcoded-user",
-		Password: []byte("password-hash"),
-		Salt:     []byte("password-salt"),
+		Username:            "missing-transcoded-user",
+		Password:            []byte("password-hash"),
+		Salt:                []byte("password-salt"),
+		PasswordMemory:      int32(utils.DefaultPasswordMemory),
+		PasswordIterations:  int32(utils.DefaultPasswordIterations),
+		PasswordParallelism: int32(utils.DefaultPasswordHashParams().Parallelism),
+		PasswordKeyLength:   int32(utils.DefaultPasswordKeyLength),
 	})
 	s.Require().NoError(err)
 

@@ -14,6 +14,10 @@ WITH updated_user AS (
     UPDATE "user" SET
         password = $2,
         salt = $3,
+        password_memory = $4,
+        password_iterations = $5,
+        password_parallelism = $6,
+        password_key_length = $7,
         refresh_version = refresh_version + 1,
         updated_at = now()
     WHERE id = $1
@@ -24,12 +28,24 @@ WHERE user_id IN (SELECT id FROM updated_user)
 `
 
 type UpdateUserPasswordParams struct {
-	ID       int32
-	Password []byte
-	Salt     []byte
+	ID                  int32
+	Password            []byte
+	Salt                []byte
+	PasswordMemory      int32
+	PasswordIterations  int32
+	PasswordParallelism int32
+	PasswordKeyLength   int32
 }
 
 func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
-	_, err := q.db.Exec(ctx, updateUserPassword, arg.ID, arg.Password, arg.Salt)
+	_, err := q.db.Exec(ctx, updateUserPassword,
+		arg.ID,
+		arg.Password,
+		arg.Salt,
+		arg.PasswordMemory,
+		arg.PasswordIterations,
+		arg.PasswordParallelism,
+		arg.PasswordKeyLength,
+	)
 	return err
 }

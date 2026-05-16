@@ -14,23 +14,31 @@ import (
 const restoreUser = `-- name: RestoreUser :exec
 INSERT INTO public."user" (
     id, username, is_superuser, email,
-    password, salt, refresh_version, created_at, updated_at
+    password, salt,
+    password_memory, password_iterations, password_parallelism, password_key_length,
+    refresh_version, created_at, updated_at
 ) VALUES (
     $1, $2, $3, $4,
-    $5, $6, $7, $8, $9
+    $5, $6,
+    $7, $8, $9, $10,
+    $11, $12, $13
 )
 `
 
 type RestoreUserParams struct {
-	ID             int32
-	Username       string
-	IsSuperuser    bool
-	Email          pgtype.Text
-	Password       []byte
-	Salt           []byte
-	RefreshVersion int32
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID                  int32
+	Username            string
+	IsSuperuser         bool
+	Email               pgtype.Text
+	Password            []byte
+	Salt                []byte
+	PasswordMemory      int32
+	PasswordIterations  int32
+	PasswordParallelism int32
+	PasswordKeyLength   int32
+	RefreshVersion      int32
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }
 
 func (q *Queries) RestoreUser(ctx context.Context, arg RestoreUserParams) error {
@@ -41,6 +49,10 @@ func (q *Queries) RestoreUser(ctx context.Context, arg RestoreUserParams) error 
 		arg.Email,
 		arg.Password,
 		arg.Salt,
+		arg.PasswordMemory,
+		arg.PasswordIterations,
+		arg.PasswordParallelism,
+		arg.PasswordKeyLength,
 		arg.RefreshVersion,
 		arg.CreatedAt,
 		arg.UpdatedAt,

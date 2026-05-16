@@ -12,17 +12,29 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO "user" (username, email, password, salt, is_superuser, created_at, updated_at)
-values ($1, $2, $3, $4, $5, now(), now())
-RETURNING id, username, is_superuser, email, password, salt, refresh_version, created_at, updated_at
+INSERT INTO "user" (
+    username, email, password, salt,
+    password_memory, password_iterations, password_parallelism, password_key_length,
+    is_superuser, created_at, updated_at
+)
+values (
+    $1, $2, $3, $4,
+    $5, $6, $7, $8,
+    $9, now(), now()
+)
+RETURNING id, username, is_superuser, email, password, salt, password_memory, password_iterations, password_parallelism, password_key_length, refresh_version, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	Username    string
-	Email       pgtype.Text
-	Password    []byte
-	Salt        []byte
-	IsSuperuser bool
+	Username            string
+	Email               pgtype.Text
+	Password            []byte
+	Salt                []byte
+	PasswordMemory      int32
+	PasswordIterations  int32
+	PasswordParallelism int32
+	PasswordKeyLength   int32
+	IsSuperuser         bool
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -31,6 +43,10 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Email,
 		arg.Password,
 		arg.Salt,
+		arg.PasswordMemory,
+		arg.PasswordIterations,
+		arg.PasswordParallelism,
+		arg.PasswordKeyLength,
 		arg.IsSuperuser,
 	)
 	var i User
@@ -41,6 +57,10 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Email,
 		&i.Password,
 		&i.Salt,
+		&i.PasswordMemory,
+		&i.PasswordIterations,
+		&i.PasswordParallelism,
+		&i.PasswordKeyLength,
 		&i.RefreshVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,

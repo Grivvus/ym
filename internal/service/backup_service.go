@@ -22,6 +22,7 @@ import (
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/dto"
 	"github.com/Grivvus/ym/internal/storage"
+	"github.com/Grivvus/ym/internal/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -360,15 +361,19 @@ func (service BackupService) backupDB(ctx context.Context) (dto.FullDBBackup, er
 
 	for _, user := range users {
 		backup.Users = append(backup.Users, dto.User{
-			ID:             user.ID,
-			Username:       user.Username,
-			IsSuperuser:    user.IsSuperuser,
-			Email:          textToPtr(user.Email),
-			Password:       base64.StdEncoding.EncodeToString(user.Password),
-			Salt:           base64.StdEncoding.EncodeToString(user.Salt),
-			RefreshVersion: user.RefreshVersion,
-			CreatedAt:      timestamptzToTime(user.CreatedAt),
-			UpdatedAt:      timestamptzToTime(user.UpdatedAt),
+			ID:                  user.ID,
+			Username:            user.Username,
+			IsSuperuser:         user.IsSuperuser,
+			Email:               textToPtr(user.Email),
+			Password:            base64.StdEncoding.EncodeToString(user.Password),
+			Salt:                base64.StdEncoding.EncodeToString(user.Salt),
+			PasswordMemory:      user.PasswordMemory,
+			PasswordIterations:  user.PasswordIterations,
+			PasswordParallelism: user.PasswordParallelism,
+			PasswordKeyLength:   user.PasswordKeyLength,
+			RefreshVersion:      user.RefreshVersion,
+			CreatedAt:           timestamptzToTime(user.CreatedAt),
+			UpdatedAt:           timestamptzToTime(user.UpdatedAt),
 		})
 	}
 
@@ -672,17 +677,22 @@ func (service BackupService) restoreDBSnapshot(
 		if err != nil {
 			return fmt.Errorf("%w: invalid encoded salt for user %d: %w", ErrBadParams, user.ID, err)
 		}
+		hashParams := backupUserPasswordHashParams(user)
 
 		err = service.queries.RestoreUser(ctx, db.RestoreUserParams{
-			ID:             user.ID,
-			Username:       user.Username,
-			IsSuperuser:    user.IsSuperuser,
-			Email:          ptrToText(user.Email),
-			Password:       password,
-			Salt:           salt,
-			RefreshVersion: user.RefreshVersion,
-			CreatedAt:      timeToTimestamptz(user.CreatedAt),
-			UpdatedAt:      timeToTimestamptz(user.UpdatedAt),
+			ID:                  user.ID,
+			Username:            user.Username,
+			IsSuperuser:         user.IsSuperuser,
+			Email:               ptrToText(user.Email),
+			Password:            password,
+			Salt:                salt,
+			PasswordMemory:      hashParams.PasswordMemory,
+			PasswordIterations:  hashParams.PasswordIterations,
+			PasswordParallelism: hashParams.PasswordParallelism,
+			PasswordKeyLength:   hashParams.PasswordKeyLength,
+			RefreshVersion:      user.RefreshVersion,
+			CreatedAt:           timeToTimestamptz(user.CreatedAt),
+			UpdatedAt:           timeToTimestamptz(user.UpdatedAt),
 		})
 		if err != nil {
 			return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
@@ -1254,6 +1264,19 @@ func ptrToInt4(value *int32) pgtype.Int4 {
 		return pgtype.Int4{Valid: false}
 	}
 	return pgtype.Int4{Int32: *value, Valid: true}
+}
+
+func backupUserPasswordHashParams(user dto.User) dto.User {
+	if user.PasswordMemory == 0 {
+		user.PasswordMemory = int32(utils.DefaultPasswordMemory)
+	}
+	if user.PasswordIterations == 0 {
+		user.PasswordIterations = int32(utils.DefaultPasswordIterations)
+	}
+	if user.PasswordKeyLength == 0 {
+		user.PasswordKeyLength = int32(utils.DefaultPasswordKeyLength)
+	}
+	return user
 }
 
 func timestamptzToTime(value pgtype.Timestamptz) time.Time {

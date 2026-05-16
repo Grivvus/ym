@@ -12,19 +12,25 @@ import (
 )
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, username, email, password, salt, is_superuser, refresh_version
+SELECT id, username, email, password, salt,
+    password_memory, password_iterations, password_parallelism, password_key_length,
+    is_superuser, refresh_version
 FROM "user"
 WHERE LOWER(email) = LOWER($1)
 `
 
 type GetUserByEmailRow struct {
-	ID             int32
-	Username       string
-	Email          pgtype.Text
-	Password       []byte
-	Salt           []byte
-	IsSuperuser    bool
-	RefreshVersion int32
+	ID                  int32
+	Username            string
+	Email               pgtype.Text
+	Password            []byte
+	Salt                []byte
+	PasswordMemory      int32
+	PasswordIterations  int32
+	PasswordParallelism int32
+	PasswordKeyLength   int32
+	IsSuperuser         bool
+	RefreshVersion      int32
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error) {
@@ -36,6 +42,10 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEm
 		&i.Email,
 		&i.Password,
 		&i.Salt,
+		&i.PasswordMemory,
+		&i.PasswordIterations,
+		&i.PasswordParallelism,
+		&i.PasswordKeyLength,
 		&i.IsSuperuser,
 		&i.RefreshVersion,
 	)

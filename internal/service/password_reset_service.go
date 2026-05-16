@@ -189,11 +189,12 @@ func (s PasswordResetService) ConfirmPasswordReset(
 		return invalidPasswordResetCodeError()
 	}
 
-	hashedPassword, salt := utils.HashPassword(req.NewPassword)
+	hashedPassword, salt, params := utils.HashPassword(req.NewPassword)
 	err = s.repo.UpdateUserPassword(ctx, repository.PasswordResetUpdatePasswordParams{
-		UserID:   user.ID,
-		Password: hashedPassword,
-		Salt:     salt,
+		UserID:             user.ID,
+		Password:           hashedPassword,
+		Salt:               salt,
+		PasswordHashParams: repositoryPasswordHashParams(params),
 	})
 	if err != nil {
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)

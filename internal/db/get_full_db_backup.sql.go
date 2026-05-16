@@ -251,7 +251,9 @@ func (q *Queries) GetAllTranscodingQueueForBackup(ctx context.Context) ([]Transc
 }
 
 const getAllUsersForBackup = `-- name: GetAllUsersForBackup :many
-SELECT id, username, is_superuser, email, password, salt, refresh_version, created_at, updated_at
+SELECT id, username, is_superuser, email, password, salt,
+    password_memory, password_iterations, password_parallelism, password_key_length,
+    refresh_version, created_at, updated_at
 FROM public."user"
 ORDER BY id
 `
@@ -272,6 +274,10 @@ func (q *Queries) GetAllUsersForBackup(ctx context.Context) ([]User, error) {
 			&i.Email,
 			&i.Password,
 			&i.Salt,
+			&i.PasswordMemory,
+			&i.PasswordIterations,
+			&i.PasswordParallelism,
+			&i.PasswordKeyLength,
 			&i.RefreshVersion,
 			&i.CreatedAt,
 			&i.UpdatedAt,
