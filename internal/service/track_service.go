@@ -52,17 +52,20 @@ type TrackStream struct {
 
 type TrackService struct {
 	repo                   repository.TrackRepository
+	userRepo               repository.UserRepository
 	objStorage             storage.Storage
 	logger                 *slog.Logger
 	transcodingQueueSignal chan<- struct{}
 }
 
 func NewTrackService(
-	repo repository.TrackRepository, st storage.Storage, logger *slog.Logger,
+	repo repository.TrackRepository, userRepo repository.UserRepository,
+	st storage.Storage, logger *slog.Logger,
 	transcodingQueueSignal chan<- struct{},
 ) TrackService {
 	return TrackService{
 		repo:                   repo,
+		userRepo:               userRepo,
 		objStorage:             st,
 		logger:                 logger,
 		transcodingQueueSignal: transcodingQueueSignal,
@@ -213,12 +216,25 @@ func (s *TrackService) GetUserMeta(
 func (s *TrackService) GetUserTracks(
 	ctx context.Context, userID int32,
 ) ([]api.TrackMetadata, error) {
-	tracks, err := s.repo.GetUserTracks(ctx, userID)
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrUnauthorized
+		}
+		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+
+	var tracks []repository.Track
+	if user.IsSuperuser {
+		tracks, err = s.repo.GetAllTracks(ctx)
+	} else {
+		tracks, err = s.repo.GetUserTracks(ctx, userID)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
-	ret := make([]api.TrackMetadata, len(tracks))
-	for i, track := range tracks {
+	ret := make([]api.TrackMetadata, 0, len(tracks))
+	for _, track := range tracks {
 		albumID, err := s.repo.GetAlbumIDByTrackID(ctx, track.ID)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
@@ -231,7 +247,7 @@ func (s *TrackService) GetUserTracks(
 			return nil, fmt.Errorf("%w: exact - %w", ErrUnknownDBError, err)
 		}
 		track.AlbumID = albumID
-		ret[i] = api.TrackMetadata{
+		ret = append(ret, api.TrackMetadata{
 			ArtistId:            track.ArtistID,
 			Name:                track.Name,
 			AlbumId:             albumID,
@@ -241,7 +257,7 @@ func (s *TrackService) GetUserTracks(
 			TrackStandardPreset: track.StandardPresetName,
 			TrackHighPreset:     track.HighPresetName,
 			TrackLosslessPreset: track.LosslessPresetName,
-		}
+		})
 	}
 	return ret, nil
 }
