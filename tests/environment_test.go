@@ -394,6 +394,66 @@ func (s *IntegrationTestSuite) TestDeleteTrackDeletesSingleAlbum() {
 	s.Equal(0, s.rowCount(ctx, `SELECT COUNT(*) FROM "album" WHERE id = $1`, album.ID))
 }
 
+func (s *IntegrationTestSuite) TestDeleteAlbumOnlySuperuserCanDeleteAndKeepsTracks() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	superResp := s.registerUser(api.UserAuth{
+		Username: "delete-album-super",
+		Password: "password-1",
+	})
+	userResp := s.registerUser(api.UserAuth{
+		Username: "delete-album-user",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusCreated, superResp.StatusCode)
+	s.Equal(http.StatusCreated, userResp.StatusCode)
+
+	artist, err := s.env.Queries.CreateArtist(ctx, "delete-album-artist")
+	s.Require().NoError(err)
+
+	album, err := s.env.Queries.CreateAlbum(ctx, db.CreateAlbumParams{
+		Name:     "delete-album",
+		ArtistID: artist.ID,
+	})
+	s.Require().NoError(err)
+
+	track, err := s.env.Queries.CreateTrack(ctx, db.CreateTrackParams{
+		Name:                "delete-album-track",
+		ArtistID:            artist.ID,
+		IsGloballyAvailable: false,
+		UploadByUser:        pgtype.Int4{Int32: userResp.Body.UserId, Valid: true},
+	})
+	s.Require().NoError(err)
+	s.Require().NoError(s.env.Queries.AddTrackToAlbum(ctx, db.AddTrackToAlbumParams{
+		TrackID: track.ID,
+		AlbumID: album.ID,
+	}))
+
+	statusCode, respBody := s.performJSONRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/albums/%d", album.ID),
+		nil,
+		userResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusForbidden, statusCode)
+	var errorResp api.ErrorResponse
+	s.Require().NoError(json.Unmarshal(respBody, &errorResp))
+	s.Contains(errorResp.Error, "required superuser rights")
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/albums/%d", album.ID),
+		nil,
+		superResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+
+	s.Equal(0, s.rowCount(ctx, `SELECT COUNT(*) FROM "album" WHERE id = $1`, album.ID))
+	s.Equal(0, s.rowCount(ctx, `SELECT COUNT(*) FROM "track_album" WHERE album_id = $1`, album.ID))
+	s.Equal(1, s.rowCount(ctx, `SELECT COUNT(*) FROM "track" WHERE id = $1`, track.ID))
+}
+
 func (s *IntegrationTestSuite) TestSharedPlaylistGrantsAndRevokesPrivateTrackAccess() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

@@ -15,6 +15,7 @@ import (
 
 type AlbumHandlers struct {
 	albumService service.AlbumService
+	authService  service.AuthService
 	logger       *slog.Logger
 }
 
@@ -61,6 +62,11 @@ func (h AlbumHandlers) GetAlbum(w http.ResponseWriter, r *http.Request, albumId 
 }
 
 func (h AlbumHandlers) DeleteAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
+	ok := requireSuperuser(w, r, h.authService)
+	if !ok {
+		return
+	}
+
 	albumResp, err := h.albumService.Delete(r.Context(), albumId)
 	if err != nil {
 		_ = WriteError(w, http.StatusInternalServerError, err)
