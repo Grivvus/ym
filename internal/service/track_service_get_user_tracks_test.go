@@ -107,6 +107,10 @@ func (r *trackRepositorySpy) GetAlbumIDByTrackID(
 	return r.albumIDs[trackID], nil
 }
 
+func (r *trackRepositorySpy) DeleteTrack(context.Context, int32) error {
+	panic("unexpected call")
+}
+
 type userRepositoryStub struct {
 	user repository.User
 }

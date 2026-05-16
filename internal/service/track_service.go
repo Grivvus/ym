@@ -155,12 +155,20 @@ func (s *TrackService) UploadTrack(
 }
 
 func (s *TrackService) DeleteTrack(ctx context.Context, userID, trackID int32) error {
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ErrUnauthorized
+		}
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	if !user.IsSuperuser {
+		return ErrSuperuserRequired
+	}
+
 	track, err := s.getTrack(ctx, trackID)
 	if err != nil {
 		return err
-	}
-	if track.UploadBy == nil || *track.UploadBy != userID {
-		return fmt.Errorf("%w: user can't delete this track", ErrUnauthorized)
 	}
 
 	errs := make([]error, 0, 5)
@@ -183,6 +191,12 @@ func (s *TrackService) DeleteTrack(ctx context.Context, userID, trackID int32) e
 	}
 	err = s.objStorage.RemoveTrack(ctx, originalTrackStorageKey(track.ID))
 	if err != nil {
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	if err := s.repo.DeleteTrack(ctx, trackID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return NewErrNotFound("track", trackID)
+		}
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return nil

@@ -60,7 +60,8 @@ func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, track
 			_ = WriteError(w, http.StatusNotFound, err)
 			return
 		}
-		if errors.Is(err, service.ErrUnauthorized) {
+		if errors.Is(err, service.ErrUnauthorized) ||
+			errors.Is(err, service.ErrSuperuserRequired) {
 			_ = WriteError(w, http.StatusForbidden, err)
 			return
 		}

@@ -16,6 +16,7 @@ type TrackRepository interface {
 	CanUserAccessTrack(ctx context.Context, userID, trackID int32) (bool, error)
 	GetAllTracks(ctx context.Context) ([]Track, error)
 	GetAlbumIDByTrackID(ctx context.Context, trackID int32) (int32, error)
+	DeleteTrack(ctx context.Context, trackID int32) error
 }
 
 type CreateTrackParams struct {
@@ -167,6 +168,38 @@ func (repo *PostgresTrackRepository) GetAlbumIDByTrackID(
 		return 0, wrapDBError(err)
 	}
 	return albumID, nil
+}
+
+func (repo *PostgresTrackRepository) DeleteTrack(ctx context.Context, trackID int32) error {
+	_, err := withTx(ctx, repo.pool, repo.queries, func(q *db.Queries) (struct{}, error) {
+		track, err := q.GetTrack(ctx, trackID)
+		if err != nil {
+			return struct{}{}, err
+		}
+
+		album, err := q.GetAlbum(ctx, track.AlbumID)
+		if err != nil {
+			return struct{}{}, err
+		}
+
+		if err := q.DeleteTrackFromPlaylist(ctx, trackID); err != nil {
+			return struct{}{}, err
+		}
+		if err := q.DeleteTrackFromAlbum(ctx, trackID); err != nil {
+			return struct{}{}, err
+		}
+		if err := q.DeleteTrack(ctx, trackID); err != nil {
+			return struct{}{}, err
+		}
+		if track.Name == album.Name {
+			if err := q.DeleteAlbum(ctx, track.AlbumID); err != nil {
+				return struct{}{}, err
+			}
+		}
+
+		return struct{}{}, nil
+	})
+	return wrapDBError(err)
 }
 
 func trackFromDBTrack(track db.Track) Track {
