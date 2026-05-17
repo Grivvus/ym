@@ -1237,6 +1237,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /playlists/{playlistId}/tracks/{trackId}:
+    delete:
+      summary: Removes a track from a playlist.
+      operationId: deleteTrackFromPlaylist
+      parameters:
+        - in: path
+          name: playlistId
+          schema:
+            type: integer
+            format: int32
+          required: true
+        - in: path
+          name: trackId
+          schema:
+            type: integer
+            format: int32
+          required: true
+      responses:
+        '200':
+          description: The track was removed from the playlist, or the link did not exist.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: You do not have permission to modify this playlist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Playlist not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /playlists/{playlistId}/share:
     post:
       description: Shares this playlist with other users.
@@ -1513,6 +1552,45 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Superuser access required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /albums/{albumId}/tracks/{trackId}:
+    delete:
+      summary: Removes a track from an album.
+      operationId: deleteTrackFromAlbum
+      parameters:
+        - in: path
+          name: albumId
+          schema:
+            type: integer
+            format: int32
+          required: true
+        - in: path
+          name: trackId
+          schema:
+            type: integer
+            format: int32
+          required: true
+      responses:
+        '200':
+          description: The track was removed from the album, or the link did not exist.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Superuser access required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Album not found.
           content:
             application/json:
               schema:
