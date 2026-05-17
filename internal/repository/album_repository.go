@@ -14,6 +14,7 @@ type AlbumRepository interface {
 	GetAlbum(ctx context.Context, albumID int32) (Album, error)
 	GetAlbumInfo(ctx context.Context, albumID int32) (Album, error)
 	DeleteAlbum(ctx context.Context, albumID int32) error
+	DeleteTrackFromAlbum(ctx context.Context, albumID, trackID int32) error
 }
 
 type CreateAlbumParams struct {
@@ -86,6 +87,19 @@ func (repo *PostgresAlbumRepository) GetAlbumInfo(
 
 func (repo *PostgresAlbumRepository) DeleteAlbum(ctx context.Context, albumID int32) error {
 	err := repo.queries.DeleteAlbum(ctx, albumID)
+	return wrapDBError(err)
+}
+
+func (repo *PostgresAlbumRepository) DeleteTrackFromAlbum(
+	ctx context.Context, albumID, trackID int32,
+) error {
+	err := repo.queries.DeleteTrackFromAlbumRelation(
+		ctx,
+		db.DeleteTrackFromAlbumRelationParams{
+			AlbumID: albumID,
+			TrackID: trackID,
+		},
+	)
 	return wrapDBError(err)
 }
 

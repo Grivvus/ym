@@ -18,3 +18,19 @@ func (q *Queries) DeleteTrackFromAlbum(ctx context.Context, trackID int32) error
 	_, err := q.db.Exec(ctx, deleteTrackFromAlbum, trackID)
 	return err
 }
+
+const deleteTrackFromAlbumRelation = `-- name: DeleteTrackFromAlbumRelation :exec
+DELETE FROM "track_album"
+    WHERE album_id = $1
+        AND track_id = $2
+`
+
+type DeleteTrackFromAlbumRelationParams struct {
+	AlbumID int32
+	TrackID int32
+}
+
+func (q *Queries) DeleteTrackFromAlbumRelation(ctx context.Context, arg DeleteTrackFromAlbumRelationParams) error {
+	_, err := q.db.Exec(ctx, deleteTrackFromAlbumRelation, arg.AlbumID, arg.TrackID)
+	return err
+}

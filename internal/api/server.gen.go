@@ -397,6 +397,9 @@ type ServerInterface interface {
 
 	// (POST /albums/{albumId}/cover)
 	UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32)
+	// Removes a track from an album.
+	// (DELETE /albums/{albumId}/tracks/{trackId})
+	DeleteTrackFromAlbum(w http.ResponseWriter, r *http.Request, albumId int32, trackId int32)
 	// Gets a list of all artists.
 	// (GET /artists)
 	GetAllArtists(w http.ResponseWriter, r *http.Request, params GetAllArtistsParams)
@@ -478,6 +481,9 @@ type ServerInterface interface {
 
 	// (POST /playlists/{playlistId}/share)
 	SharePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
+	// Removes a track from a playlist.
+	// (DELETE /playlists/{playlistId}/tracks/{trackId})
+	DeleteTrackFromPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32, trackId int32)
 
 	// (POST /restore)
 	Restore(w http.ResponseWriter, r *http.Request)
@@ -568,6 +574,12 @@ func (_ Unimplemented) GetAlbumCover(w http.ResponseWriter, r *http.Request, alb
 
 // (POST /albums/{albumId}/cover)
 func (_ Unimplemented) UploadAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Removes a track from an album.
+// (DELETE /albums/{albumId}/tracks/{trackId})
+func (_ Unimplemented) DeleteTrackFromAlbum(w http.ResponseWriter, r *http.Request, albumId int32, trackId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -719,6 +731,12 @@ func (_ Unimplemented) RevokePlaylist(w http.ResponseWriter, r *http.Request, pl
 
 // (POST /playlists/{playlistId}/share)
 func (_ Unimplemented) SharePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Removes a track from a playlist.
+// (DELETE /playlists/{playlistId}/tracks/{trackId})
+func (_ Unimplemented) DeleteTrackFromPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32, trackId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1003,6 +1021,46 @@ func (siw *ServerInterfaceWrapper) UploadAlbumCover(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UploadAlbumCover(w, r, albumId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteTrackFromAlbum operation middleware
+func (siw *ServerInterfaceWrapper) DeleteTrackFromAlbum(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "albumId" -------------
+	var albumId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "albumId", chi.URLParam(r, "albumId"), &albumId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "albumId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "trackId" -------------
+	var trackId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "trackId", chi.URLParam(r, "trackId"), &trackId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "trackId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteTrackFromAlbum(w, r, albumId, trackId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1763,6 +1821,46 @@ func (siw *ServerInterfaceWrapper) SharePlaylist(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// DeleteTrackFromPlaylist operation middleware
+func (siw *ServerInterfaceWrapper) DeleteTrackFromPlaylist(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "playlistId" -------------
+	var playlistId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playlistId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "trackId" -------------
+	var trackId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "trackId", chi.URLParam(r, "trackId"), &trackId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "trackId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteTrackFromPlaylist(w, r, playlistId, trackId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // Restore operation middleware
 func (siw *ServerInterfaceWrapper) Restore(w http.ResponseWriter, r *http.Request) {
 
@@ -2453,6 +2551,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/albums/{albumId}/cover", wrapper.UploadAlbumCover)
 	})
 	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/albums/{albumId}/tracks/{trackId}", wrapper.DeleteTrackFromAlbum)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/artists", wrapper.GetAllArtists)
 	})
 	r.Group(func(r chi.Router) {
@@ -2532,6 +2633,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/playlists/{playlistId}/share", wrapper.SharePlaylist)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/playlists/{playlistId}/tracks/{trackId}", wrapper.DeleteTrackFromPlaylist)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/restore", wrapper.Restore)

@@ -13,6 +13,7 @@ type PlaylistRepository interface {
 	UpdatePlaylist(ctx context.Context, params UpdatePlaylistParams) (Playlist, error)
 	DeletePlaylist(ctx context.Context, playlistID int32) error
 	AddTrackToPlaylist(ctx context.Context, playlistID, trackID int32) error
+	DeleteTrackFromPlaylist(ctx context.Context, playlistID, trackID int32) error
 	GetPlaylistTrackIDs(ctx context.Context, playlistID int32) ([]int32, error)
 	GetSharedUsers(ctx context.Context, playlistID int32) ([]int32, error)
 	GetUserOwnedPlaylists(ctx context.Context, ownerID int32) ([]PlaylistSummary, error)
@@ -122,6 +123,19 @@ func (repo *PostgresPlaylistRepository) AddTrackToPlaylist(
 		TrackID:    trackID,
 		PlaylistID: playlistID,
 	})
+	return wrapDBError(err)
+}
+
+func (repo *PostgresPlaylistRepository) DeleteTrackFromPlaylist(
+	ctx context.Context, playlistID, trackID int32,
+) error {
+	err := repo.q.DeleteTrackFromPlaylistRelation(
+		ctx,
+		db.DeleteTrackFromPlaylistRelationParams{
+			PlaylistID: playlistID,
+			TrackID:    trackID,
+		},
+	)
 	return wrapDBError(err)
 }
 

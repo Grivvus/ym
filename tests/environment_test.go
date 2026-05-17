@@ -454,6 +454,150 @@ func (s *IntegrationTestSuite) TestDeleteAlbumOnlySuperuserCanDeleteAndKeepsTrac
 	s.Equal(1, s.rowCount(ctx, `SELECT COUNT(*) FROM "track" WHERE id = $1`, track.ID))
 }
 
+func (s *IntegrationTestSuite) TestDeleteTrackFromPlaylistIsIdempotentAndRequiresWritePermission() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	ownerResp := s.registerUser(api.UserAuth{
+		Username: "delete-playlist-track-owner",
+		Password: "password-1",
+	})
+	readonlyResp := s.registerUser(api.UserAuth{
+		Username: "delete-playlist-track-readonly",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusCreated, ownerResp.StatusCode)
+	s.Equal(http.StatusCreated, readonlyResp.StatusCode)
+
+	trackID, _ := s.createDownloadableTrack(ctx, ownerResp.Body.UserId)
+	playlistID := s.createPlaylistWithTrack(ctx, ownerResp.Body.UserId, trackID, false)
+
+	statusCode, _ := s.performJSONRequest(
+		http.MethodPost,
+		fmt.Sprintf("/playlists/%d/share", playlistID),
+		api.PlaylistShareRequest{
+			ShareWithUsers:     []int32{readonlyResp.Body.UserId},
+			HasWritePermission: false,
+		},
+		ownerResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/playlists/%d/tracks/%d", playlistID, trackID),
+		nil,
+		readonlyResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusForbidden, statusCode)
+	s.Equal(1, s.rowCount(
+		ctx,
+		`SELECT COUNT(*) FROM "track_playlist" WHERE playlist_id = $1 AND track_id = $2`,
+		playlistID, trackID,
+	))
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/playlists/%d/tracks/%d", playlistID, trackID),
+		nil,
+		ownerResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+	s.Equal(0, s.rowCount(
+		ctx,
+		`SELECT COUNT(*) FROM "track_playlist" WHERE playlist_id = $1 AND track_id = $2`,
+		playlistID, trackID,
+	))
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/playlists/%d/tracks/%d", playlistID, trackID),
+		nil,
+		ownerResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+}
+
+func (s *IntegrationTestSuite) TestDeleteTrackFromAlbumIsIdempotentAndRequiresSuperuser() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	superResp := s.registerUser(api.UserAuth{
+		Username: "delete-album-track-super",
+		Password: "password-1",
+	})
+	userResp := s.registerUser(api.UserAuth{
+		Username: "delete-album-track-user",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusCreated, superResp.StatusCode)
+	s.Equal(http.StatusCreated, userResp.StatusCode)
+
+	artist, err := s.env.Queries.CreateArtist(ctx, "delete-album-track-artist")
+	s.Require().NoError(err)
+
+	album, err := s.env.Queries.CreateAlbum(ctx, db.CreateAlbumParams{
+		Name:     "delete-album-track-album",
+		ArtistID: artist.ID,
+	})
+	s.Require().NoError(err)
+
+	track, err := s.env.Queries.CreateTrack(ctx, db.CreateTrackParams{
+		Name:                "delete-album-track-track",
+		ArtistID:            artist.ID,
+		IsGloballyAvailable: false,
+		UploadByUser:        pgtype.Int4{Int32: userResp.Body.UserId, Valid: true},
+	})
+	s.Require().NoError(err)
+	s.Require().NoError(s.env.Queries.AddTrackToAlbum(ctx, db.AddTrackToAlbumParams{
+		TrackID: track.ID,
+		AlbumID: album.ID,
+	}))
+
+	statusCode, _ := s.performJSONRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/albums/%d/tracks/%d", album.ID, track.ID),
+		nil,
+		userResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusForbidden, statusCode)
+	s.Equal(1, s.rowCount(
+		ctx,
+		`SELECT COUNT(*) FROM "track_album" WHERE album_id = $1 AND track_id = $2`,
+		album.ID, track.ID,
+	))
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/albums/%d/tracks/%d", album.ID, track.ID),
+		nil,
+		superResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+	s.Equal(0, s.rowCount(
+		ctx,
+		`SELECT COUNT(*) FROM "track_album" WHERE album_id = $1 AND track_id = $2`,
+		album.ID, track.ID,
+	))
+	s.Equal(1, s.rowCount(ctx, `SELECT COUNT(*) FROM "track" WHERE id = $1`, track.ID))
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/albums/%d/tracks/%d", album.ID, track.ID),
+		nil,
+		superResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/albums/%d/tracks/%d", album.ID+1000, track.ID),
+		nil,
+		superResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusNotFound, statusCode)
+}
+
 func (s *IntegrationTestSuite) TestSharedPlaylistGrantsAndRevokesPrivateTrackAccess() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

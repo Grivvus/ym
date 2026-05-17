@@ -127,6 +127,18 @@ func (s *PlaylistService) AddTrack(ctx context.Context, playlistID, userID, trac
 	return nil
 }
 
+func (s *PlaylistService) DeleteTrack(ctx context.Context, playlistID, userID, trackID int32) error {
+	err := s.checkUserHasWritePermissions(ctx, playlistID, userID)
+	if err != nil {
+		return err
+	}
+	err = s.repo.DeleteTrackFromPlaylist(ctx, playlistID, trackID)
+	if err != nil {
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	return nil
+}
+
 func (s *PlaylistService) Delete(
 	ctx context.Context, playlistID, userID int32,
 ) error {

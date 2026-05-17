@@ -131,6 +131,20 @@ func (s *AlbumService) Delete(
 	return ret, nil
 }
 
+func (s *AlbumService) DeleteTrack(ctx context.Context, albumID, trackID int32) error {
+	if _, err := s.repo.GetAlbum(ctx, albumID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return NewErrNotFound("album", albumID)
+		}
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	err := s.repo.DeleteTrackFromAlbum(ctx, albumID, trackID)
+	if err != nil {
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	return nil
+}
+
 func (s *AlbumService) DeleteCover(
 	ctx context.Context, albumID int32,
 ) error {

@@ -18,3 +18,19 @@ func (q *Queries) DeleteTrackFromPlaylist(ctx context.Context, trackID int32) er
 	_, err := q.db.Exec(ctx, deleteTrackFromPlaylist, trackID)
 	return err
 }
+
+const deleteTrackFromPlaylistRelation = `-- name: DeleteTrackFromPlaylistRelation :exec
+DELETE FROM "track_playlist"
+    WHERE playlist_id = $1
+        AND track_id = $2
+`
+
+type DeleteTrackFromPlaylistRelationParams struct {
+	PlaylistID int32
+	TrackID    int32
+}
+
+func (q *Queries) DeleteTrackFromPlaylistRelation(ctx context.Context, arg DeleteTrackFromPlaylistRelationParams) error {
+	_, err := q.db.Exec(ctx, deleteTrackFromPlaylistRelation, arg.PlaylistID, arg.TrackID)
+	return err
+}

@@ -156,6 +156,29 @@ func (h PlaylistHandlers) AddTrackToPlaylist(
 	}
 }
 
+func (h PlaylistHandlers) DeleteTrackFromPlaylist(
+	w http.ResponseWriter, r *http.Request, playlistID int32, trackID int32,
+) {
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+	err := h.playlistService.DeleteTrack(r.Context(), playlistID, userID, trackID)
+	if err != nil {
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		if errors.Is(err, service.ErrUnauthorized) {
+			_ = WriteError(w, http.StatusForbidden, err)
+			return
+		}
+		_ = WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h PlaylistHandlers) SharePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	ownerID, _ := requireAuthenticatedUserID(w, r)
 	var body api.PlaylistShareRequest
