@@ -44,10 +44,10 @@ func (m ArtworkManager) Upload(ctx context.Context, id int32, src io.Reader) err
 	if err != nil {
 		return err
 	}
-	rc, err := transcoder.ToWebp(src)
+	rc, err := transcoder.ToWebpWithOptions(src, imageOptionsFor(owner))
 	if err != nil {
 		return fmt.Errorf(
-			"%w: image may be damaged or format is unkown, cause: %w",
+			"%w: image may be damaged or format is unknown, cause: %w",
 			ErrBadParams, err,
 		)
 	}
@@ -60,6 +60,13 @@ func (m ArtworkManager) Upload(ctx context.Context, id int32, src io.Reader) err
 		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return nil
+}
+
+func imageOptionsFor(owner ArtworkOwner) transcoder.ImageOptions {
+	if owner.Kind == "user" {
+		return transcoder.AvatarImageOptions()
+	}
+	return transcoder.ArtworkImageOptions()
 }
 
 func (m ArtworkManager) Get(ctx context.Context, id int32) ([]byte, error) {

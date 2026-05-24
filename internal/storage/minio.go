@@ -61,7 +61,9 @@ func (m minioStorage) RemoveTrack(ctx context.Context, trackID string) error {
 func (m minioStorage) PutImage(
 	ctx context.Context, id string, r io.Reader,
 ) error {
-	return m.put(ctx, "images", id, -1, r, minio.PutObjectOptions{})
+	return m.put(ctx, "images", id, -1, r, minio.PutObjectOptions{
+		ContentType: "image/webp",
+	})
 }
 
 func (m minioStorage) GetImage(

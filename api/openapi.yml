@@ -330,7 +330,7 @@ paths:
       requestBody:
         required: true
         content:
-          image/webp:
+          image/*:
             schema:
               type: string
               format: binary

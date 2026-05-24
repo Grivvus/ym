@@ -16,6 +16,7 @@ require (
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/testcontainers/testcontainers-go v0.41.0
 	golang.org/x/crypto v0.48.0
+	golang.org/x/image v0.30.0
 )
 
 require (
