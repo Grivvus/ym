@@ -484,6 +484,9 @@ type ServerInterface interface {
 	// Removes a track from a playlist.
 	// (DELETE /playlists/{playlistId}/tracks/{trackId})
 	DeleteTrackFromPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32, trackId int32)
+	// Ensures a track is present in a playlist.
+	// (PUT /playlists/{playlistId}/tracks/{trackId})
+	PutTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32, trackId int32)
 
 	// (POST /restore)
 	Restore(w http.ResponseWriter, r *http.Request)
@@ -737,6 +740,12 @@ func (_ Unimplemented) SharePlaylist(w http.ResponseWriter, r *http.Request, pla
 // Removes a track from a playlist.
 // (DELETE /playlists/{playlistId}/tracks/{trackId})
 func (_ Unimplemented) DeleteTrackFromPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32, trackId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Ensures a track is present in a playlist.
+// (PUT /playlists/{playlistId}/tracks/{trackId})
+func (_ Unimplemented) PutTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32, trackId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1861,6 +1870,46 @@ func (siw *ServerInterfaceWrapper) DeleteTrackFromPlaylist(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// PutTrackToPlaylist operation middleware
+func (siw *ServerInterfaceWrapper) PutTrackToPlaylist(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "playlistId" -------------
+	var playlistId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playlistId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "trackId" -------------
+	var trackId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "trackId", chi.URLParam(r, "trackId"), &trackId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "trackId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutTrackToPlaylist(w, r, playlistId, trackId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // Restore operation middleware
 func (siw *ServerInterfaceWrapper) Restore(w http.ResponseWriter, r *http.Request) {
 
@@ -2636,6 +2685,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/playlists/{playlistId}/tracks/{trackId}", wrapper.DeleteTrackFromPlaylist)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/playlists/{playlistId}/tracks/{trackId}", wrapper.PutTrackToPlaylist)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/restore", wrapper.Restore)

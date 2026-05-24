@@ -518,6 +518,91 @@ func (s *IntegrationTestSuite) TestDeleteTrackFromPlaylistIsIdempotentAndRequire
 	s.Equal(http.StatusOK, statusCode)
 }
 
+func (s *IntegrationTestSuite) TestPutTrackToPlaylistIsIdempotent() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	ownerResp := s.registerUser(api.UserAuth{
+		Username: "put-playlist-track-owner",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusCreated, ownerResp.StatusCode)
+
+	trackID, _ := s.createDownloadableTrack(ctx, ownerResp.Body.UserId)
+	playlist, err := s.env.Queries.CreatePlaylist(ctx, db.CreatePlaylistParams{
+		Name:     "put-playlist-track",
+		IsPublic: false,
+		OwnerID:  ownerResp.Body.UserId,
+	})
+	s.Require().NoError(err)
+
+	statusCode, _ := s.performJSONRequest(
+		http.MethodPut,
+		fmt.Sprintf("/playlists/%d/tracks/%d", playlist.ID, trackID),
+		nil,
+		ownerResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+	s.Equal(1, s.rowCount(
+		ctx,
+		`SELECT COUNT(*) FROM "track_playlist" WHERE playlist_id = $1 AND track_id = $2`,
+		playlist.ID, trackID,
+	))
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodPut,
+		fmt.Sprintf("/playlists/%d/tracks/%d", playlist.ID, trackID),
+		nil,
+		ownerResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+	s.Equal(1, s.rowCount(
+		ctx,
+		`SELECT COUNT(*) FROM "track_playlist" WHERE playlist_id = $1 AND track_id = $2`,
+		playlist.ID, trackID,
+	))
+}
+
+func (s *IntegrationTestSuite) TestLegacyPostTrackToPlaylistStillWorks() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	ownerResp := s.registerUser(api.UserAuth{
+		Username: "legacy-add-playlist-track-owner",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusCreated, ownerResp.StatusCode)
+
+	trackID, _ := s.createDownloadableTrack(ctx, ownerResp.Body.UserId)
+	playlist, err := s.env.Queries.CreatePlaylist(ctx, db.CreatePlaylistParams{
+		Name:     "legacy-add-playlist-track",
+		IsPublic: false,
+		OwnerID:  ownerResp.Body.UserId,
+	})
+	s.Require().NoError(err)
+
+	statusCode, _ := s.performJSONRequest(
+		http.MethodPost,
+		fmt.Sprintf("/playlists/%d", playlist.ID),
+		api.AddTrackToPlaylistJSONBody{TrackId: trackID},
+		ownerResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+	s.Equal(1, s.rowCount(
+		ctx,
+		`SELECT COUNT(*) FROM "track_playlist" WHERE playlist_id = $1 AND track_id = $2`,
+		playlist.ID, trackID,
+	))
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodPost,
+		fmt.Sprintf("/playlists/%d", playlist.ID),
+		api.AddTrackToPlaylistJSONBody{TrackId: trackID},
+		ownerResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusConflict, statusCode)
+}
+
 func (s *IntegrationTestSuite) TestDeleteTrackFromAlbumIsIdempotentAndRequiresSuperuser() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -769,6 +854,14 @@ func (s *IntegrationTestSuite) TestReadOnlyPlaylistShareCannotAddTrack() {
 		otherResp.Body.AccessToken,
 	)
 	s.Equal(http.StatusForbidden, statusCode)
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodPut,
+		fmt.Sprintf("/playlists/%d/tracks/%d", playlistID, trackID),
+		nil,
+		otherResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusForbidden, statusCode)
 }
 
 func (s *IntegrationTestSuite) TestWritePlaylistShareCannotAddInaccessibleTrack() {
@@ -810,6 +903,14 @@ func (s *IntegrationTestSuite) TestWritePlaylistShareCannotAddInaccessibleTrack(
 		http.MethodPost,
 		fmt.Sprintf("/playlists/%d", playlistID),
 		api.AddTrackToPlaylistJSONBody{TrackId: privateTrackID},
+		writerResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusForbidden, statusCode)
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodPut,
+		fmt.Sprintf("/playlists/%d/tracks/%d", playlistID, privateTrackID),
+		nil,
 		writerResp.Body.AccessToken,
 	)
 	s.Equal(http.StatusForbidden, statusCode)

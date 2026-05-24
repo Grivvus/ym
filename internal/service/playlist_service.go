@@ -103,6 +103,16 @@ func (s *PlaylistService) Create(
 }
 
 func (s *PlaylistService) AddTrack(ctx context.Context, playlistID, userID, trackID int32) error {
+	return s.addTrack(ctx, playlistID, userID, trackID, false)
+}
+
+func (s *PlaylistService) EnsureTrack(ctx context.Context, playlistID, userID, trackID int32) error {
+	return s.addTrack(ctx, playlistID, userID, trackID, true)
+}
+
+func (s *PlaylistService) addTrack(
+	ctx context.Context, playlistID, userID, trackID int32, idempotent bool,
+) error {
 	err := s.checkUserHasWritePermissions(ctx, playlistID, userID)
 	if err != nil {
 		return err
@@ -117,6 +127,9 @@ func (s *PlaylistService) AddTrack(ctx context.Context, playlistID, userID, trac
 	err = s.repo.AddTrackToPlaylist(ctx, playlistID, trackID)
 	if err != nil {
 		if errors.Is(err, repository.ErrAlreadyExists) {
+			if idempotent {
+				return nil
+			}
 			return fmt.Errorf(
 				"%w: album already has a track",
 				NewErrAlreadyExists("playlist", playlistID),

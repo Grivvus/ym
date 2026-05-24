@@ -1086,6 +1086,7 @@ paths:
   /playlists/{playlistId}:
     post:
       summary: Adds a track to a playlist.
+      deprecated: true
       operationId: addTrackToPlaylist
       parameters:
         - in: path
@@ -1238,6 +1239,43 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /playlists/{playlistId}/tracks/{trackId}:
+    put:
+      summary: Ensures a track is present in a playlist.
+      operationId: putTrackToPlaylist
+      parameters:
+        - in: path
+          name: playlistId
+          schema:
+            type: integer
+            format: int32
+          required: true
+        - in: path
+          name: trackId
+          schema:
+            type: integer
+            format: int32
+          required: true
+      responses:
+        '200':
+          description: The track is present in the playlist.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: You do not have permission to modify this playlist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Playlist not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       summary: Removes a track from a playlist.
       operationId: deleteTrackFromPlaylist
