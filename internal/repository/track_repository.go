@@ -16,6 +16,7 @@ type TrackRepository interface {
 	CanUserAccessTrack(ctx context.Context, userID, trackID int32) (bool, error)
 	GetAllTracks(ctx context.Context) ([]Track, error)
 	GetAlbumIDByTrackID(ctx context.Context, trackID int32) (int32, error)
+	UpdateTrack(ctx context.Context, params UpdateTrackParams) (Track, error)
 	DeleteTrack(ctx context.Context, trackID int32) error
 }
 
@@ -31,6 +32,14 @@ type CreateTrackParams struct {
 type CreateTrackAlbumParams struct {
 	Name     string
 	ArtistID int32
+}
+
+type UpdateTrackParams struct {
+	ID                  int32
+	Name                string
+	ArtistID            int32
+	AlbumID             int32
+	IsGloballyAvailable bool
 }
 
 type Track struct {
@@ -170,6 +179,36 @@ func (repo *PostgresTrackRepository) GetAlbumIDByTrackID(
 	return albumID, nil
 }
 
+func (repo *PostgresTrackRepository) UpdateTrack(
+	ctx context.Context, params UpdateTrackParams,
+) (Track, error) {
+	track, err := withTx(ctx, repo.pool, repo.queries, func(q *db.Queries) (Track, error) {
+		updatedTrack, err := q.UpdateTrack(ctx, db.UpdateTrackParams{
+			ID:                  params.ID,
+			Name:                params.Name,
+			ArtistID:            params.ArtistID,
+			IsGloballyAvailable: params.IsGloballyAvailable,
+		})
+		if err != nil {
+			return Track{}, err
+		}
+		if err := q.ReplaceTrackAlbum(ctx, db.ReplaceTrackAlbumParams{
+			TrackID: params.ID,
+			AlbumID: params.AlbumID,
+		}); err != nil {
+			return Track{}, err
+		}
+
+		track := trackFromDBTrack(updatedTrack)
+		track.AlbumID = params.AlbumID
+		return track, nil
+	})
+	if err != nil {
+		return Track{}, wrapDBError(err)
+	}
+	return track, nil
+}
+
 func (repo *PostgresTrackRepository) DeleteTrack(ctx context.Context, trackID int32) error {
 	_, err := withTx(ctx, repo.pool, repo.queries, func(q *db.Queries) (struct{}, error) {
 		track, err := q.GetTrack(ctx, trackID)
@@ -236,27 +275,29 @@ func trackFromGetTrackRow(track db.GetTrackRow) Track {
 
 func trackFromGetUserTracksRow(track db.GetUserTracksRow) Track {
 	return Track{
-		ID:                 track.ID,
-		Name:               track.Name,
-		ArtistID:           track.ArtistID,
-		DurationMs:         int32FromPGInt(track.DurationMs),
-		FastPresetName:     stringPtrFromPGText(track.FastPresetFname),
-		StandardPresetName: stringPtrFromPGText(track.StandardPresetFname),
-		HighPresetName:     stringPtrFromPGText(track.HighPresetFname),
-		LosslessPresetName: stringPtrFromPGText(track.LosslessPresetFname),
+		ID:                  track.ID,
+		Name:                track.Name,
+		ArtistID:            track.ArtistID,
+		DurationMs:          int32FromPGInt(track.DurationMs),
+		FastPresetName:      stringPtrFromPGText(track.FastPresetFname),
+		StandardPresetName:  stringPtrFromPGText(track.StandardPresetFname),
+		HighPresetName:      stringPtrFromPGText(track.HighPresetFname),
+		LosslessPresetName:  stringPtrFromPGText(track.LosslessPresetFname),
+		IsGloballyAvailable: track.IsGloballyAvailable,
 	}
 }
 
 func trackFromGetAllTracksRow(track db.GetAllTracksRow) Track {
 	return Track{
-		ID:                 track.ID,
-		Name:               track.Name,
-		ArtistID:           track.ArtistID,
-		DurationMs:         int32FromPGInt(track.DurationMs),
-		FastPresetName:     stringPtrFromPGText(track.FastPresetFname),
-		StandardPresetName: stringPtrFromPGText(track.StandardPresetFname),
-		HighPresetName:     stringPtrFromPGText(track.HighPresetFname),
-		LosslessPresetName: stringPtrFromPGText(track.LosslessPresetFname),
+		ID:                  track.ID,
+		Name:                track.Name,
+		ArtistID:            track.ArtistID,
+		DurationMs:          int32FromPGInt(track.DurationMs),
+		FastPresetName:      stringPtrFromPGText(track.FastPresetFname),
+		StandardPresetName:  stringPtrFromPGText(track.StandardPresetFname),
+		HighPresetName:      stringPtrFromPGText(track.HighPresetFname),
+		LosslessPresetName:  stringPtrFromPGText(track.LosslessPresetFname),
+		IsGloballyAvailable: track.IsGloballyAvailable,
 	}
 }
 

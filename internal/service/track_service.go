@@ -53,6 +53,8 @@ type TrackStream struct {
 type TrackService struct {
 	repo                   repository.TrackRepository
 	userRepo               repository.UserRepository
+	artistRepo             repository.ArtistRepository
+	albumRepo              repository.AlbumRepository
 	objStorage             storage.Storage
 	logger                 *slog.Logger
 	transcodingQueueSignal chan<- struct{}
@@ -60,12 +62,15 @@ type TrackService struct {
 
 func NewTrackService(
 	repo repository.TrackRepository, userRepo repository.UserRepository,
+	artistRepo repository.ArtistRepository, albumRepo repository.AlbumRepository,
 	st storage.Storage, logger *slog.Logger,
 	transcodingQueueSignal chan<- struct{},
 ) TrackService {
 	return TrackService{
 		repo:                   repo,
 		userRepo:               userRepo,
+		artistRepo:             artistRepo,
+		albumRepo:              albumRepo,
 		objStorage:             st,
 		logger:                 logger,
 		transcodingQueueSignal: transcodingQueueSignal,
@@ -202,6 +207,58 @@ func (s *TrackService) DeleteTrack(ctx context.Context, userID, trackID int32) e
 	return nil
 }
 
+func (s *TrackService) UpdateTrack(
+	ctx context.Context, userID, trackID int32, update api.TrackUpdateRequest,
+) (api.TrackMetadata, error) {
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return api.TrackMetadata{}, ErrUnauthorized
+		}
+		return api.TrackMetadata{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	if !user.IsSuperuser {
+		return api.TrackMetadata{}, ErrSuperuserRequired
+	}
+
+	trackName := strings.TrimSpace(update.Name)
+	if trackName == "" {
+		return api.TrackMetadata{}, fmt.Errorf("%w: track name is required", ErrBadParams)
+	}
+
+	if _, err := s.artistRepo.GetArtist(ctx, update.ArtistId); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return api.TrackMetadata{}, NewErrNotFound("artist", update.ArtistId)
+		}
+		return api.TrackMetadata{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	if _, err := s.albumRepo.GetAlbum(ctx, update.AlbumId); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return api.TrackMetadata{}, NewErrNotFound("album", update.AlbumId)
+		}
+		return api.TrackMetadata{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+
+	updatedTrack, err := s.repo.UpdateTrack(ctx, repository.UpdateTrackParams{
+		ID:                  trackID,
+		Name:                trackName,
+		ArtistID:            update.ArtistId,
+		AlbumID:             update.AlbumId,
+		IsGloballyAvailable: update.IsGloballyAvailable,
+	})
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return api.TrackMetadata{}, NewErrNotFound("track", trackID)
+		}
+		if errors.Is(err, repository.ErrAlreadyExists) {
+			return api.TrackMetadata{}, NewErrAlreadyExists("track", trackID)
+		}
+		return api.TrackMetadata{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+
+	return apiTrackMetadataFromRepositoryTrack(updatedTrack), nil
+}
+
 func (s *TrackService) GetMeta(
 	ctx context.Context, trackID int32,
 ) (api.TrackMetadata, error) {
@@ -266,6 +323,7 @@ func (s *TrackService) GetUserTracks(
 			Name:                track.Name,
 			AlbumId:             albumID,
 			DurationMs:          track.DurationMs,
+			IsGloballyAvailable: track.IsGloballyAvailable,
 			TrackId:             track.ID,
 			TrackFastPreset:     track.FastPresetName,
 			TrackStandardPreset: track.StandardPresetName,
@@ -504,6 +562,7 @@ func apiTrackMetadataFromRepositoryTrack(track repository.Track) api.TrackMetada
 		AlbumId:             track.AlbumID,
 		Name:                track.Name,
 		DurationMs:          track.DurationMs,
+		IsGloballyAvailable: track.IsGloballyAvailable,
 		TrackFastPreset:     track.FastPresetName,
 		TrackStandardPreset: track.StandardPresetName,
 		TrackHighPreset:     track.HighPresetName,

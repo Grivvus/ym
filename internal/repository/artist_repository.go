@@ -14,6 +14,7 @@ type ArtistRepository interface {
 	GetAllArtists(ctx context.Context) ([]ArtistInfo, error)
 	GetArtistsWithFilter(ctx context.Context, nameStartsWith string, limit int) ([]ArtistInfo, error)
 	CreateArtist(ctx context.Context, artistName string) (Artist, error)
+	UpdateArtist(ctx context.Context, artistID int32, artistName string) (Artist, error)
 	DeleteArtist(ctx context.Context, artistID int32) error
 }
 
@@ -120,6 +121,22 @@ func (repo *PostgresArtistRepository) CreateArtist(
 	ctx context.Context, artistName string,
 ) (Artist, error) {
 	artist, err := repo.queries.CreateArtist(ctx, artistName)
+	if err != nil {
+		return Artist{}, wrapDBError(err)
+	}
+	return Artist{
+		ID:   artist.ID,
+		Name: artist.Name,
+	}, nil
+}
+
+func (repo *PostgresArtistRepository) UpdateArtist(
+	ctx context.Context, artistID int32, artistName string,
+) (Artist, error) {
+	artist, err := repo.queries.UpdateArtist(ctx, db.UpdateArtistParams{
+		ID:   artistID,
+		Name: artistName,
+	})
 	if err != nil {
 		return Artist{}, wrapDBError(err)
 	}

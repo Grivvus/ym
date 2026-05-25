@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,6 +15,7 @@ const defaultArtistLimit = 5
 
 type ArtistHandlers struct {
 	artistService service.ArtistService
+	authService   service.AuthService
 	logger        *slog.Logger
 }
 
@@ -98,6 +100,41 @@ func (h ArtistHandlers) GetArtist(w http.ResponseWriter, r *http.Request, artist
 		}
 		return
 	}
+	err = WriteJSON(w, http.StatusOK, response)
+	if err != nil {
+		h.logger.Error("can't encode response", "err", err)
+	}
+}
+
+func (h ArtistHandlers) UpdateArtist(w http.ResponseWriter, r *http.Request, artistID int32) {
+	if !requireSuperuser(w, r, h.authService) {
+		return
+	}
+
+	var update api.ArtistUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err))
+		return
+	}
+
+	response, err := h.artistService.Update(r.Context(), artistID, update)
+	if err != nil {
+		if errors.Is(err, service.ErrBadParams) {
+			_ = WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
+			_ = WriteError(w, http.StatusConflict, err)
+			return
+		}
+		_ = WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
 	err = WriteJSON(w, http.StatusOK, response)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)

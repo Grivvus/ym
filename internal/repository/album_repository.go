@@ -13,6 +13,7 @@ type AlbumRepository interface {
 	CreateAlbum(ctx context.Context, params CreateAlbumParams) (Album, error)
 	GetAlbum(ctx context.Context, albumID int32) (Album, error)
 	GetAlbumInfo(ctx context.Context, albumID int32) (Album, error)
+	UpdateAlbum(ctx context.Context, params UpdateAlbumParams) (Album, error)
 	DeleteAlbum(ctx context.Context, albumID int32) error
 	DeleteTrackFromAlbum(ctx context.Context, albumID, trackID int32) error
 }
@@ -20,6 +21,14 @@ type AlbumRepository interface {
 type CreateAlbumParams struct {
 	ArtistID    int32
 	Name        string
+	ReleaseYear *int32
+	ReleaseDate *time.Time
+}
+
+type UpdateAlbumParams struct {
+	ID          int32
+	Name        string
+	ArtistID    int32
 	ReleaseYear *int32
 	ReleaseDate *time.Time
 }
@@ -63,7 +72,7 @@ func (repo *PostgresAlbumRepository) GetAlbum(ctx context.Context, albumID int32
 	if err != nil {
 		return Album{}, wrapDBError(err)
 	}
-	return albumFromGetAlbumRow(album), nil
+	return albumFromDBAlbum(album), nil
 }
 
 func (repo *PostgresAlbumRepository) GetAlbumInfo(
@@ -83,6 +92,22 @@ func (repo *PostgresAlbumRepository) GetAlbumInfo(
 		album.TrackIDs[i] = track.TrackID
 	}
 	return album, nil
+}
+
+func (repo *PostgresAlbumRepository) UpdateAlbum(
+	ctx context.Context, params UpdateAlbumParams,
+) (Album, error) {
+	album, err := repo.queries.UpdateAlbum(ctx, db.UpdateAlbumParams{
+		ID:              params.ID,
+		Name:            params.Name,
+		ArtistID:        params.ArtistID,
+		ReleaseYear:     pgIntFromInt32Ptr(params.ReleaseYear),
+		ReleaseFullDate: pgDateFromTimePtr(params.ReleaseDate),
+	})
+	if err != nil {
+		return Album{}, wrapDBError(err)
+	}
+	return albumFromDBAlbum(album), nil
 }
 
 func (repo *PostgresAlbumRepository) DeleteAlbum(ctx context.Context, albumID int32) error {
@@ -108,15 +133,6 @@ func albumFromDBAlbum(album db.Album) Album {
 		ID:          album.ID,
 		Name:        album.Name,
 		ArtistID:    album.ArtistID,
-		ReleaseYear: int32PtrFromPGInt(album.ReleaseYear),
-		ReleaseDate: timePtrFromPGDate(album.ReleaseFullDate),
-	}
-}
-
-func albumFromGetAlbumRow(album db.GetAlbumRow) Album {
-	return Album{
-		ID:          album.ID,
-		Name:        album.Name,
 		ReleaseYear: int32PtrFromPGInt(album.ReleaseYear),
 		ReleaseDate: timePtrFromPGDate(album.ReleaseFullDate),
 	}

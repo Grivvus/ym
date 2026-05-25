@@ -32,8 +32,12 @@ func NewRootHandler(
 			passwordResetService: passwordReset,
 			logger:               logger,
 		},
-		ArtistHandlers: ArtistHandlers{artistService: artist, logger: logger},
-		UserHandlers:   UserHandlers{userService: user, logger: logger},
+		ArtistHandlers: ArtistHandlers{
+			artistService: artist,
+			authService:   auth,
+			logger:        logger,
+		},
+		UserHandlers: UserHandlers{userService: user, logger: logger},
 		AlbumHandlers: AlbumHandlers{
 			albumService: album,
 			authService:  auth,

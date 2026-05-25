@@ -7,28 +7,133 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const updatePlaylist = `-- name: UpdatePlaylist :one
-UPDATE "playlist" SET
-    name = $2
-WHERE id = $1
-RETURNING id, name, is_public, owner_id
+const updateAlbum = `-- name: UpdateAlbum :one
+UPDATE "album" SET
+    name = $1::text,
+    artist_id = $2::integer,
+    release_year = $3::integer,
+    release_full_date = $4::date
+WHERE id = $5::integer
+RETURNING id, name, release_year, release_full_date, artist_id
 `
 
-type UpdatePlaylistParams struct {
+type UpdateAlbumParams struct {
+	Name            string
+	ArtistID        int32
+	ReleaseYear     pgtype.Int4
+	ReleaseFullDate pgtype.Date
+	ID              int32
+}
+
+func (q *Queries) UpdateAlbum(ctx context.Context, arg UpdateAlbumParams) (Album, error) {
+	row := q.db.QueryRow(ctx, updateAlbum,
+		arg.Name,
+		arg.ArtistID,
+		arg.ReleaseYear,
+		arg.ReleaseFullDate,
+		arg.ID,
+	)
+	var i Album
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ReleaseYear,
+		&i.ReleaseFullDate,
+		&i.ArtistID,
+	)
+	return i, err
+}
+
+const updateArtist = `-- name: UpdateArtist :one
+UPDATE "artist" SET
+    name = $1::text
+WHERE id = $2::integer
+RETURNING id, name
+`
+
+type UpdateArtistParams struct {
+	Name string
+	ID   int32
+}
+
+type UpdateArtistRow struct {
 	ID   int32
 	Name string
 }
 
+func (q *Queries) UpdateArtist(ctx context.Context, arg UpdateArtistParams) (UpdateArtistRow, error) {
+	row := q.db.QueryRow(ctx, updateArtist, arg.Name, arg.ID)
+	var i UpdateArtistRow
+	err := row.Scan(&i.ID, &i.Name)
+	return i, err
+}
+
+const updatePlaylist = `-- name: UpdatePlaylist :one
+UPDATE "playlist" SET
+    name = $1::text,
+    is_public = $2::boolean
+WHERE id = $3::integer
+RETURNING id, name, is_public, owner_id
+`
+
+type UpdatePlaylistParams struct {
+	Name     string
+	IsPublic bool
+	ID       int32
+}
+
 func (q *Queries) UpdatePlaylist(ctx context.Context, arg UpdatePlaylistParams) (Playlist, error) {
-	row := q.db.QueryRow(ctx, updatePlaylist, arg.ID, arg.Name)
+	row := q.db.QueryRow(ctx, updatePlaylist, arg.Name, arg.IsPublic, arg.ID)
 	var i Playlist
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.IsPublic,
 		&i.OwnerID,
+	)
+	return i, err
+}
+
+const updateTrack = `-- name: UpdateTrack :one
+UPDATE "track" SET
+    name = $1::text,
+    artist_id = $2::integer,
+    is_globally_available = $3::boolean
+WHERE id = $4::integer
+RETURNING id, name, duration_ms, url, fast_preset_fname, standard_preset_fname, high_preset_fname, lossless_preset_fname, is_globally_available, artist_id, upload_by_user
+`
+
+type UpdateTrackParams struct {
+	Name                string
+	ArtistID            int32
+	IsGloballyAvailable bool
+	ID                  int32
+}
+
+func (q *Queries) UpdateTrack(ctx context.Context, arg UpdateTrackParams) (Track, error) {
+	row := q.db.QueryRow(ctx, updateTrack,
+		arg.Name,
+		arg.ArtistID,
+		arg.IsGloballyAvailable,
+		arg.ID,
+	)
+	var i Track
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.DurationMs,
+		&i.Url,
+		&i.FastPresetFname,
+		&i.StandardPresetFname,
+		&i.HighPresetFname,
+		&i.LosslessPresetFname,
+		&i.IsGloballyAvailable,
+		&i.ArtistID,
+		&i.UploadByUser,
 	)
 	return i, err
 }

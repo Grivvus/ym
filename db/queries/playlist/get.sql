@@ -1,5 +1,5 @@
 -- name: GetPlaylist :one
-SELECT id, name, owner_id
+SELECT id, name, owner_id, is_public
     FROM "playlist"
 WHERE "playlist".id = $1;
 

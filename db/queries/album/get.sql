@@ -1,5 +1,5 @@
 -- name: GetAlbum :one
-SELECT id , name, release_year, release_full_date
+SELECT id, name, release_year, release_full_date, artist_id
     FROM "album" 
 WHERE "album".id = $1;
 
@@ -10,7 +10,7 @@ SELECT album_id FROM track_album
 
 -- name: GetAlbumWithTracks :many
 SELECT "album".id, "album".name, "album".release_year,
-        "album".release_full_date, "track_album".track_id
+        "album".release_full_date, "album".artist_id, "track_album".track_id
     FROM "album" INNER JOIN "track_album"
     ON "album".id = "track_album".album_id
 WHERE "album".id = $1;

@@ -39,8 +39,9 @@ type CreatePlaylistParams struct {
 }
 
 type UpdatePlaylistParams struct {
-	ID   int32
-	Name string
+	ID       int32
+	Name     string
+	IsPublic bool
 }
 
 type Playlist struct {
@@ -90,9 +91,10 @@ func (repo *PostgresPlaylistRepository) GetPlaylist(
 		return Playlist{}, wrapDBError(err)
 	}
 	return Playlist{
-		ID:      playlist.ID,
-		Name:    playlist.Name,
-		OwnerID: playlist.OwnerID,
+		ID:       playlist.ID,
+		Name:     playlist.Name,
+		OwnerID:  playlist.OwnerID,
+		IsPublic: playlist.IsPublic,
 	}, nil
 }
 
@@ -100,8 +102,9 @@ func (repo *PostgresPlaylistRepository) UpdatePlaylist(
 	ctx context.Context, params UpdatePlaylistParams,
 ) (Playlist, error) {
 	playlist, err := repo.q.UpdatePlaylist(ctx, db.UpdatePlaylistParams{
-		ID:   params.ID,
-		Name: params.Name,
+		ID:       params.ID,
+		Name:     params.Name,
+		IsPublic: params.IsPublic,
 	})
 	if err != nil {
 		return Playlist{}, wrapDBError(err)

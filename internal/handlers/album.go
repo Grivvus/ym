@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -55,6 +56,41 @@ func (h AlbumHandlers) GetAlbum(w http.ResponseWriter, r *http.Request, albumId 
 		}
 		return
 	}
+	err = WriteJSON(w, http.StatusOK, albumResp)
+	if err != nil {
+		h.logger.Error("can't encode response", "err", err)
+	}
+}
+
+func (h AlbumHandlers) UpdateAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
+	if !requireSuperuser(w, r, h.authService) {
+		return
+	}
+
+	var update api.AlbumUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err))
+		return
+	}
+
+	albumResp, err := h.albumService.Update(r.Context(), albumId, update)
+	if err != nil {
+		if errors.Is(err, service.ErrBadParams) {
+			_ = WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
+			_ = WriteError(w, http.StatusConflict, err)
+			return
+		}
+		_ = WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
 	err = WriteJSON(w, http.StatusOK, albumResp)
 	if err != nil {
 		h.logger.Error("can't encode response", "err", err)

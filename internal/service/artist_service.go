@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"mime/multipart"
+	"strings"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/repository"
@@ -127,6 +128,26 @@ func (s *ArtistService) Create(
 		ret.CoverUploaded = false
 	}
 	return ret, nil
+}
+
+func (s *ArtistService) Update(
+	ctx context.Context, artistID int32, update api.ArtistUpdateRequest,
+) (api.ArtistInfoResponse, error) {
+	artistName := strings.TrimSpace(update.ArtistName)
+	if artistName == "" {
+		return api.ArtistInfoResponse{}, fmt.Errorf("%w: artist name is required", ErrBadParams)
+	}
+	_, err := s.repo.UpdateArtist(ctx, artistID, artistName)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return api.ArtistInfoResponse{}, NewErrNotFound("artist", artistID)
+		}
+		if errors.Is(err, repository.ErrAlreadyExists) {
+			return api.ArtistInfoResponse{}, NewErrAlreadyExists("artist", artistName)
+		}
+		return api.ArtistInfoResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	return s.Get(ctx, artistID)
 }
 
 func (s *ArtistService) UploadImage(

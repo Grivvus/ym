@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"mime/multipart"
+	"strings"
 	"time"
 
 	"github.com/Grivvus/ym/internal/api"
@@ -24,16 +25,19 @@ type AlbumCreateParams struct {
 
 type AlbumService struct {
 	repo           repository.AlbumRepository
+	artistRepo     repository.ArtistRepository
 	objStorage     storage.Storage
 	logger         *slog.Logger
 	artworkService ArtworkManager
 }
 
 func NewAlbumService(
-	repo repository.AlbumRepository, st storage.Storage, logger *slog.Logger,
+	repo repository.AlbumRepository, artistRepo repository.ArtistRepository,
+	st storage.Storage, logger *slog.Logger,
 ) AlbumService {
 	svc := AlbumService{
 		repo:       repo,
+		artistRepo: artistRepo,
 		objStorage: st,
 		logger:     logger,
 	}
@@ -93,6 +97,45 @@ func (s *AlbumService) Create(
 	return ret, nil
 }
 
+func (s *AlbumService) Update(
+	ctx context.Context, albumID int32, update api.AlbumUpdateRequest,
+) (api.AlbumInfoResponse, error) {
+	albumName := strings.TrimSpace(update.AlbumName)
+	if albumName == "" {
+		return api.AlbumInfoResponse{}, fmt.Errorf("%w: album name is required", ErrBadParams)
+	}
+
+	if _, err := s.artistRepo.GetArtist(ctx, update.ArtistId); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return api.AlbumInfoResponse{}, NewErrNotFound("artist", update.ArtistId)
+		}
+		return api.AlbumInfoResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+
+	var releaseDate *time.Time
+	if update.ReleaseFullDate != nil {
+		releaseDate = &update.ReleaseFullDate.Time
+	}
+
+	_, err := s.repo.UpdateAlbum(ctx, repository.UpdateAlbumParams{
+		ID:          albumID,
+		Name:        albumName,
+		ArtistID:    update.ArtistId,
+		ReleaseYear: update.ReleaseYear,
+		ReleaseDate: releaseDate,
+	})
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return api.AlbumInfoResponse{}, NewErrNotFound("album", albumID)
+		}
+		if errors.Is(err, repository.ErrAlreadyExists) {
+			return api.AlbumInfoResponse{}, NewErrAlreadyExists("album", albumName)
+		}
+		return api.AlbumInfoResponse{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	return s.Get(ctx, albumID)
+}
+
 func (s *AlbumService) Get(
 	ctx context.Context, albumID int32,
 ) (api.AlbumInfoResponse, error) {
@@ -108,6 +151,7 @@ func (s *AlbumService) Get(
 
 	ret.AlbumId = album.ID
 	ret.AlbumName = album.Name
+	ret.ArtistId = album.ArtistID
 	ret.ReleaseYear = album.ReleaseYear
 	ret.ReleaseFullDate = timePtrToSwaggerDate(album.ReleaseDate)
 	ret.Tracks = album.TrackIDs

@@ -61,9 +61,18 @@ type AlbumDeleteResponse struct {
 type AlbumInfoResponse struct {
 	AlbumId         int32               `json:"album_id"`
 	AlbumName       string              `json:"album_name"`
+	ArtistId        int32               `json:"artist_id"`
 	ReleaseFullDate *openapi_types.Date `json:"release_full_date"`
 	ReleaseYear     *int32              `json:"release_year"`
 	Tracks          []int32             `json:"tracks"`
+}
+
+// AlbumUpdateRequest defines model for AlbumUpdateRequest.
+type AlbumUpdateRequest struct {
+	AlbumName       string              `json:"album_name"`
+	ArtistId        int32               `json:"artist_id"`
+	ReleaseFullDate *openapi_types.Date `json:"release_full_date"`
+	ReleaseYear     *int32              `json:"release_year"`
 }
 
 // ArtistCreateRequest defines model for ArtistCreateRequest.
@@ -93,6 +102,11 @@ type ArtistInfoResponse struct {
 	ArtistAlbums []int32 `json:"artist_albums"`
 	ArtistId     int32   `json:"artist_id"`
 	ArtistName   string  `json:"artist_name"`
+}
+
+// ArtistUpdateRequest defines model for ArtistUpdateRequest.
+type ArtistUpdateRequest struct {
+	ArtistName string `json:"artist_name"`
 }
 
 // BackupStatusResponse defines model for BackupStatusResponse.
@@ -167,6 +181,7 @@ type PlaylistDeleteResponse struct {
 
 // PlaylistResponse defines model for PlaylistResponse.
 type PlaylistResponse struct {
+	IsPublic     bool   `json:"is_public"`
 	PlaylistId   int32  `json:"playlist_id"`
 	PlaylistName string `json:"playlist_name"`
 }
@@ -184,6 +199,7 @@ type PlaylistShareRequest struct {
 
 // PlaylistUpdateRequest defines model for PlaylistUpdateRequest.
 type PlaylistUpdateRequest struct {
+	IsPublic     bool   `json:"is_public"`
 	PlaylistName string `json:"playlist_name"`
 }
 
@@ -224,12 +240,21 @@ type TrackMetadata struct {
 	AlbumId             int32   `json:"album_id"`
 	ArtistId            int32   `json:"artist_id"`
 	DurationMs          int32   `json:"duration_ms"`
+	IsGloballyAvailable bool    `json:"is_globally_available"`
 	Name                string  `json:"name"`
 	TrackFastPreset     *string `json:"track_fast_preset,omitempty"`
 	TrackHighPreset     *string `json:"track_high_preset,omitempty"`
 	TrackId             int32   `json:"track_id"`
 	TrackLosslessPreset *string `json:"track_lossless_preset,omitempty"`
 	TrackStandardPreset *string `json:"track_standard_preset,omitempty"`
+}
+
+// TrackUpdateRequest defines model for TrackUpdateRequest.
+type TrackUpdateRequest struct {
+	AlbumId             int32  `json:"album_id"`
+	ArtistId            int32  `json:"artist_id"`
+	IsGloballyAvailable bool   `json:"is_globally_available"`
+	Name                string `json:"name"`
 }
 
 // TrackUploadRequest defines model for TrackUploadRequest.
@@ -335,8 +360,14 @@ type StreamTrackHeadParams struct {
 // CreateAlbumMultipartRequestBody defines body for CreateAlbum for multipart/form-data ContentType.
 type CreateAlbumMultipartRequestBody = AlbumCreateRequest
 
+// UpdateAlbumJSONRequestBody defines body for UpdateAlbum for application/json ContentType.
+type UpdateAlbumJSONRequestBody = AlbumUpdateRequest
+
 // CreateArtistMultipartRequestBody defines body for CreateArtist for multipart/form-data ContentType.
 type CreateArtistMultipartRequestBody = ArtistCreateRequest
+
+// UpdateArtistJSONRequestBody defines body for UpdateArtist for application/json ContentType.
+type UpdateArtistJSONRequestBody = ArtistUpdateRequest
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = UserAuth
@@ -371,6 +402,9 @@ type SharePlaylistJSONRequestBody = PlaylistShareRequest
 // UploadTrackMultipartRequestBody defines body for UploadTrack for multipart/form-data ContentType.
 type UploadTrackMultipartRequestBody = TrackUploadRequest
 
+// UpdateTrackJSONRequestBody defines body for UpdateTrack for application/json ContentType.
+type UpdateTrackJSONRequestBody = TrackUpdateRequest
+
 // ChangeUserJSONRequestBody defines body for ChangeUser for application/json ContentType.
 type ChangeUserJSONRequestBody = UserUpdate
 
@@ -388,6 +422,9 @@ type ServerInterface interface {
 	// Gets album information.
 	// (GET /albums/{albumId})
 	GetAlbum(w http.ResponseWriter, r *http.Request, albumId int32)
+	// Updates album metadata.
+	// (PATCH /albums/{albumId})
+	UpdateAlbum(w http.ResponseWriter, r *http.Request, albumId int32)
 
 	// (DELETE /albums/{albumId}/cover)
 	DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32)
@@ -412,6 +449,9 @@ type ServerInterface interface {
 	// Gets artist information.
 	// (GET /artists/{artistId})
 	GetArtist(w http.ResponseWriter, r *http.Request, artistId int32)
+	// Updates artist metadata.
+	// (PATCH /artists/{artistId})
+	UpdateArtist(w http.ResponseWriter, r *http.Request, artistId int32)
 
 	// (DELETE /artists/{artistId}/image)
 	DeleteArtistImage(w http.ResponseWriter, r *http.Request, artistId int32)
@@ -517,6 +557,9 @@ type ServerInterface interface {
 	// Gets track metadata.
 	// (GET /tracks/{trackId})
 	GetTrackMeta(w http.ResponseWriter, r *http.Request, trackId int32)
+	// Updates track metadata.
+	// (PATCH /tracks/{trackId})
+	UpdateTrack(w http.ResponseWriter, r *http.Request, trackId int32)
 	// Gets all user IDs and usernames.
 	// (GET /users)
 	GetAllUsers(w http.ResponseWriter, r *http.Request)
@@ -565,6 +608,12 @@ func (_ Unimplemented) GetAlbum(w http.ResponseWriter, r *http.Request, albumId 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Updates album metadata.
+// (PATCH /albums/{albumId})
+func (_ Unimplemented) UpdateAlbum(w http.ResponseWriter, r *http.Request, albumId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (DELETE /albums/{albumId}/cover)
 func (_ Unimplemented) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -607,6 +656,12 @@ func (_ Unimplemented) DeleteArtist(w http.ResponseWriter, r *http.Request, arti
 // Gets artist information.
 // (GET /artists/{artistId})
 func (_ Unimplemented) GetArtist(w http.ResponseWriter, r *http.Request, artistId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Updates artist metadata.
+// (PATCH /artists/{artistId})
+func (_ Unimplemented) UpdateArtist(w http.ResponseWriter, r *http.Request, artistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -807,6 +862,12 @@ func (_ Unimplemented) GetTrackMeta(w http.ResponseWriter, r *http.Request, trac
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Updates track metadata.
+// (PATCH /tracks/{trackId})
+func (_ Unimplemented) UpdateTrack(w http.ResponseWriter, r *http.Request, trackId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Gets all user IDs and usernames.
 // (GET /users)
 func (_ Unimplemented) GetAllUsers(w http.ResponseWriter, r *http.Request) {
@@ -937,6 +998,37 @@ func (siw *ServerInterfaceWrapper) GetAlbum(w http.ResponseWriter, r *http.Reque
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAlbum(w, r, albumId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAlbum operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAlbum(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "albumId" -------------
+	var albumId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "albumId", chi.URLParam(r, "albumId"), &albumId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "albumId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAlbum(w, r, albumId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1193,6 +1285,37 @@ func (siw *ServerInterfaceWrapper) GetArtist(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetArtist(w, r, artistId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateArtist operation middleware
+func (siw *ServerInterfaceWrapper) UpdateArtist(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "artistId" -------------
+	var artistId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "artistId", chi.URLParam(r, "artistId"), &artistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "artistId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateArtist(w, r, artistId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2231,6 +2354,37 @@ func (siw *ServerInterfaceWrapper) GetTrackMeta(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// UpdateTrack operation middleware
+func (siw *ServerInterfaceWrapper) UpdateTrack(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "trackId" -------------
+	var trackId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "trackId", chi.URLParam(r, "trackId"), &trackId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "trackId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateTrack(w, r, trackId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetAllUsers operation middleware
 func (siw *ServerInterfaceWrapper) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 
@@ -2591,6 +2745,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/albums/{albumId}", wrapper.GetAlbum)
 	})
 	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/albums/{albumId}", wrapper.UpdateAlbum)
+	})
+	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/albums/{albumId}/cover", wrapper.DeleteAlbumCover)
 	})
 	r.Group(func(r chi.Router) {
@@ -2613,6 +2770,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/artists/{artistId}", wrapper.GetArtist)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/artists/{artistId}", wrapper.UpdateArtist)
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/artists/{artistId}/image", wrapper.DeleteArtistImage)
@@ -2718,6 +2878,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/tracks/{trackId}", wrapper.GetTrackMeta)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/tracks/{trackId}", wrapper.UpdateTrack)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/users", wrapper.GetAllUsers)

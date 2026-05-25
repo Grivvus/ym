@@ -51,26 +51,20 @@ func (q *Queries) CanUserAccessTrack(ctx context.Context, arg CanUserAccessTrack
 }
 
 const getAlbum = `-- name: GetAlbum :one
-SELECT id , name, release_year, release_full_date
+SELECT id, name, release_year, release_full_date, artist_id
     FROM "album" 
 WHERE "album".id = $1
 `
 
-type GetAlbumRow struct {
-	ID              int32
-	Name            string
-	ReleaseYear     pgtype.Int4
-	ReleaseFullDate pgtype.Date
-}
-
-func (q *Queries) GetAlbum(ctx context.Context, id int32) (GetAlbumRow, error) {
+func (q *Queries) GetAlbum(ctx context.Context, id int32) (Album, error) {
 	row := q.db.QueryRow(ctx, getAlbum, id)
-	var i GetAlbumRow
+	var i Album
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.ReleaseYear,
 		&i.ReleaseFullDate,
+		&i.ArtistID,
 	)
 	return i, err
 }
@@ -90,7 +84,7 @@ func (q *Queries) GetAlbumByTrackID(ctx context.Context, trackID int32) (int32, 
 
 const getAlbumWithTracks = `-- name: GetAlbumWithTracks :many
 SELECT "album".id, "album".name, "album".release_year,
-        "album".release_full_date, "track_album".track_id
+        "album".release_full_date, "album".artist_id, "track_album".track_id
     FROM "album" INNER JOIN "track_album"
     ON "album".id = "track_album".album_id
 WHERE "album".id = $1
@@ -101,6 +95,7 @@ type GetAlbumWithTracksRow struct {
 	Name            string
 	ReleaseYear     pgtype.Int4
 	ReleaseFullDate pgtype.Date
+	ArtistID        int32
 	TrackID         int32
 }
 
@@ -118,6 +113,7 @@ func (q *Queries) GetAlbumWithTracks(ctx context.Context, id int32) ([]GetAlbumW
 			&i.Name,
 			&i.ReleaseYear,
 			&i.ReleaseFullDate,
+			&i.ArtistID,
 			&i.TrackID,
 		); err != nil {
 			return nil, err
@@ -162,7 +158,8 @@ func (q *Queries) GetAllArtists(ctx context.Context) ([]GetAllArtistsRow, error)
 const getAllTracks = `-- name: GetAllTracks :many
 SELECT t.id, t.name, t.artist_id, duration_ms,
 t.fast_preset_fname, t.standard_preset_fname,
-t.high_preset_fname, t.lossless_preset_fname
+t.high_preset_fname, t.lossless_preset_fname,
+t.is_globally_available
     FROM "track" AS t
 `
 
@@ -175,6 +172,7 @@ type GetAllTracksRow struct {
 	StandardPresetFname pgtype.Text
 	HighPresetFname     pgtype.Text
 	LosslessPresetFname pgtype.Text
+	IsGloballyAvailable bool
 }
 
 func (q *Queries) GetAllTracks(ctx context.Context) ([]GetAllTracksRow, error) {
@@ -195,6 +193,7 @@ func (q *Queries) GetAllTracks(ctx context.Context) ([]GetAllTracksRow, error) {
 			&i.StandardPresetFname,
 			&i.HighPresetFname,
 			&i.LosslessPresetFname,
+			&i.IsGloballyAvailable,
 		); err != nil {
 			return nil, err
 		}
@@ -355,21 +354,27 @@ func (q *Queries) GetArtistsWithFilter(ctx context.Context, arg GetArtistsWithFi
 }
 
 const getPlaylist = `-- name: GetPlaylist :one
-SELECT id, name, owner_id
+SELECT id, name, owner_id, is_public
     FROM "playlist"
 WHERE "playlist".id = $1
 `
 
 type GetPlaylistRow struct {
-	ID      int32
-	Name    string
-	OwnerID int32
+	ID       int32
+	Name     string
+	OwnerID  int32
+	IsPublic bool
 }
 
 func (q *Queries) GetPlaylist(ctx context.Context, id int32) (GetPlaylistRow, error) {
 	row := q.db.QueryRow(ctx, getPlaylist, id)
 	var i GetPlaylistRow
-	err := row.Scan(&i.ID, &i.Name, &i.OwnerID)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.OwnerID,
+		&i.IsPublic,
+	)
 	return i, err
 }
 
@@ -561,7 +566,8 @@ func (q *Queries) GetUserOwnedPlaylists(ctx context.Context, ownerID int32) ([]G
 const getUserTracks = `-- name: GetUserTracks :many
 SELECT DISTINCT t.id, t.name, t.artist_id, duration_ms,
 t.fast_preset_fname, t.standard_preset_fname,
-t.high_preset_fname, t.lossless_preset_fname
+t.high_preset_fname, t.lossless_preset_fname,
+t.is_globally_available
     FROM "track" AS t
     WHERE t.is_globally_available
         OR t.upload_by_user = $1::integer
@@ -591,6 +597,7 @@ type GetUserTracksRow struct {
 	StandardPresetFname pgtype.Text
 	HighPresetFname     pgtype.Text
 	LosslessPresetFname pgtype.Text
+	IsGloballyAvailable bool
 }
 
 func (q *Queries) GetUserTracks(ctx context.Context, userID int32) ([]GetUserTracksRow, error) {
@@ -611,6 +618,7 @@ func (q *Queries) GetUserTracks(ctx context.Context, userID int32) ([]GetUserTra
 			&i.StandardPresetFname,
 			&i.HighPresetFname,
 			&i.LosslessPresetFname,
+			&i.IsGloballyAvailable,
 		); err != nil {
 			return nil, err
 		}

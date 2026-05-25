@@ -1,5 +1,6 @@
 -- name: UpdatePlaylist :one
 UPDATE "playlist" SET
-    name = $2
-WHERE id = $1
+    name = sqlc.arg(name)::text,
+    is_public = sqlc.arg(is_public)::boolean
+WHERE id = sqlc.arg(id)::integer
 RETURNING *;

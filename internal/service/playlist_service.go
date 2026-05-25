@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"mime/multipart"
+	"strings"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/repository"
@@ -220,22 +221,29 @@ func (s *PlaylistService) ChangePlaylist(
 	if err != nil {
 		return api.PlaylistResponse{}, err
 	}
+	playlistName := strings.TrimSpace(newPlaylistData.PlaylistName)
+	if playlistName == "" {
+		return api.PlaylistResponse{}, fmt.Errorf("%w: playlist name is required", ErrBadParams)
+	}
+
 	updatedPlaylist, err := s.repo.UpdatePlaylist(ctx, repository.UpdatePlaylistParams{
-		ID:   playlistID,
-		Name: newPlaylistData.PlaylistName,
+		ID:       playlistID,
+		Name:     playlistName,
+		IsPublic: newPlaylistData.IsPublic,
 	})
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return api.PlaylistResponse{}, NewErrNotFound("playlist", playlistID)
 		}
 		if errors.Is(err, repository.ErrAlreadyExists) {
-			return api.PlaylistResponse{}, NewErrAlreadyExists("playlist", newPlaylistData.PlaylistName)
+			return api.PlaylistResponse{}, NewErrAlreadyExists("playlist", playlistName)
 		}
 		return api.PlaylistResponse{}, fmt.Errorf("%w, exact - %w", ErrUnknownDBError, err)
 	}
 	return api.PlaylistResponse{
 		PlaylistId:   updatedPlaylist.ID,
 		PlaylistName: updatedPlaylist.Name,
+		IsPublic:     updatedPlaylist.IsPublic,
 	}, nil
 }
 

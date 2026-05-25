@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -91,6 +92,50 @@ func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trac
 	err = WriteJSON(w, http.StatusOK, metadata)
 	if err != nil {
 		slog.Error("TrackHandlers.GetTrackMeta, can't encode response", "err", err)
+	}
+}
+
+func (h TrackHandlers) UpdateTrack(w http.ResponseWriter, r *http.Request, trackId int32) {
+	userID, ok := requireAuthenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
+	var update api.TrackUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err))
+		return
+	}
+
+	metadata, err := h.trackService.UpdateTrack(r.Context(), userID, trackId, update)
+	if err != nil {
+		if errors.Is(err, service.ErrBadParams) {
+			_ = WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+		if errors.Is(err, service.ErrUnauthorized) {
+			_ = WriteError(w, http.StatusUnauthorized, err)
+			return
+		}
+		if errors.Is(err, service.ErrSuperuserRequired) {
+			_ = WriteError(w, http.StatusForbidden, err)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
+			_ = WriteError(w, http.StatusConflict, err)
+			return
+		}
+		_ = WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	err = WriteJSON(w, http.StatusOK, metadata)
+	if err != nil {
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
