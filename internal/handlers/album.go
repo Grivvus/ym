@@ -133,6 +133,25 @@ func (h AlbumHandlers) DeleteTrackFromAlbum(
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h AlbumHandlers) PutTrackToAlbum(
+	w http.ResponseWriter, r *http.Request, albumId int32, trackId int32,
+) {
+	ok := requireSuperuser(w, r, h.authService)
+	if !ok {
+		return
+	}
+	err := h.albumService.EnsureTrack(r.Context(), albumId, trackId)
+	if err != nil {
+		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
+			_ = WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		_ = WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h AlbumHandlers) DeleteAlbumCover(w http.ResponseWriter, r *http.Request, albumId int32) {
 	err := h.albumService.DeleteCover(r.Context(), albumId)
 	if err != nil {

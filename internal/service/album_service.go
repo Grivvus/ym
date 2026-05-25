@@ -26,6 +26,7 @@ type AlbumCreateParams struct {
 type AlbumService struct {
 	repo           repository.AlbumRepository
 	artistRepo     repository.ArtistRepository
+	trackRepo      repository.TrackRepository
 	objStorage     storage.Storage
 	logger         *slog.Logger
 	artworkService ArtworkManager
@@ -33,11 +34,13 @@ type AlbumService struct {
 
 func NewAlbumService(
 	repo repository.AlbumRepository, artistRepo repository.ArtistRepository,
+	trackRepo repository.TrackRepository,
 	st storage.Storage, logger *slog.Logger,
 ) AlbumService {
 	svc := AlbumService{
 		repo:       repo,
 		artistRepo: artistRepo,
+		trackRepo:  trackRepo,
 		objStorage: st,
 		logger:     logger,
 	}
@@ -173,6 +176,30 @@ func (s *AlbumService) Delete(
 		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 	return ret, nil
+}
+
+func (s *AlbumService) EnsureTrack(ctx context.Context, albumID, trackID int32) error {
+	if _, err := s.repo.GetAlbum(ctx, albumID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return NewErrNotFound("album", albumID)
+		}
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	if _, err := s.trackRepo.GetTrack(ctx, trackID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return NewErrNotFound("track", trackID)
+		}
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+
+	err := s.repo.AddTrackToAlbum(ctx, albumID, trackID)
+	if err != nil {
+		if errors.Is(err, repository.ErrAlreadyExists) {
+			return nil
+		}
+		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	}
+	return nil
 }
 
 func (s *AlbumService) DeleteTrack(ctx context.Context, albumID, trackID int32) error {

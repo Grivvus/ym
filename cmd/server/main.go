@@ -127,7 +127,9 @@ func main() {
 		passwordResetRepo, logger, passwordResetMailer, passwordResetCfg,
 	)
 	userService := service.NewUserService(userRepo, storageClient, logger)
-	albumService := service.NewAlbumService(albumRepo, artistRepo, storageClient, logger)
+	albumService := service.NewAlbumService(
+		albumRepo, artistRepo, trackRepo, storageClient, logger,
+	)
 	trackService := service.NewTrackService(
 		trackRepo, userRepo, artistRepo, albumRepo, storageClient, logger, queueNotificationChan,
 	)

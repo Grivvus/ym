@@ -437,6 +437,9 @@ type ServerInterface interface {
 	// Removes a track from an album.
 	// (DELETE /albums/{albumId}/tracks/{trackId})
 	DeleteTrackFromAlbum(w http.ResponseWriter, r *http.Request, albumId int32, trackId int32)
+	// Ensures a track is present in an album.
+	// (PUT /albums/{albumId}/tracks/{trackId})
+	PutTrackToAlbum(w http.ResponseWriter, r *http.Request, albumId int32, trackId int32)
 	// Gets a list of all artists.
 	// (GET /artists)
 	GetAllArtists(w http.ResponseWriter, r *http.Request, params GetAllArtistsParams)
@@ -632,6 +635,12 @@ func (_ Unimplemented) UploadAlbumCover(w http.ResponseWriter, r *http.Request, 
 // Removes a track from an album.
 // (DELETE /albums/{albumId}/tracks/{trackId})
 func (_ Unimplemented) DeleteTrackFromAlbum(w http.ResponseWriter, r *http.Request, albumId int32, trackId int32) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Ensures a track is present in an album.
+// (PUT /albums/{albumId}/tracks/{trackId})
+func (_ Unimplemented) PutTrackToAlbum(w http.ResponseWriter, r *http.Request, albumId int32, trackId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1162,6 +1171,46 @@ func (siw *ServerInterfaceWrapper) DeleteTrackFromAlbum(w http.ResponseWriter, r
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteTrackFromAlbum(w, r, albumId, trackId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutTrackToAlbum operation middleware
+func (siw *ServerInterfaceWrapper) PutTrackToAlbum(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "albumId" -------------
+	var albumId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "albumId", chi.URLParam(r, "albumId"), &albumId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "albumId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "trackId" -------------
+	var trackId int32
+
+	err = runtime.BindStyledParameterWithOptions("simple", "trackId", chi.URLParam(r, "trackId"), &trackId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "trackId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutTrackToAlbum(w, r, albumId, trackId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2758,6 +2807,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/albums/{albumId}/tracks/{trackId}", wrapper.DeleteTrackFromAlbum)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/albums/{albumId}/tracks/{trackId}", wrapper.PutTrackToAlbum)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/artists", wrapper.GetAllArtists)

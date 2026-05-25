@@ -80,7 +80,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		passwordResetRepo, logger, s.resetMailer, passwordResetCfg,
 	)
 	userService := service.NewUserService(userRepo, env.Storage, logger)
-	albumService := service.NewAlbumService(albumRepo, artistRepo, env.Storage, logger)
+	albumService := service.NewAlbumService(albumRepo, artistRepo, trackRepo, env.Storage, logger)
 	trackService := service.NewTrackService(
 		trackRepo, userRepo, artistRepo, albumRepo, env.Storage, logger, queueNotificationChan,
 	)
@@ -839,6 +839,85 @@ func (s *IntegrationTestSuite) TestPatchPlaylistCanTogglePublicAndRename() {
 	s.Require().NoError(json.Unmarshal(respBody, &playlistResp))
 	s.Equal("patch-playlist-new", playlistResp.PlaylistName)
 	s.True(playlistResp.IsPublic)
+}
+
+func (s *IntegrationTestSuite) TestPutTrackToAlbumIsIdempotentAndRequiresSuperuser() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	superResp := s.registerUser(api.UserAuth{
+		Username: "put-album-track-super",
+		Password: "password-1",
+	})
+	userResp := s.registerUser(api.UserAuth{
+		Username: "put-album-track-user",
+		Password: "password-1",
+	})
+	s.Equal(http.StatusCreated, superResp.StatusCode)
+	s.Equal(http.StatusCreated, userResp.StatusCode)
+
+	artist, err := s.env.Queries.CreateArtist(ctx, "put-album-track-artist")
+	s.Require().NoError(err)
+	sourceAlbum, err := s.env.Queries.CreateAlbum(ctx, db.CreateAlbumParams{
+		Name:     "put-album-track-source",
+		ArtistID: artist.ID,
+	})
+	s.Require().NoError(err)
+	targetAlbum, err := s.env.Queries.CreateAlbum(ctx, db.CreateAlbumParams{
+		Name:     "put-album-track-target",
+		ArtistID: artist.ID,
+	})
+	s.Require().NoError(err)
+	track, err := s.env.Queries.CreateTrack(ctx, db.CreateTrackParams{
+		Name:                "put-album-track-track",
+		ArtistID:            artist.ID,
+		IsGloballyAvailable: false,
+		UploadByUser:        pgtype.Int4{Int32: superResp.Body.UserId, Valid: true},
+	})
+	s.Require().NoError(err)
+	s.Require().NoError(s.env.Queries.AddTrackToAlbum(ctx, db.AddTrackToAlbumParams{
+		TrackID: track.ID,
+		AlbumID: sourceAlbum.ID,
+	}))
+
+	statusCode, _ := s.performJSONRequest(
+		http.MethodPut,
+		fmt.Sprintf("/albums/%d/tracks/%d", targetAlbum.ID, track.ID),
+		nil,
+		userResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusForbidden, statusCode)
+	s.Equal(0, s.rowCount(
+		ctx,
+		`SELECT COUNT(*) FROM "track_album" WHERE album_id = $1 AND track_id = $2`,
+		targetAlbum.ID, track.ID,
+	))
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodPut,
+		fmt.Sprintf("/albums/%d/tracks/%d", targetAlbum.ID, track.ID),
+		nil,
+		superResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+	s.Equal(1, s.rowCount(
+		ctx,
+		`SELECT COUNT(*) FROM "track_album" WHERE album_id = $1 AND track_id = $2`,
+		targetAlbum.ID, track.ID,
+	))
+
+	statusCode, _ = s.performJSONRequest(
+		http.MethodPut,
+		fmt.Sprintf("/albums/%d/tracks/%d", targetAlbum.ID, track.ID),
+		nil,
+		superResp.Body.AccessToken,
+	)
+	s.Equal(http.StatusOK, statusCode)
+	s.Equal(1, s.rowCount(
+		ctx,
+		`SELECT COUNT(*) FROM "track_album" WHERE album_id = $1 AND track_id = $2`,
+		targetAlbum.ID, track.ID,
+	))
 }
 
 func (s *IntegrationTestSuite) TestDeleteTrackFromAlbumIsIdempotentAndRequiresSuperuser() {

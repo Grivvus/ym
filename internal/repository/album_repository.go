@@ -14,6 +14,7 @@ type AlbumRepository interface {
 	GetAlbum(ctx context.Context, albumID int32) (Album, error)
 	GetAlbumInfo(ctx context.Context, albumID int32) (Album, error)
 	UpdateAlbum(ctx context.Context, params UpdateAlbumParams) (Album, error)
+	AddTrackToAlbum(ctx context.Context, albumID, trackID int32) error
 	DeleteAlbum(ctx context.Context, albumID int32) error
 	DeleteTrackFromAlbum(ctx context.Context, albumID, trackID int32) error
 }
@@ -112,6 +113,16 @@ func (repo *PostgresAlbumRepository) UpdateAlbum(
 
 func (repo *PostgresAlbumRepository) DeleteAlbum(ctx context.Context, albumID int32) error {
 	err := repo.queries.DeleteAlbum(ctx, albumID)
+	return wrapDBError(err)
+}
+
+func (repo *PostgresAlbumRepository) AddTrackToAlbum(
+	ctx context.Context, albumID, trackID int32,
+) error {
+	err := repo.queries.AddTrackToAlbum(ctx, db.AddTrackToAlbumParams{
+		TrackID: trackID,
+		AlbumID: albumID,
+	})
 	return wrapDBError(err)
 }
 

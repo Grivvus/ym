@@ -1750,6 +1750,43 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /albums/{albumId}/tracks/{trackId}:
+    put:
+      summary: Ensures a track is present in an album.
+      operationId: putTrackToAlbum
+      parameters:
+        - in: path
+          name: albumId
+          schema:
+            type: integer
+            format: int32
+          required: true
+        - in: path
+          name: trackId
+          schema:
+            type: integer
+            format: int32
+          required: true
+      responses:
+        '200':
+          description: The track is present in the album.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Superuser access required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Album or track not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       summary: Removes a track from an album.
       operationId: deleteTrackFromAlbum
