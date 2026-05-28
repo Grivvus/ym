@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"errors"
-	"io"
 	"log/slog"
+	"mime"
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/Grivvus/ym/internal/api"
 	"github.com/Grivvus/ym/internal/service"
@@ -73,12 +73,24 @@ func (h BackupHandlers) GetBackupStatus(
 func (h BackupHandlers) DownloadBackup(
 	w http.ResponseWriter, r *http.Request, backupID string,
 ) {
+	h.serveBackupArchive(w, r, backupID)
+}
+
+func (h BackupHandlers) DownloadBackupHead(
+	w http.ResponseWriter, r *http.Request, backupID string,
+) {
+	h.serveBackupArchive(w, r, backupID)
+}
+
+func (h BackupHandlers) serveBackupArchive(
+	w http.ResponseWriter, r *http.Request, backupID string,
+) {
 	ok := requireSuperuser(w, r, h.authService)
 	if !ok {
 		return
 	}
 
-	backup, contentLen, err := h.backupService.DownloadBackup(r.Context(), backupID)
+	backup, err := h.backupService.DownloadBackup(r.Context(), backupID)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 			_ = WriteError(w, http.StatusNotFound, err)
@@ -91,16 +103,19 @@ func (h BackupHandlers) DownloadBackup(
 		_ = WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	defer func() { _ = backup.Close() }()
+	defer func() { _ = backup.Reader.Close() }()
 
-	w.Header().Set("Content-Length", strconv.FormatInt(int64(contentLen), 10))
 	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+backupID+`.zip"`)
+	w.Header().Set("Accept-Ranges", "bytes")
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{
+		"filename": backup.DownloadName,
+	}))
 	w.Header().Set("Cache-Control", "no-store")
-	_, err = io.Copy(w, backup)
-	if err != nil {
-		h.logger.Error("Failed to write response", "err", err)
+	if etag := quotedETag(backup.ETag); etag != "" {
+		w.Header().Set("ETag", etag)
 	}
+
+	http.ServeContent(w, r, backup.DownloadName, backup.ModTime.Truncate(time.Second), backup.Reader)
 }
 
 func (h BackupHandlers) Restore(w http.ResponseWriter, r *http.Request) {

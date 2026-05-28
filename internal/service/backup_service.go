@@ -42,6 +42,13 @@ type BackupSettings struct {
 	IncludeTranscodedTracks bool
 }
 
+type BackupArchive struct {
+	Reader       io.ReadSeekCloser
+	DownloadName string
+	ModTime      time.Time
+	ETag         string
+}
+
 type BackupService struct {
 	logger     *slog.Logger
 	queries    *db.Queries
@@ -161,38 +168,40 @@ func (service BackupService) CheckBackupOperation(
 
 func (service BackupService) DownloadBackup(
 	ctx context.Context, backupID string,
-) (backup io.ReadCloser, clen uint, err error) {
+) (BackupArchive, error) {
 	status, err := service.queries.GetBackupStatus(ctx, backupID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return emptyBackupReader(), 0, NewErrNotFound("backup_status", backupID)
+			return BackupArchive{}, NewErrNotFound("backup_status", backupID)
 		}
-		return emptyBackupReader(), 0, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		return BackupArchive{}, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	if status.Status != db.StatusFinished {
-		return emptyBackupReader(), 0, fmt.Errorf("%w: backup %s is not finished", ErrBadParams, backupID)
+		return BackupArchive{}, fmt.Errorf("%w: backup %s is not finished", ErrBadParams, backupID)
 	}
 	if !status.ArchivePath.Valid || status.ArchivePath.String == "" {
-		return emptyBackupReader(), 0, fmt.Errorf("backup %s finished without archive path", backupID)
+		return BackupArchive{}, fmt.Errorf("backup %s finished without archive path", backupID)
 	}
 
 	reader, err := os.Open(status.ArchivePath.String)
 	if err != nil {
-		return emptyBackupReader(), 0, fmt.Errorf("can't open backup archive: %w", err)
+		return BackupArchive{}, fmt.Errorf("can't open backup archive: %w", err)
 	}
 
-	size := status.SizeBytes.Int64
-	if !status.SizeBytes.Valid {
-		info, statErr := reader.Stat()
-		if statErr != nil {
-			_ = reader.Close()
-			return emptyBackupReader(), 0, fmt.Errorf("can't stat backup archive: %w", statErr)
-		}
-		size = info.Size()
+	info, statErr := reader.Stat()
+	if statErr != nil {
+		_ = reader.Close()
+		return BackupArchive{}, fmt.Errorf("can't stat backup archive: %w", statErr)
 	}
 
-	return reader, uint(size), nil
+	size := info.Size()
+	return BackupArchive{
+		Reader:       reader,
+		DownloadName: backupID + ".zip",
+		ModTime:      info.ModTime(),
+		ETag:         fmt.Sprintf("ym-backup-%s-%d", backupID, size),
+	}, nil
 }
 
 func (service BackupService) runBackupOperation(

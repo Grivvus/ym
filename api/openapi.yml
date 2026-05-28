@@ -2003,6 +2003,86 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /backup/{backupId}/download:
+    head:
+      description: Gets metadata for downloading a finished backup archive.
+      operationId: downloadBackupHead
+      parameters:
+        - in: path
+          name: backupId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Backup download metadata was fetched successfully.
+          headers:
+            Content-Type:
+              description: Media type of the backup archive.
+              schema:
+                type: string
+              example: application/zip
+            Content-Length:
+              description: Full backup archive size in bytes.
+              schema:
+                type: integer
+                format: int64
+              example: 8423912
+            Accept-Ranges:
+              description: Indicates that byte-range requests are supported.
+              schema:
+                type: string
+                enum: [bytes]
+              example: bytes
+            ETag:
+              description: Opaque identifier for this exact backup archive version.
+              schema:
+                type: string
+              example: '"ym-backup-01HX9M2Y1K4G7MZQ3N8H6D5S4A-8423912"'
+            Last-Modified:
+              description: Last modification time of the backup archive.
+              schema:
+                type: string
+              example: Wed, 21 Oct 2015 07:28:00 GMT
+            Content-Disposition:
+              description: Suggested filename for the backup archive.
+              schema:
+                type: string
+                example: attachment; filename="ym-backup-2026-04-12T10-00-00Z.zip"
+            Cache-Control:
+              description: Prevents caching of the backup archive.
+              schema:
+                type: string
+                example: no-store
+        '400':
+          description: Invalid backup state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Superuser access required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Backup operation not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Backup operation is not finished yet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
       description: Downloads a finished backup archive.
       operationId: downloadBackup
@@ -2026,11 +2106,86 @@ paths:
               schema:
                 type: string
                 example: no-store
+            Content-Length:
+              description: Full backup archive size in bytes.
+              schema:
+                type: integer
+                format: int64
+              example: 8423912
+            Accept-Ranges:
+              description: Indicates that byte-range requests are supported.
+              schema:
+                type: string
+                enum: [bytes]
+              example: bytes
+            ETag:
+              description: Opaque identifier for this exact backup archive version.
+              schema:
+                type: string
+              example: '"ym-backup-01HX9M2Y1K4G7MZQ3N8H6D5S4A-8423912"'
+            Last-Modified:
+              description: Last modification time of the backup archive.
+              schema:
+                type: string
+              example: Wed, 21 Oct 2015 07:28:00 GMT
           content:
             application/zip:
               schema:
                 type: string
                 format: binary
+        '206':
+          description: Partial backup archive content was returned successfully.
+          headers:
+            Content-Range:
+              description: Byte range returned by the server.
+              schema:
+                type: string
+              example: bytes 0-1023/8423912
+            Content-Length:
+              description: Returned range size in bytes.
+              schema:
+                type: integer
+                format: int64
+              example: 1024
+            Accept-Ranges:
+              description: Indicates that byte-range requests are supported.
+              schema:
+                type: string
+                enum: [bytes]
+              example: bytes
+            ETag:
+              description: Opaque identifier for this exact backup archive version.
+              schema:
+                type: string
+              example: '"ym-backup-01HX9M2Y1K4G7MZQ3N8H6D5S4A-8423912"'
+            Last-Modified:
+              description: Last modification time of the backup archive.
+              schema:
+                type: string
+              example: Wed, 21 Oct 2015 07:28:00 GMT
+            Content-Disposition:
+              description: Suggested filename for the backup archive.
+              schema:
+                type: string
+                example: attachment; filename="ym-backup-2026-04-12T10-00-00Z.zip"
+            Cache-Control:
+              description: Prevents caching of the backup archive.
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '416':
+          description: Invalid byte range.
+          headers:
+            Content-Range:
+              description: Full size of the backup archive when the requested range is invalid.
+              schema:
+                type: string
+              example: bytes */8423912
         '400':
           description: Invalid backup state.
           content:

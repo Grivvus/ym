@@ -1543,11 +1543,34 @@ func (s *IntegrationTestSuite) TestBackupEndpointStartsAsyncOperationAndDownload
 	s.Equal(api.Finished, statusResp.Status)
 	s.Require().NotNil(statusResp.SizeBytes)
 	s.Positive(*statusResp.SizeBytes)
+	backupDownloadURL := s.server.URL + "/backup/" + startResp.BackupId + "/download"
+
+	headReq, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodHead,
+		backupDownloadURL,
+		nil,
+	)
+	s.Require().NoError(err)
+	headReq.Header.Set("Authorization", "Bearer "+userResp.Body.AccessToken)
+
+	headResp, err := s.client.Do(headReq)
+	s.Require().NoError(err)
+	defer func() { s.Require().NoError(headResp.Body.Close()) }()
+
+	s.Equal(http.StatusOK, headResp.StatusCode)
+	s.Equal("application/zip", headResp.Header.Get("Content-Type"))
+	s.Equal("bytes", headResp.Header.Get("Accept-Ranges"))
+	s.Equal(fmt.Sprint(*statusResp.SizeBytes), headResp.Header.Get("Content-Length"))
+	s.NotEmpty(headResp.Header.Get("ETag"))
+	headBody, err := io.ReadAll(headResp.Body)
+	s.Require().NoError(err)
+	s.Empty(headBody)
 
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		s.server.URL+"/backup/"+startResp.BackupId+"/download",
+		backupDownloadURL,
 		nil,
 	)
 	s.Require().NoError(err)
@@ -1559,6 +1582,8 @@ func (s *IntegrationTestSuite) TestBackupEndpointStartsAsyncOperationAndDownload
 
 	s.Equal(http.StatusOK, downloadResp.StatusCode)
 	s.Equal("application/zip", downloadResp.Header.Get("Content-Type"))
+	s.Equal("bytes", downloadResp.Header.Get("Accept-Ranges"))
+	s.Equal(fmt.Sprint(*statusResp.SizeBytes), downloadResp.Header.Get("Content-Length"))
 	archiveBytes, err := io.ReadAll(downloadResp.Body)
 	s.Require().NoError(err)
 	s.Positive(len(archiveBytes))
@@ -1568,6 +1593,46 @@ func (s *IntegrationTestSuite) TestBackupEndpointStartsAsyncOperationAndDownload
 	s.NotNil(findZipEntry(archive, backupManifestPathForTest))
 	s.NotNil(findZipEntry(archive, backupDBPathForTest))
 	s.NotNil(findZipEntry(archive, "tracks/original/"+originalTrackKey))
+
+	rangeReq, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		backupDownloadURL,
+		nil,
+	)
+	s.Require().NoError(err)
+	rangeReq.Header.Set("Authorization", "Bearer "+userResp.Body.AccessToken)
+	rangeReq.Header.Set("Range", "bytes=0-3")
+
+	rangeResp, err := s.client.Do(rangeReq)
+	s.Require().NoError(err)
+	defer func() { s.Require().NoError(rangeResp.Body.Close()) }()
+
+	s.Equal(http.StatusPartialContent, rangeResp.StatusCode)
+	s.Equal("application/zip", rangeResp.Header.Get("Content-Type"))
+	s.Equal("bytes", rangeResp.Header.Get("Accept-Ranges"))
+	s.Equal("bytes 0-3/"+fmt.Sprint(len(archiveBytes)), rangeResp.Header.Get("Content-Range"))
+	s.Equal("4", rangeResp.Header.Get("Content-Length"))
+	rangeBody, err := io.ReadAll(rangeResp.Body)
+	s.Require().NoError(err)
+	s.Equal(archiveBytes[:4], rangeBody)
+
+	invalidRangeReq, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		backupDownloadURL,
+		nil,
+	)
+	s.Require().NoError(err)
+	invalidRangeReq.Header.Set("Authorization", "Bearer "+userResp.Body.AccessToken)
+	invalidRangeReq.Header.Set("Range", "bytes="+fmt.Sprint(len(archiveBytes))+"-")
+
+	invalidRangeResp, err := s.client.Do(invalidRangeReq)
+	s.Require().NoError(err)
+	defer func() { s.Require().NoError(invalidRangeResp.Body.Close()) }()
+
+	s.Equal(http.StatusRequestedRangeNotSatisfiable, invalidRangeResp.StatusCode)
+	s.Equal("bytes */"+fmt.Sprint(len(archiveBytes)), invalidRangeResp.Header.Get("Content-Range"))
 }
 
 func (s *IntegrationTestSuite) TestRestoreQueuesTracksWhenTranscodedFilesMissingFromBackup() {

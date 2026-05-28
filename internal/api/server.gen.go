@@ -488,6 +488,9 @@ type ServerInterface interface {
 
 	// (GET /backup/{backupId}/download)
 	DownloadBackup(w http.ResponseWriter, r *http.Request, backupId string)
+
+	// (HEAD /backup/{backupId}/download)
+	DownloadBackupHead(w http.ResponseWriter, r *http.Request, backupId string)
 	// Checks whether the server is alive.
 	// (GET /ping)
 	Ping(w http.ResponseWriter, r *http.Request)
@@ -731,6 +734,11 @@ func (_ Unimplemented) GetBackupStatus(w http.ResponseWriter, r *http.Request, b
 
 // (GET /backup/{backupId}/download)
 func (_ Unimplemented) DownloadBackup(w http.ResponseWriter, r *http.Request, backupId string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (HEAD /backup/{backupId}/download)
+func (_ Unimplemented) DownloadBackupHead(w http.ResponseWriter, r *http.Request, backupId string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1631,6 +1639,37 @@ func (siw *ServerInterfaceWrapper) DownloadBackup(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DownloadBackup(w, r, backupId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DownloadBackupHead operation middleware
+func (siw *ServerInterfaceWrapper) DownloadBackupHead(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "backupId" -------------
+	var backupId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "backupId", chi.URLParam(r, "backupId"), &backupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "backupId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DownloadBackupHead(w, r, backupId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2858,6 +2897,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/backup/{backupId}/download", wrapper.DownloadBackup)
+	})
+	r.Group(func(r chi.Router) {
+		r.Head(options.BaseURL+"/backup/{backupId}/download", wrapper.DownloadBackupHead)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/ping", wrapper.Ping)
