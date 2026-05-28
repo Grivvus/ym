@@ -1347,6 +1347,13 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 		LosslessPresetFname: pgtype.Text{Valid: false},
 	})
 	s.Require().NoError(err)
+	_, err = s.env.Queries.AddToTranscodingQueue(ctx, db.AddToTranscodingQueueParams{
+		TrackOriginalFileName: originalTrackKey,
+		TrackID:               track.ID,
+		WasFailed:             false,
+		ErrorMsg:              pgtype.Text{Valid: false},
+	})
+	s.Require().NoError(err)
 
 	userAvatarKey := service.ArtworkOwner{Kind: "user", ID: user.ID, Name: user.Username}.Key()
 	artistImageKey := service.ArtworkOwner{Kind: "artist", ID: artist.ID, Name: artist.Name}.Key()
@@ -1465,6 +1472,37 @@ func (s *IntegrationTestSuite) TestBackupAndRestore_RestoresDatabaseAndStorage()
 	fastPayload, err := io.ReadAll(fastReader)
 	s.Require().NoError(err)
 	s.Equal(fastTrack, fastPayload)
+
+	s.assertNextSequenceValue(
+		ctx,
+		"public.user_id_seq",
+		`SELECT (COALESCE(MAX(id), 0) + 1)::bigint FROM public."user"`,
+	)
+	s.assertNextSequenceValue(
+		ctx,
+		"public.artist_id_seq",
+		`SELECT (COALESCE(MAX(id), 0) + 1)::bigint FROM public."artist"`,
+	)
+	s.assertNextSequenceValue(
+		ctx,
+		"public.album_id_seq",
+		`SELECT (COALESCE(MAX(id), 0) + 1)::bigint FROM public."album"`,
+	)
+	s.assertNextSequenceValue(
+		ctx,
+		"public.playlist_id_seq",
+		`SELECT (COALESCE(MAX(id), 0) + 1)::bigint FROM public."playlist"`,
+	)
+	s.assertNextSequenceValue(
+		ctx,
+		"public.track_id_seq",
+		`SELECT (COALESCE(MAX(id), 0) + 1)::bigint FROM public."track"`,
+	)
+	s.assertNextSequenceValue(
+		ctx,
+		"public.transcoding_queue_id_seq",
+		`SELECT (COALESCE(MAX(id), 0) + 1)::bigint FROM public."transcoding_queue"`,
+	)
 }
 
 func (s *IntegrationTestSuite) TestBackupEndpointStartsAsyncOperationAndDownloadsArchive() {
@@ -1917,6 +1955,21 @@ func (s *IntegrationTestSuite) zipWithoutEntriesWithPrefix(payload []byte, prefi
 	s.Require().NoError(writer.Close())
 
 	return output.Bytes()
+}
+
+func (s *IntegrationTestSuite) assertNextSequenceValue(
+	ctx context.Context, sequenceName, expectedQuery string,
+) {
+	s.T().Helper()
+
+	var expected int64
+	err := s.env.DB.QueryRow(ctx, expectedQuery).Scan(&expected)
+	s.Require().NoError(err)
+
+	var actual int64
+	err = s.env.DB.QueryRow(ctx, `SELECT nextval($1::regclass)`, sequenceName).Scan(&actual)
+	s.Require().NoError(err)
+	s.Equal(expected, actual)
 }
 
 const (

@@ -9,80 +9,98 @@ import (
 	"context"
 )
 
-const syncBackupSequences = `-- name: SyncBackupSequences :one
-WITH
-    user_max AS (
-        SELECT COALESCE(MAX(id), 0) AS value
-        FROM public."user"
-    ),
-    artist_max AS (
-        SELECT COALESCE(MAX(id), 0) AS value
-        FROM public."artist"
-    ),
-    album_max AS (
-        SELECT COALESCE(MAX(id), 0) AS value
-        FROM public."album"
-    ),
-    playlist_max AS (
-        SELECT COALESCE(MAX(id), 0) AS value
-        FROM public."playlist"
-    ),
-    track_max AS (
-        SELECT COALESCE(MAX(id), 0) AS value
-        FROM public."track"
-    ),
-    transcoding_queue_max AS (
-        SELECT COALESCE(MAX(id), 0) AS value
-        FROM public."transcoding_queue"
-    ),
-    user_seq AS (
-        SELECT setval(
-            pg_get_serial_sequence('public."user"', 'id'),
-            GREATEST((SELECT value FROM user_max), 1),
-            (SELECT value FROM user_max) > 0
-        )
-    ),
-    artist_seq AS (
-        SELECT setval(
-            pg_get_serial_sequence('public.artist', 'id'),
-            GREATEST((SELECT value FROM artist_max), 1),
-            (SELECT value FROM artist_max) > 0
-        )
-    ),
-    album_seq AS (
-        SELECT setval(
-            pg_get_serial_sequence('public.album', 'id'),
-            GREATEST((SELECT value FROM album_max), 1),
-            (SELECT value FROM album_max) > 0
-        )
-    ),
-    playlist_seq AS (
-        SELECT setval(
-            pg_get_serial_sequence('public.playlist', 'id'),
-            GREATEST((SELECT value FROM playlist_max), 1),
-            (SELECT value FROM playlist_max) > 0
-        )
-    ),
-    track_seq AS (
-        SELECT setval(
-            pg_get_serial_sequence('public.track', 'id'),
-            GREATEST((SELECT value FROM track_max), 1),
-            (SELECT value FROM track_max) > 0
-        )
-    ),
-    transcoding_queue_seq AS (
-        SELECT setval(
-            pg_get_serial_sequence('public.transcoding_queue', 'id'),
-            GREATEST((SELECT value FROM transcoding_queue_max), 1),
-            (SELECT value FROM transcoding_queue_max) > 0
-        )
-    )
-SELECT 1
+const syncAlbumSequence = `-- name: SyncAlbumSequence :one
+SELECT setval(
+    pg_get_serial_sequence('public.album', 'id'),
+    GREATEST(COALESCE(MAX(id), 0), 1),
+    COALESCE(MAX(id), 0) > 0
+)
+FROM public."album"
 `
 
-func (q *Queries) SyncBackupSequences(ctx context.Context) (int32, error) {
-	row := q.db.QueryRow(ctx, syncBackupSequences)
-	var column_1 int32
-	err := row.Scan(&column_1)
-	return column_1, err
+func (q *Queries) SyncAlbumSequence(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, syncAlbumSequence)
+	var setval int64
+	err := row.Scan(&setval)
+	return setval, err
+}
+
+const syncArtistSequence = `-- name: SyncArtistSequence :one
+SELECT setval(
+    pg_get_serial_sequence('public.artist', 'id'),
+    GREATEST(COALESCE(MAX(id), 0), 1),
+    COALESCE(MAX(id), 0) > 0
+)
+FROM public."artist"
+`
+
+func (q *Queries) SyncArtistSequence(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, syncArtistSequence)
+	var setval int64
+	err := row.Scan(&setval)
+	return setval, err
+}
+
+const syncPlaylistSequence = `-- name: SyncPlaylistSequence :one
+SELECT setval(
+    pg_get_serial_sequence('public.playlist', 'id'),
+    GREATEST(COALESCE(MAX(id), 0), 1),
+    COALESCE(MAX(id), 0) > 0
+)
+FROM public."playlist"
+`
+
+func (q *Queries) SyncPlaylistSequence(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, syncPlaylistSequence)
+	var setval int64
+	err := row.Scan(&setval)
+	return setval, err
+}
+
+const syncTrackSequence = `-- name: SyncTrackSequence :one
+SELECT setval(
+    pg_get_serial_sequence('public.track', 'id'),
+    GREATEST(COALESCE(MAX(id), 0), 1),
+    COALESCE(MAX(id), 0) > 0
+)
+FROM public."track"
+`
+
+func (q *Queries) SyncTrackSequence(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, syncTrackSequence)
+	var setval int64
+	err := row.Scan(&setval)
+	return setval, err
+}
+
+const syncTranscodingQueueSequence = `-- name: SyncTranscodingQueueSequence :one
+SELECT setval(
+    pg_get_serial_sequence('public.transcoding_queue', 'id'),
+    GREATEST(COALESCE(MAX(id), 0), 1),
+    COALESCE(MAX(id), 0) > 0
+)
+FROM public."transcoding_queue"
+`
+
+func (q *Queries) SyncTranscodingQueueSequence(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, syncTranscodingQueueSequence)
+	var setval int64
+	err := row.Scan(&setval)
+	return setval, err
+}
+
+const syncUserSequence = `-- name: SyncUserSequence :one
+SELECT setval(
+    pg_get_serial_sequence('public."user"', 'id'),
+    GREATEST(COALESCE(MAX(id), 0), 1),
+    COALESCE(MAX(id), 0) > 0
+)
+FROM public."user"
+`
+
+func (q *Queries) SyncUserSequence(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, syncUserSequence)
+	var setval int64
+	err := row.Scan(&setval)
+	return setval, err
 }

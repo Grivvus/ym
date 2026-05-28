@@ -664,11 +664,33 @@ func (service BackupService) restoreArchive(ctx context.Context, archivePath str
 	if err := service.restoreDBSnapshot(ctx, dump); err != nil {
 		return err
 	}
-	if _, err := service.queries.SyncBackupSequences(ctx); err != nil {
-		return fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+	if err := service.syncBackupSequences(ctx); err != nil {
+		return err
 	}
 	if err := service.restoreStorageState(ctx, &archive.Reader); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (service BackupService) syncBackupSequences(ctx context.Context) error {
+	syncQueries := []struct {
+		name string
+		fn   func(context.Context) (int64, error)
+	}{
+		{name: "user", fn: service.queries.SyncUserSequence},
+		{name: "artist", fn: service.queries.SyncArtistSequence},
+		{name: "album", fn: service.queries.SyncAlbumSequence},
+		{name: "playlist", fn: service.queries.SyncPlaylistSequence},
+		{name: "track", fn: service.queries.SyncTrackSequence},
+		{name: "transcoding_queue", fn: service.queries.SyncTranscodingQueueSequence},
+	}
+
+	for _, query := range syncQueries {
+		if _, err := query.fn(ctx); err != nil {
+			return fmt.Errorf("can't sync %s sequence: %w caused by: %w", query.name, ErrUnknownDBError, err)
+		}
 	}
 
 	return nil
