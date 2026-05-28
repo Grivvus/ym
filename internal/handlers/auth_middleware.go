@@ -46,7 +46,7 @@ func isPublicPath(path string) bool {
 		"/auth/refresh",
 		"/auth/password-reset/request",
 		"/auth/password-reset/confirm",
-		"/openapi.yml":
+		"/openapi.yml", "/metrics":
 		return true
 	default:
 		return strings.HasPrefix(path, "/swagger/")
