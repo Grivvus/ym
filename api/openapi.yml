@@ -1921,6 +1921,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /search:
+    get:
+      summary: Searches tracks, albums, and artists.
+      operationId: search
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - in: query
+          name: types
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [tracks, albums, artists]
+          style: form
+          explode: false
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Search results were fetched successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        "400":
+          description: Invalid search query.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /backup:
     post:
       description: Starts a full application backup.
@@ -2304,6 +2353,107 @@ components:
       bearerFormat: JWT
 
   schemas:
+    SearchResponse:
+      type: object
+      required: [query, tracks, albums, artists]
+      properties:
+        query:
+          type: string
+        tracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchTrackResult"
+        albums:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchAlbumResult"
+        artists:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchArtistResult"
+
+    SearchTrackResult:
+      type: object
+      required:
+        - track_id
+        - name
+        - artist_id
+        - artist_name
+        - album_id
+        - album_name
+        - duration_ms
+        - is_globally_available
+        - score
+      properties:
+        track_id:
+          type: integer
+          format: int32
+        name:
+          type: string
+        artist_id:
+          type: integer
+          format: int32
+        artist_name:
+          type: string
+        album_id:
+          type: integer
+          format: int32
+        album_name:
+          type: string
+        duration_ms:
+          type: integer
+          format: int32
+          nullable: true
+        is_globally_available:
+          type: boolean
+        score:
+          type: number
+          format: float
+
+    SearchAlbumResult:
+      type: object
+      required:
+         - album_id
+         - album_name
+         - artist_id
+         - artist_name
+         - release_year
+         - score
+       properties:
+         album_id:
+           type: integer
+           format: int32
+         album_name:
+           type: string
+         artist_id:
+           type: integer
+           format: int32
+         artist_name:
+           type: string
+         release_year:
+           type: integer
+           format: int32
+           nullable: true
+         score:
+           type: number
+           format: float
+
+    SearchArtistResult:
+      type: object
+      required:
+          - artist_id
+          - artist_name
+          - score
+        properties:
+          artist_id:
+            type: integer
+            format: int32
+          artist_name:
+            type: string
+          score:
+            type: number
+            format: float
+
     OperationStatus:
       type: string
       enum:

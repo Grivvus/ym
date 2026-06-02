@@ -4,7 +4,8 @@ sql:
     queries: [
       "queries/", "queries/artist/", "queries/playlist/",
       "queries/album/", "queries/track/", "queries/user/",
-      "queries/transcoding", "queries/backup_queries"
+      "queries/transcoding", "queries/backup_queries",
+      "queries/search"
     ]
     schema: "schemas/"
     gen:
