@@ -32,6 +32,13 @@ const (
 	Started  OperationStatus = "started"
 )
 
+// Defines values for SearchParamsTypes.
+const (
+	Albums  SearchParamsTypes = "albums"
+	Artists SearchParamsTypes = "artists"
+	Tracks  SearchParamsTypes = "tracks"
+)
+
 // AlbumCoverResponse defines model for AlbumCoverResponse.
 type AlbumCoverResponse struct {
 	AlbumId int32 `json:"album_id"`
@@ -221,6 +228,44 @@ type RestoreStatusResponse struct {
 	Status    OperationStatus `json:"status"`
 }
 
+// SearchAlbumResult defines model for SearchAlbumResult.
+type SearchAlbumResult struct {
+	AlbumId     int32   `json:"album_id"`
+	AlbumName   string  `json:"album_name"`
+	ArtistId    int32   `json:"artist_id"`
+	ArtistName  string  `json:"artist_name"`
+	ReleaseYear *int32  `json:"release_year"`
+	Score       float32 `json:"score"`
+}
+
+// SearchArtistResult defines model for SearchArtistResult.
+type SearchArtistResult struct {
+	ArtistId   int32   `json:"artist_id"`
+	ArtistName string  `json:"artist_name"`
+	Score      float32 `json:"score"`
+}
+
+// SearchResponse defines model for SearchResponse.
+type SearchResponse struct {
+	Albums  []SearchAlbumResult  `json:"albums"`
+	Artists []SearchArtistResult `json:"artists"`
+	Query   string               `json:"query"`
+	Tracks  []SearchTrackResult  `json:"tracks"`
+}
+
+// SearchTrackResult defines model for SearchTrackResult.
+type SearchTrackResult struct {
+	AlbumId             int32   `json:"album_id"`
+	AlbumName           string  `json:"album_name"`
+	ArtistId            int32   `json:"artist_id"`
+	ArtistName          string  `json:"artist_name"`
+	DurationMs          *int32  `json:"duration_ms"`
+	IsGloballyAvailable bool    `json:"is_globally_available"`
+	Name                string  `json:"name"`
+	Score               float32 `json:"score"`
+	TrackId             int32   `json:"track_id"`
+}
+
 // SimpleUser defines model for SimpleUser.
 type SimpleUser struct {
 	Id       int32  `json:"id"`
@@ -332,6 +377,16 @@ type GetPlaylistsParams struct {
 type AddTrackToPlaylistJSONBody struct {
 	TrackId int32 `json:"track_id"`
 }
+
+// SearchParams defines parameters for Search.
+type SearchParams struct {
+	Q     string               `form:"q" json:"q"`
+	Types *[]SearchParamsTypes `form:"types,omitempty" json:"types,omitempty"`
+	Limit *int                 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// SearchParamsTypes defines parameters for Search.
+type SearchParamsTypes string
 
 // DownloadTrackParams defines parameters for DownloadTrack.
 type DownloadTrackParams struct {
@@ -539,6 +594,9 @@ type ServerInterface interface {
 
 	// (GET /restore/{restoreId})
 	GetRestoreStatus(w http.ResponseWriter, r *http.Request, restoreId string)
+	// Searches tracks, albums, and artists.
+	// (GET /search)
+	Search(w http.ResponseWriter, r *http.Request, params SearchParams)
 	// Gets metadata for all uploaded tracks.
 	// (GET /tracks)
 	GetTracks(w http.ResponseWriter, r *http.Request)
@@ -828,6 +886,12 @@ func (_ Unimplemented) Restore(w http.ResponseWriter, r *http.Request) {
 
 // (GET /restore/{restoreId})
 func (_ Unimplemented) GetRestoreStatus(w http.ResponseWriter, r *http.Request, restoreId string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Searches tracks, albums, and artists.
+// (GET /search)
+func (_ Unimplemented) Search(w http.ResponseWriter, r *http.Request, params SearchParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2172,6 +2236,62 @@ func (siw *ServerInterfaceWrapper) GetRestoreStatus(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// Search operation middleware
+func (siw *ServerInterfaceWrapper) Search(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchParams
+
+	// ------------- Required query parameter "q" -------------
+
+	if paramValue := r.URL.Query().Get("q"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "types" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "types", r.URL.Query(), &params.Types)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "types", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Search(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetTracks operation middleware
 func (siw *ServerInterfaceWrapper) GetTracks(w http.ResponseWriter, r *http.Request) {
 
@@ -2948,6 +3068,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/restore/{restoreId}", wrapper.GetRestoreStatus)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/search", wrapper.Search)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/tracks", wrapper.GetTracks)
