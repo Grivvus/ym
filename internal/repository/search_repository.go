@@ -35,7 +35,7 @@ type TrackSearchResult struct {
 	AlbumName           string
 	ArtistID            int32
 	ArtistName          string
-	TrackDurationMS     int64
+	TrackDurationMS     *int32
 	IsGloballyAvailable bool
 	SearchScore         float32
 }
@@ -45,7 +45,7 @@ type AlbumSearchResult struct {
 	AlbumName   string
 	ArtistID    int32
 	ArtistName  string
-	ReleaseYear int
+	ReleaseYear *int32
 	SearchScore float32
 }
 
@@ -91,7 +91,7 @@ func (s *PostgresSearchRepository) Search(
 				AlbumID:             track.AlbumID,
 				AlbumName:           track.AlbumName,
 				IsGloballyAvailable: track.IsGloballyAvailable,
-				TrackDurationMS:     int64(track.DurationMs.Int32),
+				TrackDurationMS:     int32PtrFromPGInt(track.DurationMs),
 				SearchScore:         track.Score,
 			}
 		})
@@ -128,7 +128,7 @@ func (s *PostgresSearchRepository) Search(
 				AlbumName:   album.Name,
 				ArtistID:    album.ArtistID,
 				ArtistName:  album.ArtistName,
-				ReleaseYear: int(album.ReleaseYear.Int32),
+				ReleaseYear: int32PtrFromPGInt(album.ReleaseYear),
 				SearchScore: album.Score,
 			}
 		})

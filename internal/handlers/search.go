@@ -74,7 +74,7 @@ func searchResponseFromRepositorySearchResult(result repository.SearchResult) ap
 					AlbumName:           track.AlbumName,
 					ArtistId:            track.ArtistID,
 					ArtistName:          track.ArtistName,
-					DurationMs:          int64ToInt32Ptr(track.TrackDurationMS),
+					DurationMs:          track.TrackDurationMS,
 					IsGloballyAvailable: track.IsGloballyAvailable,
 					Score:               track.SearchScore,
 				}
@@ -88,7 +88,7 @@ func searchResponseFromRepositorySearchResult(result repository.SearchResult) ap
 					AlbumName:   album.AlbumName,
 					ArtistId:    album.ArtistID,
 					ArtistName:  album.ArtistName,
-					ReleaseYear: intToInt32Ptr(album.ReleaseYear),
+					ReleaseYear: album.ReleaseYear,
 					Score:       album.SearchScore,
 				}
 			},
@@ -104,20 +104,4 @@ func searchResponseFromRepositorySearchResult(result repository.SearchResult) ap
 			},
 		),
 	}
-}
-
-func int64ToInt32Ptr(value int64) *int32 {
-	if value <= 0 {
-		return nil
-	}
-	i32 := int32(value)
-	return &i32
-}
-
-func intToInt32Ptr(value int) *int32 {
-	if value <= 0 {
-		return nil
-	}
-	i32 := int32(value)
-	return &i32
 }
