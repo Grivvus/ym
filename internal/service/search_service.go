@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -23,5 +24,12 @@ func NewSearchService(logger *slog.Logger, searchRepo repository.SearchRepositor
 func (s *SearchService) Search(
 	ctx context.Context, params repository.SearchParams,
 ) (repository.SearchResult, error) {
-	return repository.SearchResult{}, fmt.Errorf("not implemented")
+	result, err := s.repo.Search(ctx, params)
+	if err != nil {
+		if !errors.Is(err, repository.ErrUnknownDBError) {
+			s.logger.Warn("unexpected state, error should always be UnknownDBError")
+		}
+		return repository.SearchResult{}, fmt.Errorf("%w: %w", ErrUnknownDBError, err)
+	}
+	return result, nil
 }
