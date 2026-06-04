@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -43,12 +42,8 @@ type TrackObjectInfo struct {
 }
 
 func New(ctx context.Context, cfg utils.Config, logger *slog.Logger) (Storage, error) {
-	if cfg.S3Host == "" {
-		return nil, errors.New("can't create storage, S3_HOST env variable is not set")
-	}
-	s3URL := cfg.S3Host + ":" + cfg.S3Port
 	minioClient, err := minio.New(
-		s3URL,
+		cfg.S3Endpoint,
 		&minio.Options{
 			Creds:  credentials.NewStaticV4(cfg.S3AccessKey, cfg.S3SecretKey, ""),
 			Secure: false,

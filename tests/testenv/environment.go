@@ -178,6 +178,7 @@ func buildConfig(
 	if err != nil {
 		return utils.Config{}, "", fmt.Errorf("get storage port: %w", err)
 	}
+	storageEndpoint := fmt.Sprintf("%s:%s", storageHost, storageMappedPort.Port())
 
 	cfg := utils.Config{
 		Host:               "127.0.0.1",
@@ -188,8 +189,7 @@ func buildConfig(
 		PostgresPort:       postgresMappedPort.Port(),
 		PostgresPassword:   defaultDBPass,
 		PostgresDB:         defaultDBName,
-		S3Host:             storageHost,
-		S3Port:             storageMappedPort.Port(),
+		S3Endpoint:         storageEndpoint,
 		S3AccessKey:        defaultS3User,
 		S3SecretKey:        defaultS3Pass,
 		S3SecureConnection: false,

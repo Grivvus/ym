@@ -19,8 +19,7 @@ type Config struct {
 	PostgresPassword string `envconfig:"POSTGRES_PASSWORD" required:"true"`
 	PostgresDB       string `envconfig:"POSTGRES_DB" required:"true"`
 
-	S3Host             string `envconfig:"S3_HOST" required:"true"`
-	S3Port             string `envconfig:"S3_PORT" required:"true"`
+	S3Endpoint         string `envconfig:"S3_ENDPOINT" required:"true"`
 	S3AccessKey        string `envconfig:"MINIO_ACCESS_KEY" required:"true"`
 	S3SecretKey        string `envconfig:"MINIO_SECRET_KEY" required:"true"`
 	S3SecureConnection bool   `envconfig:"S3_SECURE" default:"false"`
