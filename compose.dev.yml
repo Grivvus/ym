@@ -53,6 +53,7 @@ services:
   storage:
     image: minio/minio
     container_name: minio_ym
+    profiles: [local-storage]
     ports:
       - 9000:9000
       - 9001:9001
@@ -73,6 +74,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.minio.init
+    profiles: [local-storage]
     depends_on:
       storage:
         condition: service_healthy

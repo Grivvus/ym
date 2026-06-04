@@ -21,7 +21,12 @@ The development compose file uses bind-mounted local directories for PostgreSQL 
 
 4. Build and run Docker containers:
 ```bash
-docker compose -f compose.dev.yml up --build
+docker compose -f compose.dev.yml --profile local-storage up --build
+```
+
+5. To stop all containers:
+```bash
+docker compose -f compose.dev.yml --profile local-storage stop
 ```
 
 
@@ -38,7 +43,12 @@ The default provisioning configures the Prometheus datasource and loads dashboar
 
 3. Start containers with '--profile metrics':
 ```bash
-docker compose -f compose.dev.yml up --profile metrics --build -d
+make run-docker
 ```
 
-5. Open Grafana at http://localhost:3000.
+4. Open Grafana at http://localhost:3000.
+
+5. To stop all containers:
+```bash
+make stop-docker
+```

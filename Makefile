@@ -16,6 +16,16 @@ build: migration_up generate
 	@mkdir -p .bin
 	@go build -o ./bin/${EXECUTABLE_NAME} ./cmd/server
 
+.PHONY: run-docker
+run-docker:
+	@echo "run docker"
+	@docker compose -f compose.dev.yml --profile metrics --profile local-storage up --build -d
+
+.PHONY: stop-docker
+run-docker:
+	@echo "stop docker"
+	@docker compose -f compose.dev.yml --profile metrics --profile local-storage stop
+
 serve: build
 	@echo "Serve"
 	@./bin/${EXECUTABLE_NAME}
