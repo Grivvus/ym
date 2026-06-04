@@ -23,6 +23,8 @@ type Config struct {
 	S3AccessKey        string `envconfig:"MINIO_ACCESS_KEY" required:"true"`
 	S3SecretKey        string `envconfig:"MINIO_SECRET_KEY" required:"true"`
 	S3SecureConnection bool   `envconfig:"S3_SECURE" default:"false"`
+	S3Region           string `envconfig:"S3_REGION" default:""`
+	S3SessionToken     string `envconfig:"S3_SESSION_TOKEN" default:""`
 }
 
 type SMTPConfig struct {

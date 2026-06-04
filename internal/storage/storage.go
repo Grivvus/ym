@@ -45,8 +45,11 @@ func New(ctx context.Context, cfg utils.Config, logger *slog.Logger) (Storage, e
 	minioClient, err := minio.New(
 		cfg.S3Endpoint,
 		&minio.Options{
-			Creds:  credentials.NewStaticV4(cfg.S3AccessKey, cfg.S3SecretKey, ""),
-			Secure: false,
+			Creds: credentials.NewStaticV4(
+				cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3SessionToken,
+			),
+			Secure: cfg.S3SecureConnection,
+			Region: cfg.S3Region,
 		},
 	)
 	if err != nil {

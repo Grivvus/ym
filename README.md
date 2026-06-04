@@ -28,19 +28,17 @@ docker compose -f compose.dev.yml up --build
 ### Prometheus + Grafana setup
 You need this section only if you want to collect, store, and visualize metrics.
 
-1. Uncomment the `prometheus` and `grafana` services in `compose.dev.yml`.
-
-2. Check `prometheus.yml`.
+1. Check `prometheus.yml`.
 
 The default configuration scrapes the service container at `service:8000`.
 
-3. Check Grafana provisioning in `grafana/provisioning` and adjust it if needed.
+2. Check Grafana provisioning in `grafana/provisioning` and adjust it if needed.
 
 The default provisioning configures the Prometheus datasource and loads dashboards from `grafana/dashboards`.
 
-4. Start the stack:
+3. Start containers with '--profile metrics':
 ```bash
-docker compose -f compose.dev.yml up --build
+docker compose -f compose.dev.yml up --profile metrics --build -d
 ```
 
 5. Open Grafana at http://localhost:3000.
