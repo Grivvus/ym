@@ -21,7 +21,7 @@ services:
           include: "*.go"
     ports:
       - 8000:8000
-    restart: "no"
+    restart: unless-stopped
 
   db:
     image: postgres:17
@@ -35,7 +35,7 @@ services:
       timeout: 10s
     ports:
       - 5432:5432
-    restart: no
+    restart: unless-stopped
     volumes:
       - postgres_volume:/var/lib/postgresql/data/
 
@@ -48,6 +48,7 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    restart: no
 
   storage:
     image: minio/minio
@@ -58,7 +59,7 @@ services:
     env_file:
       - .env
     command: server /data --console-address ":9001"
-    restart: no
+    restart: unless-stopped
     volumes:
       - minio_data:/data
     healthcheck:
@@ -80,7 +81,7 @@ services:
     volumes:
       - ./init-minio.sh:/workdir/init-minio.sh:ro
       - ./:/workdir/
-    restart: "no"
+    restart: no
 
   prometheus:
     image: prom/prometheus:v3
@@ -93,6 +94,7 @@ services:
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:13.0
@@ -106,6 +108,7 @@ services:
       - grafana-data:/var/lib/grafana
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    restart: unless-stopped
 
 
 volumes:
