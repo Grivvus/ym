@@ -22,7 +22,7 @@ run-docker:
 	@docker compose -f compose.dev.yml --profile metrics --profile local-storage up --build -d
 
 .PHONY: stop-docker
-run-docker:
+stop-docker:
 	@echo "stop docker"
 	@docker compose -f compose.dev.yml --profile metrics --profile local-storage stop
 
