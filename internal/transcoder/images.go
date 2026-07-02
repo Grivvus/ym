@@ -10,8 +10,7 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/kolesa-team/go-webp/encoder"
-	"github.com/kolesa-team/go-webp/webp"
+	"github.com/gen2brain/webp"
 	xdraw "golang.org/x/image/draw"
 )
 
@@ -33,9 +32,6 @@ type ImageOptions struct {
 	MaxWidth          int
 	MaxHeight         int
 	CropSquare        bool
-	Quality           float32
-	Method            int
-	Preset            encoder.EncodingPreset
 	MaxEncodedBytes   int64
 	MaxInputDimension int
 	MaxInputPixels    int
@@ -45,9 +41,6 @@ func ArtworkImageOptions() ImageOptions {
 	return ImageOptions{
 		MaxWidth:  1200,
 		MaxHeight: 1200,
-		Quality:   82,
-		Method:    4,
-		Preset:    encoder.PresetPicture,
 	}
 }
 
@@ -56,9 +49,6 @@ func AvatarImageOptions() ImageOptions {
 		MaxWidth:   512,
 		MaxHeight:  512,
 		CropSquare: true,
-		Quality:    80,
-		Method:     4,
-		Preset:     encoder.PresetPicture,
 	}
 }
 
@@ -97,17 +87,9 @@ func ToWebpWithOptions(r io.Reader, opts ImageOptions) (io.ReadCloser, error) {
 	)
 	pr, pw := io.Pipe()
 
-	encoderOpts, err := encoder.NewLossyEncoderOptions(opts.Preset, opts.Quality)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrCantEncode, err)
-	}
-	encoderOpts.Method = opts.Method
-	encoderOpts.ThreadLevel = true
-	encoderOpts.UseSharpYuv = true
-
 	go func() {
 		defer func() { _ = pw.Close() }()
-		if err := webp.Encode(pw, img, encoderOpts); err != nil {
+		if err := webp.Encode(pw, img); err != nil {
 			_ = pw.CloseWithError(fmt.Errorf("%w: %w", ErrCantEncode, err))
 			return
 		}
@@ -125,12 +107,6 @@ func (opts ImageOptions) withDefaults() ImageOptions {
 	}
 	if opts.MaxInputPixels <= 0 {
 		opts.MaxInputPixels = defaultMaxInputPixels
-	}
-	if opts.Quality <= 0 {
-		opts.Quality = defaultWebPQuality
-	}
-	if opts.Method == 0 {
-		opts.Method = defaultWebPMethod
 	}
 	return opts
 }
