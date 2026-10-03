@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ym-pg
+spec:
+  serviceName: pg-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ym-pg
+  template:
+    metadata:
+      labels:
+        app: ym-pg
+    spec:
+      containers:
+        - name: ym-pg
+          image: postgres:17
+          envFrom:
+            - secretRef:
+                name: ym-secret
+          ports:
+          - containerPort: 5432
+            name: ym-pg
+          volumeMounts:
+          - name: db
+            mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: db
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+---

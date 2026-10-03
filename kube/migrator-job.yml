@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrator
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 60
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: ym-migrator
+        image: ym-migrator:latest
+        imagePullPolicy: IfNotPresent
+        args:
+          - |
+            until goose -env=none -dir=/app/migrations/ status; do
+              echo "waiting for db..."
+              sleep 2
+            done
+            goose -env=none -dir=/app/migrations/ up
+        envFrom:
+          - configMapRef:
+              name: ym-config
+          - secretRef:
+              name: ym-secret

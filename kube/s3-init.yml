@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-minio
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: init-minio
+          image: docker.io/library/init-minio:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: ym-secret
+            - configMapRef:
+                name: ym-config

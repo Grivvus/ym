@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ym-config
+
+data:
+  APPLICATION_HOST: "0.0.0.0"
+  APPLICATION_PORT: "8000"
+  POSTGRES_HOST: pg-headless
+  POSTGRES_PORT: "5432"
+  S3_ENDPOINT: minio-headless:9000
+  S3_ENDPOINT_FULL: http://minio-headless:9000
+  S3_SECURE: "false"
+
+  PASSWORD_RESET_CODE_TTL: 15m
+  PASSWORD_RESET_RESEND_COOLDOWN: 1m
+  PASSWORD_RESET_MAX_ATTEMPTS: "5"
+  PASSWORD_RESET_CODE_LENGTH: "6"
+  SMTP_HOST: ""
+  SMTP_PORT: "587"

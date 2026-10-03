@@ -1,7 +1,7 @@
 FROM golang:1.26 AS builder
 
 WORKDIR /app
-RUN apt-get update && apt-get install libwebp-dev -y
+RUN apt-get update && apt-get install -y
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -14,7 +14,7 @@ RUN GOOS=linux go build -o server ./cmd/server/
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install ffmpeg libwebp-dev -y
+RUN apt-get update && apt-get install ffmpeg -y
 
 COPY --from=builder /app/server /usr/bin/server
 COPY --from=builder /app/api/openapi.yml /api/openapi.yml
