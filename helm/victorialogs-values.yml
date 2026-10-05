@@ -1,0 +1,14 @@
+singleNode:
+  enabled: true
+
+server:
+  retentionPeriod: "30d"
+
+persistence:
+  enabled: true
+  size: 20Gi
+  storageClassName: ""
+
+service:
+  type: ClusterIP
+  port: 9428

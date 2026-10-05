@@ -1,0 +1,41 @@
+role: Agent
+
+service:
+  enabled: false
+
+customConfig:
+  data_dir: /vector-data-dir
+
+  sources:
+    kubernetes_logs:
+      type: kubernetes_logs
+
+  transforms:
+    parse_app_json:
+      type: remap
+      inputs: ["kubernetes_logs"]
+      source: |
+        # Keep original log line
+        .message = string!(.message)
+
+        # If your app writes JSON to stdout, try parsing it
+        parsed, err = parse_json(.message)
+        if err == null {
+          .app = parsed
+          del(.message)
+        }
+
+  sinks:
+    victoria_logs:
+      type: http
+      inputs: ["parse_app_json"]
+      uri: http://vls-victoria-logs-single-server:9428/insert/jsonline?_stream_fields=host,container_name&_msg_field=msg&_time_field=time
+      encoding:
+        codec: json
+      compression: gzip
+      request:
+        retry_attempts: 10
+        timeout_secs: 30
+      batch:
+        max_events: 1000
+        timeout_secs: 1
