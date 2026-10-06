@@ -41,8 +41,8 @@ func main() {
 	)
 	defer cancel()
 
-	logger := slog.New(slog.NewTextHandler(
-		os.Stdout, &slog.HandlerOptions{AddSource: true},
+	logger := slog.New(slog.NewJSONHandler(
+		os.Stdout, &slog.HandlerOptions{AddSource: false, Level: slog.LevelInfo},
 	))
 
 	for _, path := range []string{".env", ".env.minio"} {
@@ -161,7 +161,7 @@ func main() {
 
 	r := chi.NewMux()
 
-	r.Use(middleware.Logger)
+	r.Use(utils.LoggerMiddleware(logger))
 	r.Use(middleware.Recoverer)
 	r.Use(handlers.AuthMiddleware(logger, []byte(cfg.JWTSecret)))
 

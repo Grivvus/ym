@@ -113,7 +113,7 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 	}
 	err = u.userService.ChangePassword(r.Context(), userId, updatePassword)
 	if err != nil {
-		u.logger.Error("can't change password", "err", err)
+		u.logger.Warn("can't change password", "err", err)
 		if errors.Is(err, service.ErrBadParams) {
 			_ = WriteError(w, http.StatusBadRequest, err)
 			return

@@ -41,7 +41,7 @@ func (a AuthService) Register(
 		PasswordHashParams: repositoryPasswordHashParams(params),
 	})
 	if err != nil {
-		a.logger.Error("can't create user", "error", err)
+		a.logger.Warn("can't create user", "error", err)
 		if errors.Is(err, repository.ErrAlreadyExists) {
 			return api.TokenResponse{}, NewErrAlreadyExists("user", user.Username)
 		}
@@ -65,7 +65,7 @@ func (a AuthService) Login(
 ) (api.TokenResponse, error) {
 	dbuser, err := a.repo.GetUserByUsername(ctx, user.Username)
 	if err != nil {
-		a.logger.Error("can't get user from db", "error", err)
+		a.logger.Warn("can't get user from db", "error", err)
 		if errors.Is(err, repository.ErrNotFound) {
 			return api.TokenResponse{}, NewErrNotFound("user", user.Username)
 		}
@@ -113,7 +113,7 @@ func (a AuthService) UpdateTokens(
 
 	dbuser, err := a.repo.GetUserByID(ctx, userID)
 	if err != nil {
-		a.logger.Error("can't get user from db", "error", err)
+		a.logger.Warn("can't get user from db", "error", err)
 		if errors.Is(err, repository.ErrNotFound) {
 			return api.TokenResponse{}, ErrUnauthorized
 		}
