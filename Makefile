@@ -26,6 +26,12 @@ stop-docker:
 	@echo "stop docker"
 	@docker compose -f compose.dev.yml --profile metrics --profile local-storage stop
 
+.PHONY: run-kube
+run-kube:
+	kubectl apply -f kube/
+	helm install vls vm/victoria-logs -n default -f helm/victorialogs-values.yml
+	helm install vector vector/vector -n default -f helm/vector-values.yml
+
 serve: build
 	@echo "Serve"
 	@./bin/${EXECUTABLE_NAME}

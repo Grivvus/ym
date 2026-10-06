@@ -9,6 +9,7 @@ customConfig:
   sources:
     kubernetes_logs:
       type: kubernetes_logs
+      extra_label_selector: "log-collect=true"
 
   transforms:
     parse_app_json:
@@ -26,16 +27,23 @@ customConfig:
         }
 
   sinks:
-    victoria_logs:
+    vlogs:
+      inputs:
+        - kubernetes_logs
       type: http
       inputs: ["parse_app_json"]
-      uri: http://vls-victoria-logs-single-server:9428/insert/jsonline?_stream_fields=host,container_name&_msg_field=msg&_time_field=time
+      uri: http://vls-victoria-logs-single-server:9428/insert/jsonline
       encoding:
         codec: json
+      framing:
+        method: newline_delimited
       compression: gzip
       request:
         retry_attempts: 10
         timeout_secs: 30
+        headers:
+          VL-Msg-Field: app.msg
+          VL-Time-Field: app.time
       batch:
         max_events: 1000
         timeout_secs: 1
