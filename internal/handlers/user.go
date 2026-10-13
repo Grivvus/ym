@@ -95,7 +95,7 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 
 	err = WriteJSON(w, http.StatusOK, resp)
 	if err != nil {
-		u.logger.Error("unexpected error", "err", err)
+		u.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -146,7 +146,7 @@ func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, u
 	}
 	err = WriteJSON(w, http.StatusCreated, api.MessageResponse{Msg: "avatar was uploaded"})
 	if err != nil {
-		u.logger.Error("can't encode json", "err", err)
+		u.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -178,6 +178,6 @@ func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, u
 	}
 	err = WriteJSON(w, http.StatusOK, api.MessageResponse{Msg: "avatar was deleted"})
 	if err != nil {
-		u.logger.Error("can't encode json", "err", err)
+		u.logger.Error("can't encode response", "err", err)
 	}
 }

@@ -44,7 +44,7 @@ func (m ArtworkManager) Upload(ctx context.Context, id int32, src io.Reader) err
 	if err != nil {
 		return err
 	}
-	rc, err := transcoder.ToWebpWithOptions(src, imageOptionsFor(owner))
+	rc, err := transcoder.ToWebpWithOptions(src, imageOptionsFor(owner), m.logger)
 	if err != nil {
 		return fmt.Errorf(
 			"%w: image may be damaged or format is unknown, cause: %w",

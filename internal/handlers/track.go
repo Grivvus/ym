@@ -46,7 +46,7 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	}
 	err = WriteJSON(w, http.StatusAccepted, resp)
 	if err != nil {
-		slog.Error("Trackhandlers.UploadTrack, can't encode response", "err", err)
+		h.logger.Error("Trackhandlers.UploadTrack, can't encode response", "err", err)
 	}
 }
 
@@ -91,7 +91,7 @@ func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trac
 	}
 	err = WriteJSON(w, http.StatusOK, metadata)
 	if err != nil {
-		slog.Error("TrackHandlers.GetTrackMeta, can't encode response", "err", err)
+		h.logger.Error("TrackHandlers.GetTrackMeta, can't encode response", "err", err)
 	}
 }
 
@@ -148,7 +148,7 @@ func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request) {
 	}
 	err = WriteJSON(w, http.StatusOK, tracks)
 	if err != nil {
-		slog.Error("can't encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -229,7 +229,7 @@ func (h TrackHandlers) serveTrack(
 }
 
 func (h TrackHandlers) handleTrackFileError(w http.ResponseWriter, msg string, err error) {
-	h.logger.Error(msg, "err", err)
+	h.logger.Info(msg, "err", err)
 	if errors.Is(err, service.ErrBadParams) {
 		_ = WriteError(w, http.StatusBadRequest, err)
 	} else if errors.Is(err, service.ErrPresetCantBeSelected) {
@@ -239,6 +239,7 @@ func (h TrackHandlers) handleTrackFileError(w http.ResponseWriter, msg string, e
 	} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
 		_ = WriteError(w, http.StatusNotFound, err)
 	} else {
+		h.logger.Error("unknown error type", "err", err)
 		_ = WriteError(w, http.StatusInternalServerError, err)
 	}
 }

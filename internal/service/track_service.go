@@ -145,13 +145,12 @@ func (s *TrackService) UploadTrack(
 		ChecksumSHA256: checksum,
 	})
 	if err != nil {
-		s.logger.Warn("error mapping should be more precise")
-		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		return ret, fmt.Errorf("can't put track in storage; %w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	err = s.repo.AddToTranscodingQueue(ctx, track.ID, tmpFname)
 	if err != nil {
-		return ret, fmt.Errorf("%w caused by: %w", ErrUnknownDBError, err)
+		return ret, fmt.Errorf("can't add track to transcoding queue; %w caused by: %w", ErrUnknownDBError, err)
 	}
 
 	s.transcodingQueueSignal <- struct{}{}

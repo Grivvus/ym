@@ -52,11 +52,11 @@ func AvatarImageOptions() ImageOptions {
 	}
 }
 
-func ToWebp(r io.Reader) (io.ReadCloser, error) {
-	return ToWebpWithOptions(r, ArtworkImageOptions())
+func ToWebp(r io.Reader, logger *slog.Logger) (io.ReadCloser, error) {
+	return ToWebpWithOptions(r, ArtworkImageOptions(), logger)
 }
 
-func ToWebpWithOptions(r io.Reader, opts ImageOptions) (io.ReadCloser, error) {
+func ToWebpWithOptions(r io.Reader, opts ImageOptions, logger *slog.Logger) (io.ReadCloser, error) {
 	opts = opts.withDefaults()
 	data, err := readImagePayload(r, opts.MaxEncodedBytes)
 	if err != nil {
@@ -77,7 +77,7 @@ func ToWebpWithOptions(r io.Reader, opts ImageOptions) (io.ReadCloser, error) {
 	}
 	img = transformImage(img, opts)
 
-	slog.Info(
+	logger.Info(
 		"image format detected",
 		"format", formatFound,
 		"input_width", cfg.Width,

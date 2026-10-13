@@ -29,7 +29,7 @@ stop-docker:
 .PHONY: run-kube
 run-kube:
 	kubectl apply -f kube/
-	helm install vls vm/victoria-logs -n default -f helm/victorialogs-values.yml
+	helm install vls vm/victoria-logs-single -n default -f helm/victorialogs-values.yml
 	helm install vector vector/vector -n default -f helm/vector-values.yml
 
 serve: build
