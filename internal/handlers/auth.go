@@ -21,8 +21,9 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	var user api.UserAuth
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		_ = WriteError(
-			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		MustWriteError(
+			w, http.StatusBadRequest,
+			fmt.Errorf("invalid body: %w", err), h.logger,
 		)
 		return
 	}
@@ -30,24 +31,26 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.authService.Login(r.Context(), user)
 	if err != nil {
 		if errors.Is(err, service.ErrUnauthorized) {
-			_ = WriteError(
-				w, http.StatusUnauthorized, fmt.Errorf("invalid credentials"),
+			MustWriteError(
+				w, http.StatusUnauthorized,
+				fmt.Errorf("invalid credentials"), h.logger,
 			)
 			return
 		}
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = WriteError(
-				w, http.StatusUnauthorized, fmt.Errorf("invalid credentials"),
+			MustWriteError(
+				w, http.StatusUnauthorized,
+				fmt.Errorf("invalid credentials"), h.logger,
 			)
 			return
 		}
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 		return
 	}
 
 	err = WriteJSON(w, http.StatusOK, resp)
 	if err != nil {
-		h.logger.Error("failed to encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -55,8 +58,9 @@ func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 	var user api.UserAuth
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		_ = WriteError(
-			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		MustWriteError(
+			w, http.StatusBadRequest,
+			fmt.Errorf("invalid body: %w", err), h.logger,
 		)
 		return
 	}
@@ -64,16 +68,19 @@ func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.authService.Register(r.Context(), user)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
-			_ = WriteError(w, http.StatusConflict, fmt.Errorf("user already exists"))
+			MustWriteError(
+				w, http.StatusConflict,
+				fmt.Errorf("user already exists"), h.logger,
+			)
 		} else {
-			_ = WriteError(w, http.StatusInternalServerError, err)
+			MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 		}
 		return
 	}
 
 	err = WriteJSON(w, http.StatusCreated, resp)
 	if err != nil {
-		h.logger.Error("failed to encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -81,8 +88,9 @@ func (h AuthHandlers) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	var req api.UpdateTokenRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		_ = WriteError(
-			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		MustWriteError(
+			w, http.StatusBadRequest,
+			fmt.Errorf("invalid body: %w", err), h.logger,
 		)
 		return
 	}
@@ -90,16 +98,19 @@ func (h AuthHandlers) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.authService.UpdateTokens(r.Context(), req.RefreshToken)
 	if err != nil {
 		if errors.Is(err, service.ErrUnauthorized) {
-			_ = WriteError(w, http.StatusUnauthorized, fmt.Errorf("invalid refresh token"))
+			MustWriteError(
+				w, http.StatusUnauthorized,
+				fmt.Errorf("invalid refresh token"), h.logger,
+			)
 		} else {
-			_ = WriteError(w, http.StatusInternalServerError, err)
+			MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 		}
 		return
 	}
 
 	err = WriteJSON(w, http.StatusOK, resp)
 	if err != nil {
-		h.logger.Error("failed to encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -107,8 +118,9 @@ func (h AuthHandlers) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 	var req api.PasswordResetRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		_ = WriteError(
-			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		MustWriteError(
+			w, http.StatusBadRequest,
+			fmt.Errorf("invalid body: %w", err), h.logger,
 		)
 		return
 	}
@@ -117,11 +129,11 @@ func (h AuthHandlers) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrServiceUnavailable):
-			_ = WriteError(w, http.StatusServiceUnavailable, err)
+			MustWriteError(w, http.StatusServiceUnavailable, err, h.logger)
 		case errors.Is(err, service.ErrBadParams):
-			_ = WriteError(w, http.StatusBadRequest, err)
+			MustWriteError(w, http.StatusBadRequest, err, h.logger)
 		default:
-			_ = WriteError(w, http.StatusInternalServerError, err)
+			MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 		}
 		return
 	}
@@ -130,7 +142,7 @@ func (h AuthHandlers) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 		Msg: h.passwordResetService.AcceptedMessage(),
 	})
 	if err != nil {
-		h.logger.Error("failed to encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }
 
@@ -138,8 +150,9 @@ func (h AuthHandlers) ConfirmPasswordReset(w http.ResponseWriter, r *http.Reques
 	var req api.PasswordResetConfirmRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		_ = WriteError(
-			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		MustWriteError(
+			w, http.StatusBadRequest,
+			fmt.Errorf("invalid body: %w", err), h.logger,
 		)
 		return
 	}
@@ -148,11 +161,11 @@ func (h AuthHandlers) ConfirmPasswordReset(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrServiceUnavailable):
-			_ = WriteError(w, http.StatusServiceUnavailable, err)
+			MustWriteError(w, http.StatusServiceUnavailable, err, h.logger)
 		case errors.Is(err, service.ErrBadParams):
-			_ = WriteError(w, http.StatusBadRequest, err)
+			MustWriteError(w, http.StatusBadRequest, err, h.logger)
 		default:
-			_ = WriteError(w, http.StatusInternalServerError, err)
+			MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 		}
 		return
 	}
@@ -161,6 +174,6 @@ func (h AuthHandlers) ConfirmPasswordReset(w http.ResponseWriter, r *http.Reques
 		Msg: "password was successfully reset",
 	})
 	if err != nil {
-		h.logger.Error("failed to encode response", "err", err)
+		h.logger.Error("can't encode response", "err", err)
 	}
 }

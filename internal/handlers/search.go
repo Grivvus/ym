@@ -52,7 +52,7 @@ func (h SearchHandler) Search(w http.ResponseWriter, r *http.Request, params api
 
 	searchResult, err := h.service.Search(r.Context(), searchParams)
 	if err != nil {
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 		return
 	}
 

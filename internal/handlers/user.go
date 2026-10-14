@@ -19,9 +19,13 @@ type UserHandlers struct {
 func (u UserHandlers) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := u.userService.GetAllUsers(r.Context())
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, u.logger)
+		return
 	}
-	WriteJSON(w, http.StatusOK, users)
+	errSend := WriteJSON(w, http.StatusOK, users)
+	if errSend != nil {
+		u.logger.Error("can't encode response", "err", errSend)
+	}
 }
 
 func (u UserHandlers) GetUser(
@@ -33,9 +37,9 @@ func (u UserHandlers) GetUser(
 	user, err := u.userService.GetUser(r.Context(), userId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("can't find user with this id"))
+			MustWriteError(w, http.StatusBadRequest, fmt.Errorf("can't find user with this id"), u.logger)
 		} else {
-			_ = WriteError(w, http.StatusInternalServerError, err)
+			MustWriteError(w, http.StatusInternalServerError, err, u.logger)
 		}
 		return
 	}
@@ -50,9 +54,9 @@ func (u UserHandlers) GetSimpleUser(w http.ResponseWriter, r *http.Request, user
 	user, err := u.userService.GetUser(r.Context(), userId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("can't find user with this id"))
+			MustWriteError(w, http.StatusBadRequest, fmt.Errorf("can't find user with this id"), u.logger)
 		} else {
-			_ = WriteError(w, http.StatusInternalServerError, err)
+			MustWriteError(w, http.StatusInternalServerError, err, u.logger)
 		}
 		return
 	}
@@ -60,7 +64,10 @@ func (u UserHandlers) GetSimpleUser(w http.ResponseWriter, r *http.Request, user
 		Id:       userId,
 		Username: user.Username,
 	}
-	_ = WriteJSON(w, http.StatusOK, simpleUser)
+	errSend := WriteJSON(w, http.StatusOK, simpleUser)
+	if errSend != nil {
+		u.logger.Error("can't encode response", "err", errSend)
+	}
 }
 
 func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId int32) {
@@ -78,18 +85,18 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 	resp, err := u.userService.ChangeUser(r.Context(), userId, toUpdate)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = WriteError(w, http.StatusNotFound, fmt.Errorf("no such user"))
+			MustWriteError(w, http.StatusNotFound, fmt.Errorf("no such user"), u.logger)
 			return
 		}
 		if errors.Is(err, service.ErrBadParams) {
-			_ = WriteError(w, http.StatusBadRequest, err)
+			MustWriteError(w, http.StatusBadRequest, err, u.logger)
 			return
 		}
 		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
-			_ = WriteError(w, http.StatusConflict, fmt.Errorf("user already exists"))
+			MustWriteError(w, http.StatusConflict, fmt.Errorf("user already exists"), u.logger)
 			return
 		}
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, u.logger)
 		return
 	}
 
@@ -106,8 +113,9 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 	var updatePassword api.UserChangePassword
 	err := json.NewDecoder(r.Body).Decode(&updatePassword)
 	if err != nil {
-		_ = WriteError(
-			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
+		MustWriteError(
+			w, http.StatusBadRequest,
+			fmt.Errorf("invalid body: %w", err), u.logger,
 		)
 		return
 	}
@@ -115,14 +123,14 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 	if err != nil {
 		u.logger.Warn("can't change password", "err", err)
 		if errors.Is(err, service.ErrBadParams) {
-			_ = WriteError(w, http.StatusBadRequest, err)
+			MustWriteError(w, http.StatusBadRequest, err, u.logger)
 			return
 		}
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = WriteError(w, http.StatusNotFound, err)
+			MustWriteError(w, http.StatusNotFound, err, u.logger)
 			return
 		}
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, u.logger)
 		return
 	}
 }
@@ -134,14 +142,14 @@ func (u UserHandlers) UploadUserAvatar(w http.ResponseWriter, r *http.Request, u
 	err := u.userService.UploadAvatar(r.Context(), userId, r.Body)
 	if err != nil {
 		if errors.Is(err, service.ErrBadParams) {
-			_ = WriteError(w, http.StatusBadRequest, err)
+			MustWriteError(w, http.StatusBadRequest, err, u.logger)
 			return
 		}
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = WriteError(w, http.StatusNotFound, fmt.Errorf("no such user"))
+			MustWriteError(w, http.StatusNotFound, fmt.Errorf("no such user"), u.logger)
 			return
 		}
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, u.logger)
 		return
 	}
 	err = WriteJSON(w, http.StatusCreated, api.MessageResponse{Msg: "avatar was uploaded"})
@@ -154,16 +162,16 @@ func (u UserHandlers) GetUserAvatar(w http.ResponseWriter, r *http.Request, user
 	img, err := u.userService.GetAvatar(r.Context(), userId)
 	if err != nil {
 		if _, t := errors.AsType[service.ErrNotFound](err); t {
-			_ = WriteError(w, http.StatusNotFound, fmt.Errorf("user not found or no avatar"))
+			MustWriteError(w, http.StatusNotFound, fmt.Errorf("user not found or no avatar"), u.logger)
 		} else {
-			_ = WriteError(w, http.StatusInternalServerError, err)
+			MustWriteError(w, http.StatusInternalServerError, err, u.logger)
 		}
 		return
 	}
 	w.Header().Set("Content-Type", "image/webp")
 	_, err = w.Write(img)
 	if err != nil {
-		u.logger.Error("can't write response")
+		u.logger.Error("can't write response", "err", err)
 	}
 }
 
@@ -173,7 +181,7 @@ func (u UserHandlers) DeleteUserAvatar(w http.ResponseWriter, r *http.Request, u
 	}
 	err := u.userService.DeleteAvatar(r.Context(), userId)
 	if err != nil {
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, u.logger)
 		return
 	}
 	err = WriteJSON(w, http.StatusOK, api.MessageResponse{Msg: "avatar was deleted"})

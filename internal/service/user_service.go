@@ -71,7 +71,6 @@ func (u *UserService) GetUser(
 
 	user, err := u.repo.GetUserByID(ctx, userID)
 	if err != nil {
-		u.logger.Error("Get-userByID", "err", err)
 		if errors.Is(err, repository.ErrNotFound) {
 			return ret, NewErrNotFound("user", userID)
 		}

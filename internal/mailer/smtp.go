@@ -35,7 +35,7 @@ func NewSMTPMailer(cfg utils.SMTPConfig, logger *slog.Logger) (*SMTPMailer, erro
 func (m SMTPMailer) SendPasswordResetCode(
 	ctx context.Context, recipient string, code string, ttl time.Duration,
 ) error {
-	m.logger.Info("send password reset code")
+	m.logger.Debug("send password reset code")
 	message := buildMessage(
 		formatAddress(m.cfg.FromName, m.cfg.FromAddress),
 		recipient,

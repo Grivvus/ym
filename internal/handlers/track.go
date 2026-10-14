@@ -28,20 +28,20 @@ func (h TrackHandlers) UploadTrack(w http.ResponseWriter, r *http.Request) {
 	}
 	uploadParams, header, err := h.parsePostParams(r, userID)
 	if err != nil {
-		_ = WriteError(w, http.StatusBadRequest, err)
+		MustWriteError(w, http.StatusBadRequest, err, h.logger)
 		return
 	}
 	resp, err := h.trackService.UploadTrack(r.Context(), uploadParams, header)
 	if err != nil {
 		if errors.Is(err, service.ErrBadParams) {
-			_ = WriteError(w, http.StatusBadRequest, err)
+			MustWriteError(w, http.StatusBadRequest, err, h.logger)
 			return
 		}
 		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
-			_ = WriteError(w, http.StatusConflict, err)
+			MustWriteError(w, http.StatusConflict, err, h.logger)
 			return
 		}
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 		return
 	}
 	err = WriteJSON(w, http.StatusAccepted, resp)
@@ -58,15 +58,15 @@ func (h TrackHandlers) DeleteTrack(w http.ResponseWriter, r *http.Request, track
 	err := h.trackService.DeleteTrack(r.Context(), userID, trackId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = WriteError(w, http.StatusNotFound, err)
+			MustWriteError(w, http.StatusNotFound, err, h.logger)
 			return
 		}
 		if errors.Is(err, service.ErrUnauthorized) ||
 			errors.Is(err, service.ErrSuperuserRequired) {
-			_ = WriteError(w, http.StatusForbidden, err)
+			MustWriteError(w, http.StatusForbidden, err, h.logger)
 			return
 		}
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 		return
 	}
 }
@@ -79,14 +79,14 @@ func (h TrackHandlers) GetTrackMeta(w http.ResponseWriter, r *http.Request, trac
 	metadata, err := h.trackService.GetUserMeta(r.Context(), userID, trackId)
 	if err != nil {
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = WriteError(w, http.StatusNotFound, err)
+			MustWriteError(w, http.StatusNotFound, err, h.logger)
 			return
 		}
 		if errors.Is(err, service.ErrUnauthorized) {
-			_ = WriteError(w, http.StatusForbidden, err)
+			MustWriteError(w, http.StatusForbidden, err, h.logger)
 			return
 		}
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 		return
 	}
 	err = WriteJSON(w, http.StatusOK, metadata)
@@ -103,33 +103,33 @@ func (h TrackHandlers) UpdateTrack(w http.ResponseWriter, r *http.Request, track
 
 	var update api.TrackUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
-		_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err))
+		MustWriteError(w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err), h.logger)
 		return
 	}
 
 	metadata, err := h.trackService.UpdateTrack(r.Context(), userID, trackId, update)
 	if err != nil {
 		if errors.Is(err, service.ErrBadParams) {
-			_ = WriteError(w, http.StatusBadRequest, err)
+			MustWriteError(w, http.StatusBadRequest, err, h.logger)
 			return
 		}
 		if errors.Is(err, service.ErrUnauthorized) {
-			_ = WriteError(w, http.StatusUnauthorized, err)
+			MustWriteError(w, http.StatusUnauthorized, err, h.logger)
 			return
 		}
 		if errors.Is(err, service.ErrSuperuserRequired) {
-			_ = WriteError(w, http.StatusForbidden, err)
+			MustWriteError(w, http.StatusForbidden, err, h.logger)
 			return
 		}
 		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			_ = WriteError(w, http.StatusNotFound, err)
+			MustWriteError(w, http.StatusNotFound, err, h.logger)
 			return
 		}
 		if _, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
-			_ = WriteError(w, http.StatusConflict, err)
+			MustWriteError(w, http.StatusConflict, err, h.logger)
 			return
 		}
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h TrackHandlers) GetTracks(w http.ResponseWriter, r *http.Request) {
 	userID, _ := requireAuthenticatedUserID(w, r)
 	tracks, err := h.trackService.GetUserTracks(r.Context(), userID)
 	if err != nil {
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 		return
 	}
 	err = WriteJSON(w, http.StatusOK, tracks)
@@ -231,16 +231,19 @@ func (h TrackHandlers) serveTrack(
 func (h TrackHandlers) handleTrackFileError(w http.ResponseWriter, msg string, err error) {
 	h.logger.Info(msg, "err", err)
 	if errors.Is(err, service.ErrBadParams) {
-		_ = WriteError(w, http.StatusBadRequest, err)
+		MustWriteError(w, http.StatusBadRequest, err, h.logger)
 	} else if errors.Is(err, service.ErrPresetCantBeSelected) {
-		_ = WriteError(w, http.StatusBadRequest, fmt.Errorf("%w. Probably wrong name", err))
+		MustWriteError(
+			w, http.StatusBadRequest,
+			fmt.Errorf("%w. Probably wrong name", err), h.logger,
+		)
 	} else if errors.Is(err, service.ErrUnauthorized) {
-		_ = WriteError(w, http.StatusForbidden, err)
+		MustWriteError(w, http.StatusForbidden, err, h.logger)
 	} else if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-		_ = WriteError(w, http.StatusNotFound, err)
+		MustWriteError(w, http.StatusNotFound, err, h.logger)
 	} else {
 		h.logger.Error("unknown error type", "err", err)
-		_ = WriteError(w, http.StatusInternalServerError, err)
+		MustWriteError(w, http.StatusInternalServerError, err, h.logger)
 	}
 }
 
