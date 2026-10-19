@@ -10,3 +10,7 @@ spec:
     - name: db
       port: 5432
       targetPort: 5432
+
+    - name: exporter
+      port: 9187
+      targetPort: 9187
