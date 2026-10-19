@@ -15,6 +15,7 @@ import (
 	"github.com/Grivvus/ym/internal/db"
 	"github.com/Grivvus/ym/internal/handlers"
 	"github.com/Grivvus/ym/internal/mailer"
+	"github.com/Grivvus/ym/internal/metrics"
 	"github.com/Grivvus/ym/internal/repository"
 	"github.com/Grivvus/ym/internal/service"
 	"github.com/Grivvus/ym/internal/storage"
@@ -126,6 +127,8 @@ func main() {
 	passwordResetRepo := repository.NewPasswordResetRepository(pool)
 	searchRepo := repository.NewSearchRepository(pool)
 
+	metricsRepo := repository.NewMetricsRepository(pool)
+
 	authService := service.NewAuthService(authRepo, logger, cfg)
 	passwordResetService := service.NewPasswordResetService(
 		passwordResetRepo, logger, passwordResetMailer, passwordResetCfg,
@@ -159,11 +162,17 @@ func main() {
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
 
+	appmetrics := metrics.New(logger, metricsRepo)
+	appmetrics.Register(reg)
+
+	go appmetrics.Job(ctx, time.Duration(10*time.Second))
+
 	r := chi.NewMux()
 
 	r.Use(utils.LoggerMiddleware(logger))
 	r.Use(middleware.Recoverer)
 	r.Use(handlers.AuthMiddleware(logger, []byte(cfg.JWTSecret)))
+	r.Use(appmetrics.Middleware)
 
 	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{
 		EnableOpenMetrics: true,
