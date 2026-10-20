@@ -70,10 +70,7 @@ func (repo *PostgresAuthRepository) CreateUserWithInitialRole(
 
 		return createdUser, nil
 	})
-	if err != nil {
-		return AuthUser{}, wrapDBError(err)
-	}
-	return authUserFromDBUser(createdUser), nil
+	return authUserFromDBUser(createdUser), wrapDBError(err)
 }
 
 func (repo *PostgresAuthRepository) GetUserByUsername(

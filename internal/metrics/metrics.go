@@ -22,7 +22,7 @@ type metrics struct {
 
 	TotalUsersRegistered        prometheus.Gauge
 	TracksUploaded              prometheus.Gauge
-	CurrentTranscodingQueueSize prometheus.Histogram
+	CurrentTranscodingQueueSize prometheus.Gauge
 	DailyActiveUsers            prometheus.Counter
 }
 
@@ -62,7 +62,7 @@ func New(logger *slog.Logger, repo repository.MetricsRepository) MetricsManager 
 				Namespace: "ym",
 				Name:      "total_tracks_uploaded",
 			}),
-			CurrentTranscodingQueueSize: prometheus.NewHistogram(prometheus.HistogramOpts{
+			CurrentTranscodingQueueSize: prometheus.NewGauge(prometheus.GaugeOpts{
 				Namespace: "ym",
 				Name:      "current_transcoding_queue_size",
 			}),
@@ -75,16 +75,19 @@ func New(logger *slog.Logger, repo repository.MetricsRepository) MetricsManager 
 }
 
 func (m *MetricsManager) Register(registry *prometheus.Registry) error {
-	err1 := registry.Register(m.values.HTTPRequestDuration)
-	err2 := registry.Register(m.values.HTTPRequestsTotal)
-	if err1 != nil || err2 != nil {
-		var err error
-		if err1 != nil {
-			errors.Join(err, err1)
+	errs := make([]error, 0, 10)
+	errs = append(errs, registry.Register(m.values.HTTPRequestDuration))
+	errs = append(errs, registry.Register(m.values.HTTPRequestsTotal))
+	errs = append(errs, registry.Register(m.values.TotalUsersRegistered))
+	errs = append(errs, registry.Register(m.values.TracksUploaded))
+	errs = append(errs, registry.Register(m.values.CurrentTranscodingQueueSize))
+	var err error
+	for _, errn := range errs {
+		if errn != nil {
+			errors.Join(err, errn)
 		}
-		if err2 != nil {
-			errors.Join(err, err2)
-		}
+	}
+	if err != nil {
 		return fmt.Errorf("%w: %w", ErrCantRegisterCollector, err)
 	}
 	return nil
@@ -149,7 +152,7 @@ func (m *MetricsManager) collectTranscodingQueueSize(ctx context.Context, wg *sy
 		)
 		return
 	}
-	m.values.CurrentTranscodingQueueSize.Observe(float64(size))
+	m.values.CurrentTranscodingQueueSize.Set(float64(size))
 }
 
 func (m *MetricsManager) collectUploadedTracksCnt(ctx context.Context, wg *sync.WaitGroup) {
