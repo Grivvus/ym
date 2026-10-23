@@ -28,10 +28,8 @@ customConfig:
 
   sinks:
     vlogs:
-      inputs:
-        - kubernetes_logs
-      type: http
       inputs: ["parse_app_json"]
+      type: http
       uri: http://vls-victoria-logs-single-server:9428/insert/jsonline
       encoding:
         codec: json
