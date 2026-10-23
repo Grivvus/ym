@@ -12,6 +12,7 @@ import (
 
 	"github.com/Grivvus/ym/internal/repository"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/shirou/gopsutil/v4/disk"
 )
 
 var ErrCantRegisterCollector = errors.New("can't register collector")
@@ -19,6 +20,7 @@ var ErrCantRegisterCollector = errors.New("can't register collector")
 type metrics struct {
 	HTTPRequestsTotal   *prometheus.CounterVec
 	HTTPRequestDuration *prometheus.HistogramVec
+	DiskUsage           prometheus.Gauge
 
 	TotalUsersRegistered        prometheus.Gauge
 	TracksUploaded              prometheus.Gauge
@@ -54,6 +56,10 @@ func New(logger *slog.Logger, repo repository.MetricsRepository) MetricsManager 
 				},
 				[]string{"method", "route", "status"},
 			),
+			DiskUsage: prometheus.NewGauge(prometheus.GaugeOpts{
+				Namespace: "ym",
+				Name:      "disk_usage_percentage",
+			}),
 			TotalUsersRegistered: prometheus.NewGauge(prometheus.GaugeOpts{
 				Namespace: "ym",
 				Name:      "total_users_registered",
@@ -81,6 +87,7 @@ func (m *MetricsManager) Register(registry *prometheus.Registry) error {
 	errs = append(errs, registry.Register(m.values.TotalUsersRegistered))
 	errs = append(errs, registry.Register(m.values.TracksUploaded))
 	errs = append(errs, registry.Register(m.values.CurrentTranscodingQueueSize))
+	errs = append(errs, registry.Register(m.values.DiskUsage))
 	var err error
 	for _, errn := range errs {
 		if errn != nil {
@@ -134,6 +141,24 @@ func (m *MetricsManager) Job(ctx context.Context, period time.Duration) {
 				go m.collectUploadedTracksCnt(nctx, &wg)
 				wg.Wait()
 			}()
+		}
+		time.Sleep(period)
+	}
+}
+
+func (m *MetricsManager) DiskUsageJob(ctx context.Context, period time.Duration) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			du, err := disk.Usage("/")
+			if err != nil {
+				m.logger.Warn("can't collect disk usage statistic", "err", err)
+				break
+			}
+			m.values.DiskUsage.Set(du.UsedPercent)
+
 		}
 		time.Sleep(period)
 	}

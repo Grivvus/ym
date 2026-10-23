@@ -166,6 +166,7 @@ func main() {
 	appmetrics.Register(reg)
 
 	go appmetrics.Job(ctx, time.Duration(10*time.Second))
+	go appmetrics.DiskUsageJob(ctx, time.Duration(60*time.Second))
 
 	r := chi.NewMux()
 
