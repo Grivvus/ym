@@ -1,4 +1,4 @@
-FROM golang:1.26 AS builder
+FROM golang:1.27 AS builder
 
 WORKDIR /app
 RUN apt-get update && apt-get install -y
@@ -12,7 +12,7 @@ COPY . .
 
 RUN GOOS=linux go build -o server ./cmd/server/
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 RUN apt-get update && apt-get install ffmpeg -y
 
