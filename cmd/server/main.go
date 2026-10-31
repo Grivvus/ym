@@ -174,6 +174,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(handlers.AuthMiddleware(logger, []byte(cfg.JWTSecret)))
 	r.Use(appmetrics.Middleware)
+	// r.Use(utils.FailingMiddleware(logger, 0.01))
 
 	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{
 		EnableOpenMetrics: true,

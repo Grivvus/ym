@@ -24,7 +24,7 @@ type metrics struct {
 
 	TotalUsersRegistered        prometheus.Gauge
 	TracksUploaded              prometheus.Gauge
-	CurrentTranscodingQueueSize prometheus.Gauge
+	CurrentTranscodingQueueSize *prometheus.GaugeVec
 	DailyActiveUsers            prometheus.Counter
 }
 
@@ -68,10 +68,10 @@ func New(logger *slog.Logger, repo repository.MetricsRepository) MetricsManager 
 				Namespace: "ym",
 				Name:      "total_tracks_uploaded",
 			}),
-			CurrentTranscodingQueueSize: prometheus.NewGauge(prometheus.GaugeOpts{
+			CurrentTranscodingQueueSize: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: "ym",
 				Name:      "current_transcoding_queue_size",
-			}),
+			}, []string{"type"}),
 			DailyActiveUsers: prometheus.NewCounter(prometheus.CounterOpts{
 				Namespace: "ym",
 				Name:      "daily_active_users",
@@ -164,11 +164,10 @@ func (m *MetricsManager) DiskUsageJob(ctx context.Context, period time.Duration)
 	}
 }
 
-// we could try to make one *generic* function
-// that can collect all metrics
 func (m *MetricsManager) collectTranscodingQueueSize(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	size, err := m.repo.CurrentTranscodingQueueSize(ctx)
+	failedSize, err2 := m.repo.CurrentTranscodingQueueFailed(ctx)
 	if err != nil {
 		m.logger.Warn(
 			"can't collect metric",
@@ -177,7 +176,15 @@ func (m *MetricsManager) collectTranscodingQueueSize(ctx context.Context, wg *sy
 		)
 		return
 	}
-	m.values.CurrentTranscodingQueueSize.Set(float64(size))
+	if err2 != nil {
+		m.logger.Warn(
+			"can't collect metric",
+			"metrics_name", "CurrentTranscodingQueueSize(Failed)",
+			"err", err2,
+		)
+	}
+	m.values.CurrentTranscodingQueueSize.WithLabelValues("active").Set(float64(size))
+	m.values.CurrentTranscodingQueueSize.WithLabelValues("failed").Set(float64(failedSize))
 }
 
 func (m *MetricsManager) collectUploadedTracksCnt(ctx context.Context, wg *sync.WaitGroup) {
