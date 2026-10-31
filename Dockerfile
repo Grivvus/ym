@@ -1,7 +1,7 @@
 FROM golang:1.27 AS builder
 
 WORKDIR /app
-RUN apt-get update && apt-get install -y
+RUN apt-get update && apt-get install -y make
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -10,7 +10,7 @@ COPY api/openapi.yml /app/api/openapi.yml
 
 COPY . .
 
-RUN GOOS=linux go build -o server ./cmd/server/
+RUN make build
 
 FROM debian:trixie-slim
 

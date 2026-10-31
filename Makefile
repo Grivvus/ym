@@ -15,10 +15,10 @@ generate: generate_sqlc generate_api
 	@echo "Generate everything"
 
 .PHONY: build
-build: migration_up generate
+build: generate
 	@echo "Building server"
 	@mkdir -p .bin
-	@go build -o ./bin/${EXECUTABLE_NAME} ./cmd/server
+	@go build -o ${EXECUTABLE_NAME} ./cmd/server
 
 .PHONY: run-docker
 run-docker:
@@ -64,11 +64,6 @@ test_unit:
 lint:
 	@echo "starting golangci-lint in docker"
 	@docker run -t --rm -v $$(pwd):/app -w /app golangci/golangci-lint:v2.11.3 golangci-lint run
-
-.PHONY: clean
-clean:
-	@echo "deleting binaries"
-	@rm ./bin/*
 
 .PHONY: migration_up
 migration_up:
