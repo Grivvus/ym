@@ -1,0 +1,806 @@
+{
+  "apiVersion": "dashboard.grafana.app/v1",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "ym-service-http-business-metrics",
+    "labels": {
+      "app": "ym-service"
+    }
+  },
+  "spec": {
+    "title": "YM Service HTTP & Business Metrics",
+    "uid": "ym-service-http-business-metrics",
+    "schemaVersion": 41,
+    "version": 1,
+    "editable": true,
+    "preload": false,
+    "refresh": "30s",
+    "timezone": "browser",
+    "weekStart": "",
+    "tags": ["ym", "go", "http", "business"],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "links": [],
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 1,
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+          "hide": 0,
+          "includeAll": false,
+          "label": "Datasource",
+          "multi": false,
+          "name": "datasource",
+          "options": [],
+          "query": "prometheus",
+          "refresh": 1,
+          "regex": "",
+          "type": "datasource"
+        },
+        {
+          "current": { "selected": false, "text": "ym-service", "value": "ym-service" },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "definition": "label_values(up, job)",
+          "hide": 0,
+          "includeAll": false,
+          "label": "Job",
+          "multi": false,
+          "name": "job",
+          "options": [],
+          "query": {
+            "query": "label_values(up, job)",
+            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          },
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        },
+        {
+          "allValue": ".*",
+          "current": { "selected": true, "text": "All", "value": "$__all" },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "definition": "label_values(up{job=\"$job\"}, instance)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "Instance",
+          "multi": true,
+          "name": "instance",
+          "options": [],
+          "query": {
+            "query": "label_values(up{job=\"$job\"}, instance)",
+            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          },
+          "refresh": 1,
+          "regex": "",
+          "sort": 1,
+          "type": "query"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "type": "stat",
+        "title": "Request Rate (req/s)",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [{ "color": "green", "value": null }]
+            },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "sum(rate(ym_http_requests_total{job=\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
+            "legendFormat": "req/s",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "type": "stat",
+        "title": "Error Rate (5xx)",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 0.01 },
+                { "color": "red", "value": 0.05 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "sum(rate(ym_http_requests_total{job=\"$job\", instance=~\"$instance\", status=~\"5..\"}[$__rate_interval])) / clamp_min(sum(rate(ym_http_requests_total{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])), 1e-9)",
+            "legendFormat": "5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "type": "stat",
+        "title": "p95 Latency",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 0.5 },
+                { "color": "red", "value": 1 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.95, sum(rate(ym_http_request_duration_s_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le))",
+            "legendFormat": "p95",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "type": "stat",
+        "title": "Total Users Registered",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [{ "color": "green", "value": null }]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "sum(ym_total_users_registered{job=\"$job\", instance=~\"$instance\"})",
+            "legendFormat": "users",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "type": "stat",
+        "title": "Tracks Uploaded",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [{ "color": "green", "value": null }]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "sum(ym_total_tracks_uploaded{job=\"$job\", instance=~\"$instance\"})",
+            "legendFormat": "tracks",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "type": "stat",
+        "title": "Transcoding Queue Size",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 10 },
+                { "color": "red", "value": 50 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "sum(ym_current_transcoding_queue_size{job=\"$job\", instance=~\"$instance\"})",
+            "legendFormat": "queue",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+
+      {
+        "id": 10,
+        "type": "timeseries",
+        "title": "HTTP Requests by Status Class",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": { "type": "linear" },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" },
+              "thresholdsStyle": { "mode": "off" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [{ "color": "green", "value": null }]
+            },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "calcs": ["lastNotNull", "max"],
+            "displayMode": "table",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "sum by (status) (rate(ym_http_requests_total{job=\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
+            "legendFormat": "{{status}}",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "type": "timeseries",
+        "title": "HTTP Requests by Method",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": { "type": "linear" },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" },
+              "thresholdsStyle": { "mode": "off" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [{ "color": "green", "value": null }]
+            },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "calcs": ["lastNotNull", "max"],
+            "displayMode": "table",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "sum by (method) (rate(ym_http_requests_total{job=\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
+            "legendFormat": "{{method}}",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "type": "timeseries",
+        "title": "HTTP Latency Quantiles",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": { "type": "linear" },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" },
+              "thresholdsStyle": { "mode": "off" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [{ "color": "green", "value": null }]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "calcs": ["lastNotNull", "max"],
+            "displayMode": "table",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.50, sum(rate(ym_http_request_duration_s_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le))",
+            "legendFormat": "p50",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.90, sum(rate(ym_http_request_duration_s_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le))",
+            "legendFormat": "p90",
+            "range": true,
+            "refId": "B"
+          },
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.95, sum(rate(ym_http_request_duration_s_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le))",
+            "legendFormat": "p95",
+            "range": true,
+            "refId": "C"
+          },
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(ym_http_request_duration_s_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le))",
+            "legendFormat": "p99",
+            "range": true,
+            "refId": "D"
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "type": "timeseries",
+        "title": "HTTP Latency by Method (p95)",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": { "type": "linear" },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" },
+              "thresholdsStyle": { "mode": "off" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [{ "color": "green", "value": null }]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "calcs": ["lastNotNull", "max"],
+            "displayMode": "table",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.95, sum by (le, method) (rate(ym_http_request_duration_s_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
+            "legendFormat": "{{method}} p95",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "type": "timeseries",
+        "title": "Transcoding Queue Size",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 15,
+              "gradientMode": "opacity",
+              "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": { "type": "linear" },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" },
+              "thresholdsStyle": { "mode": "off" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [{ "color": "green", "value": null }]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "calcs": ["lastNotNull", "max"],
+            "displayMode": "table",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "sum by (queue) (ym_current_transcoding_queue_size{job=\"$job\", instance=~\"$instance\"})",
+            "legendFormat": "{{queue}}",
+            "range": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "type": "timeseries",
+        "title": "Registrations & Uploads (Growth)",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": { "type": "linear" },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" },
+              "thresholdsStyle": { "mode": "off" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [{ "color": "green", "value": null }]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "calcs": ["lastNotNull", "max"],
+            "displayMode": "table",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "sum(ym_total_users_registered{job=\"$job\", instance=~\"$instance\"})",
+            "legendFormat": "users registered",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "sum(ym_total_tracks_uploaded{job=\"$job\", instance=~\"$instance\"})",
+            "legendFormat": "tracks uploaded",
+            "range": true,
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "type": "table",
+        "title": "HTTP Endpoints — Top by Requests",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+        "pluginVersion": "13.0.0",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "custom": {
+              "align": "auto",
+              "cellOptions": { "type": "auto" },
+              "inspect": false
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [{ "color": "green", "value": null }]
+            }
+          },
+          "overrides": [
+            {
+              "matcher": { "id": "byName", "options": "req/s" },
+              "properties": [
+                { "id": "unit", "value": "reqps" },
+                { "id": "decimals", "value": 2 }
+              ]
+            },
+            {
+              "matcher": { "id": "byName", "options": "p95 (s)" },
+              "properties": [
+                { "id": "unit", "value": "s" },
+                { "id": "decimals", "value": 3 }
+              ]
+            }
+          ]
+        },
+        "options": {
+          "showHeader": true,
+          "cellHeight": "sm",
+          "footer": { "show": false, "reducer": ["sum"], "countRows": false, "fields": "" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "expr": "topk(10, sum by (method, status) (rate(ym_http_requests_total{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
+            "format": "table",
+            "instant": true,
+            "legendFormat": "",
+            "range": false,
+            "refId": "A"
+          }
+        ]
+      }
+    ]
+  }
+}

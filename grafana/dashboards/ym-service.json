@@ -1,0 +1,196 @@
+{
+  "apiVersion": "dashboard.grafana.app/v1",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "ym-service",
+    "namespace": "default"
+  },
+  "spec": {
+    "uid": "ym-service",
+    "title": "ym service metrics",
+    "timezone": "browser",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "5s",
+    "panels": [
+      {
+        "type": "timeseries",
+        "title": "Goroutines",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "Prometheus" },
+            "expr": "go_goroutines{job=\"ym-service\"}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "Allocated memory",
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+        "fieldConfig": {
+          "defaults": { "unit": "bytes" },
+          "overrides": []
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "Prometheus" },
+            "expr": "go_memstats_alloc_bytes{job=\"ym-service\"}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "HTTP RPS",
+        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+        "fieldConfig": {
+          "defaults": { "unit": "reqps" },
+          "overrides": []
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "Prometheus" },
+            "expr": "sum(rate(ym_http_requests_total{job=\"ym-service\"}[5m]))",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "HTTP Error Rate",
+        "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+        "fieldConfig": {
+          "defaults": { "unit": "percentunit" },
+          "overrides": []
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "Prometheus" },
+            "expr": "sum(rate(ym_http_requests_total{job=\"ym-service\", status=~\"5..\"}[5m])) / sum(rate(ym_http_requests_total{job=\"ym-service\"}[5m]))",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "HTTP p95 Latency",
+        "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+        "fieldConfig": {
+          "defaults": { "unit": "s" },
+          "overrides": []
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "Prometheus" },
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(ym_http_request_duration_s_bucket{job=\"ym-service\"}[5m])))",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "HTTP RPS by Route",
+        "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+        "fieldConfig": {
+          "defaults": { "unit": "reqps" },
+          "overrides": []
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "Prometheus" },
+            "expr": "sum by (method, route) (rate(ym_http_requests_total{job=\"ym-service\"}[5m]))",
+            "legendFormat": "{{method}} {{route}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "HTTP p95 Latency by Route",
+        "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+        "fieldConfig": {
+          "defaults": { "unit": "s" },
+          "overrides": []
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "Prometheus" },
+            "expr": "histogram_quantile(0.95, sum by (method, route, le) (rate(ym_http_request_duration_s_bucket{job=\"ym-service\"}[5m])))",
+            "legendFormat": "{{method}} {{route}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "HTTP Error Rate by Route",
+        "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+        "fieldConfig": {
+          "defaults": { "unit": "percentunit" },
+          "overrides": []
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "Prometheus" },
+            "expr": "sum by (method, route) (rate(ym_http_requests_total{job=\"ym-service\", status=~\"5..\"}[5m])) / sum by (method, route) (rate(ym_http_requests_total{job=\"ym-service\"}[5m]))",
+            "legendFormat": "{{method}} {{route}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "total track uploaded",
+        "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
+        "fieldConfig": {
+          "defaults": { "unit": "percentunit" },
+          "overrides": []
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "Prometheus" },
+            "expr": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "total users registered",
+        "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 },
+        "fieldConfig": {
+          "defaults": { "unit": "percentunit" },
+          "overrides": []
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "Prometheus" },
+            "expr": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "transcoding queue size",
+        "gridPos": { "x": 0, "y": 40, "w": 12, "h": 8 },
+        "fieldConfig": {
+          "defaults": { "unit": "percentunit" },
+          "overrides": []
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "Prometheus" },
+            "expr": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ]
+      }
+    ]
+  }
+}
