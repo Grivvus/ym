@@ -51,7 +51,7 @@ services:
     restart: no
 
   storage:
-    image: minio/minio
+    image: pgsty/silo:RELEASE.2026-10-26T00-00-00Z-amd64
     container_name: minio_ym
     profiles: [local-storage]
     ports:

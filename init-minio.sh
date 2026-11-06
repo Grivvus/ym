@@ -9,6 +9,7 @@ MC_ALIAS="myminio"
 MC_ENDPOINT="http://storage:9000"
 APP_USER="goclient"
 SERVICE_NAME="app-service"
+alias mc="mcli"
 
 ROOT_USER="${MINIO_ROOT_USER}"
 ROOT_PASS="${MINIO_ROOT_PASSWORD}"
