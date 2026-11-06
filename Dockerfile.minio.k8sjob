@@ -1,6 +1,6 @@
 FROM alpine:3.24
 RUN apk add --no-cache curl ca-certificates jq
-RUN wget -qO /usr/local/bin/mc https://dl.min.io/aistor/mc/release/linux-amd64/mc && chmod +x /usr/local/bin/mc
+RUN wget -qO /opt/mc.apk https://github.com/pgsty/mc/releases/download/RELEASE.2026-10-26T00-00-00Z/mcli_20261026000000.0.0_x86_64.apk && apk add --allow-untrusted /opt/mc.apk
 WORKDIR /workdir
 COPY init-minio-k8.sh /workdir/init-minio-k8.sh
 ENTRYPOINT ["/bin/sh","-c","/workdir/init-minio-k8.sh"]

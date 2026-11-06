@@ -8,6 +8,8 @@ MC_ENDPOINT="${S3_ENDPOINT_FULL}"
 APP_USER="goclient"
 SERVICE_NAME="app-service"
 
+alias mc="mcli"
+
 ROOT_USER="${MINIO_ROOT_USER}"
 ROOT_PASS="${MINIO_ROOT_PASSWORD}"
 
