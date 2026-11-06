@@ -12,7 +12,7 @@ COPY . .
 
 RUN make build
 
-FROM debian:trixie-slim
+FROM debian:13-slim
 
 RUN apt-get update && apt-get install ffmpeg -y
 

@@ -21,12 +21,12 @@ The development compose file uses bind-mounted local directories for PostgreSQL 
 
 4. Build and run Docker containers:
 ```bash
-docker compose -f compose.dev.yml --profile local-storage up --build
+docker compose -f compose.yml --profile local-storage up --build
 ```
 
 5. To stop all containers:
 ```bash
-docker compose -f compose.dev.yml --profile local-storage stop
+docker compose -f compose.yml --profile local-storage stop
 ```
 
 
