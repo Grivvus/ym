@@ -116,16 +116,8 @@ services:
 volumes:
   minio_data:
     driver: local
-    driver_opts:
-      type: none
-      device: /home/grivvus/docker_volumes/minio
-      o: bind
   postgres_volume:
     driver: local
-    driver_opts:
-      type: none
-      device: /home/grivvus/docker_volumes/postgres/ym
-      o: bind
 
   prometheus-data:
     driver: local
