@@ -7,18 +7,23 @@ import (
 	"image/color"
 	"image/png"
 	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func testLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
+}
+
 func TestToWebpWithOptionsResizesArtwork(t *testing.T) {
 	t.Parallel()
 
 	src := testPNG(t, 2400, 1200)
 
-	rc, err := ToWebpWithOptions(bytes.NewReader(src), ArtworkImageOptions())
+	rc, err := ToWebpWithOptions(bytes.NewReader(src), ArtworkImageOptions(), testLogger())
 	require.NoError(t, err)
 
 	cfg := decodeWebPConfig(t, rc)
@@ -31,7 +36,7 @@ func TestToWebpWithOptionsCropsAvatarToSquare(t *testing.T) {
 
 	src := testPNG(t, 1600, 800)
 
-	rc, err := ToWebpWithOptions(bytes.NewReader(src), AvatarImageOptions())
+	rc, err := ToWebpWithOptions(bytes.NewReader(src), AvatarImageOptions(), testLogger())
 	require.NoError(t, err)
 
 	cfg := decodeWebPConfig(t, rc)
@@ -46,7 +51,7 @@ func TestToWebpWithOptionsRejectsTooManyPixels(t *testing.T) {
 	opts := ArtworkImageOptions()
 	opts.MaxInputPixels = 3
 
-	_, err := ToWebpWithOptions(bytes.NewReader(src), opts)
+	_, err := ToWebpWithOptions(bytes.NewReader(src), opts, testLogger())
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrImageTooLarge))
 }
