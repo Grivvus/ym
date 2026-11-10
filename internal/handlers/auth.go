@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -19,7 +19,7 @@ type AuthHandlers struct {
 
 func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	var user api.UserAuth
-	err := json.NewDecoder(r.Body).Decode(&user)
+	err := json.UnmarshalRead(r.Body, &user)
 	if err != nil {
 		MustWriteError(
 			w, http.StatusBadRequest,
@@ -56,7 +56,7 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 
 func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 	var user api.UserAuth
-	err := json.NewDecoder(r.Body).Decode(&user)
+	err := json.UnmarshalRead(r.Body, &user)
 	if err != nil {
 		MustWriteError(
 			w, http.StatusBadRequest,
@@ -86,7 +86,7 @@ func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 
 func (h AuthHandlers) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	var req api.UpdateTokenRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+	err := json.UnmarshalRead(r.Body, &req)
 	if err != nil {
 		MustWriteError(
 			w, http.StatusBadRequest,
@@ -116,7 +116,7 @@ func (h AuthHandlers) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 
 func (h AuthHandlers) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
 	var req api.PasswordResetRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+	err := json.UnmarshalRead(r.Body, req)
 	if err != nil {
 		MustWriteError(
 			w, http.StatusBadRequest,
@@ -148,7 +148,7 @@ func (h AuthHandlers) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 
 func (h AuthHandlers) ConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
 	var req api.PasswordResetConfirmRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+	err := json.UnmarshalRead(r.Body, &req)
 	if err != nil {
 		MustWriteError(
 			w, http.StatusBadRequest,

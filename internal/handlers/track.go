@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -102,7 +102,7 @@ func (h TrackHandlers) UpdateTrack(w http.ResponseWriter, r *http.Request, track
 	}
 
 	var update api.TrackUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+	if err := json.UnmarshalRead(r.Body, &update); err != nil {
 		MustWriteError(w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err), h.logger)
 		return
 	}

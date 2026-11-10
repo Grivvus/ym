@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -52,7 +52,7 @@ func (h PlaylistHandlers) CreatePlaylist(w http.ResponseWriter, r *http.Request)
 func (h PlaylistHandlers) UpdatePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	userID, _ := requireAuthenticatedUserID(w, r)
 	var newData api.PlaylistUpdateRequest
-	err := json.NewDecoder(r.Body).Decode(&newData)
+	err := json.UnmarshalRead(r.Body, &newData)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, fmt.Errorf("can't decode json body"))
 		return
@@ -137,7 +137,7 @@ func (h PlaylistHandlers) AddTrackToPlaylist(
 ) {
 	userID, _ := requireAuthenticatedUserID(w, r)
 	var body api.AddTrackToPlaylistJSONBody
-	err := json.NewDecoder(r.Body).Decode(&body)
+	err := json.UnmarshalRead(r.Body, &body)
 	if err != nil {
 		MustWriteError(
 			w, http.StatusBadRequest,
@@ -213,7 +213,7 @@ func (h PlaylistHandlers) DeleteTrackFromPlaylist(
 func (h PlaylistHandlers) SharePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	ownerID, _ := requireAuthenticatedUserID(w, r)
 	var body api.PlaylistShareRequest
-	err := json.NewDecoder(r.Body).Decode(&body)
+	err := json.UnmarshalRead(r.Body, &body)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, fmt.Errorf("bad json: %w", err))
 		return
@@ -239,7 +239,7 @@ func (h PlaylistHandlers) SharePlaylist(w http.ResponseWriter, r *http.Request, 
 func (h PlaylistHandlers) RevokePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	ownerID, _ := requireAuthenticatedUserID(w, r)
 	var body api.PlaylistRevokeAccessRequest
-	err := json.NewDecoder(r.Body).Decode(&body)
+	err := json.UnmarshalRead(r.Body, &body)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, fmt.Errorf("bad json: %w", err))
 		return

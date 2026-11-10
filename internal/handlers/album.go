@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -68,7 +68,7 @@ func (h AlbumHandlers) UpdateAlbum(w http.ResponseWriter, r *http.Request, album
 	}
 
 	var update api.AlbumUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+	if err := json.UnmarshalRead(r.Body, &update); err != nil {
 		MustWriteError(w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err), h.logger)
 		return
 	}

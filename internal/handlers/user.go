@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -75,8 +75,8 @@ func (u UserHandlers) ChangeUser(w http.ResponseWriter, r *http.Request, userId 
 		return
 	}
 	var toUpdate api.UserUpdate
-	err := json.NewDecoder(r.Body).Decode(&toUpdate)
-	if err != nil {
+
+	if err := json.UnmarshalRead(r.Body, &toUpdate); err != nil {
 		_ = WriteError(
 			w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err),
 		)
@@ -111,15 +111,15 @@ func (u UserHandlers) ChangePassword(w http.ResponseWriter, r *http.Request, use
 		return
 	}
 	var updatePassword api.UserChangePassword
-	err := json.NewDecoder(r.Body).Decode(&updatePassword)
-	if err != nil {
+
+	if err := json.UnmarshalRead(r.Body, &updatePassword); err != nil {
 		MustWriteError(
 			w, http.StatusBadRequest,
 			fmt.Errorf("invalid body: %w", err), u.logger,
 		)
 		return
 	}
-	err = u.userService.ChangePassword(r.Context(), userId, updatePassword)
+	err := u.userService.ChangePassword(r.Context(), userId, updatePassword)
 	if err != nil {
 		u.logger.Warn("can't change password", "err", err)
 		if errors.Is(err, service.ErrBadParams) {
