@@ -1,0 +1,23 @@
+replicaCount: 1
+
+persistence:
+  enabled: true
+  size: 1Gi
+  accessModes:
+    - ReadWriteOnce
+
+config:
+  enabled: true
+  route:
+    receiver: telegram
+    group_by: ["alertname", "cluster", "service"]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+  receivers:
+    - name: telegram
+      telegram_configs:
+        - bot_token: 'XXXToken'
+          chat_id: 12345678
+          send_resolved: true
+          parse_mode: ""

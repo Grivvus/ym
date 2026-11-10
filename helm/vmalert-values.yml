@@ -1,0 +1,69 @@
+alertmanager:
+  enabled: false
+
+server:
+  datasource:
+    url: http://vmsingle-victoria-metrics-single-server.default.svc:8428
+
+  notifier:
+    url: http://alertmanager.default.svc:9093
+
+  config:
+    alerts:
+      groups:
+        - name: application-thresholds
+          interval: 30s
+          rules:
+            - alert: HighYmDiskUsage
+              expr: ym_disk_usage_percentage > 90
+              for: 15m
+              labels:
+                severity: critical
+              annotations:
+                summary: "disk usage is high on {{ $labels.instance }}"
+                description: "disk usage is 90% for more than 15 minutes."
+
+            - alert: HighYmFDUsage
+              expr: |
+                (
+                  sum(process_open_fds{job="ym-service", instance=~".*"}) 
+                  / sum(process_max_fds{job="ym-service", instance=~".*"})
+                ) > 0.8
+              for: 5m
+              labels:
+                severity: critical
+              annotations:
+                summary: "file descriptors usage is too high on {{ $labels.instance }}"
+                description: "file descriptors usage is 80% for more than 5 minutes."
+
+            - alert: TooManyGoroutines
+              expr: sum(go_goroutines{job="ym-service"}) > 10000
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: "too many goroutines on {{ $labels.instance }}"
+                description: "more than 10000 living for more than 10 minutes"
+
+            - alert: TooManyBadResponses
+              expr: |
+                sum(
+                  rate(ym_http_requests_total{job="ym-service", instance=~".*", status=~"5.."}[5m])) 
+                  / clamp_min(sum(rate(ym_http_requests_total{job="ym-service", instance=~".*"}[5m])), 1e-9
+                ) > 0.1
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: "Error rate (5XX responses) is too high on {{ $labels.instance }}"
+                description: "the percentage of 5XX server responses exceeded 10% over a 5 minute"
+
+            - alert: TooManyTranscodingFailures
+              expr: max(ym_current_transcoding_queue_size{type="failed"}) > 10
+              for: 1m
+              labels:
+                severity: warning
+              annotations:
+                summary: "too many transcoding failures on {{ $labels.instance }}"
+                description: "There'is more than 10 failed tracks in transcoding queue"
+
