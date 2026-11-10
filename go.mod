@@ -1,6 +1,6 @@
 module github.com/Grivvus/ym
 
-go 1.26.0
+go 1.27.3
 
 require (
 	github.com/gen2brain/webp v0.6.4
