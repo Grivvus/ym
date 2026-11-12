@@ -116,7 +116,7 @@ func (h AuthHandlers) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 
 func (h AuthHandlers) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
 	var req api.PasswordResetRequest
-	err := json.UnmarshalRead(r.Body, req)
+	err := json.UnmarshalRead(r.Body, &req)
 	if err != nil {
 		MustWriteError(
 			w, http.StatusBadRequest,

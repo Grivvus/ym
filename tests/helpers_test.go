@@ -3,7 +3,7 @@ package tests
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -268,7 +268,7 @@ type testPasswordResetMailer struct {
 }
 
 func newTestPasswordResetMailer() *testPasswordResetMailer {
-	return &testPasswordResetMailer{codes: map[string]string{}}
+	return &testPasswordResetMailer{codes: make(map[string]string)}
 }
 
 func (m *testPasswordResetMailer) SendPasswordResetCode(
@@ -283,7 +283,7 @@ func (m *testPasswordResetMailer) SendPasswordResetCode(
 func (m *testPasswordResetMailer) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.codes = map[string]string{}
+	m.codes = make(map[string]string)
 }
 
 func (m *testPasswordResetMailer) LastCode(recipient string) (string, bool) {
