@@ -3,5 +3,5 @@ CREATE TABLE playlist (
     name TEXT NOT NULL,
     is_public BOOLEAN NOT NULL,
     owner_id INTEGER NOT NULL,
-    FOREIGN KEY (owner_id) REFERENCES "user" (id) ON DELETE SET NULL
+    FOREIGN KEY (owner_id) REFERENCES "user" (id) ON DELETE RESTRICT
 );
