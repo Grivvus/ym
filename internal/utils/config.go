@@ -9,9 +9,10 @@ import (
 )
 
 type Config struct {
-	Host      string `envconfig:"APPLICATION_HOST" required:"true"`
-	Port      string `envconfig:"APPLICATION_PORT" required:"true"`
-	JWTSecret string `envconfig:"JWT_SECRET" required:"true"`
+	Host            string `envconfig:"APPLICATION_HOST" required:"true"`
+	Port            string `envconfig:"APPLICATION_PORT" required:"true"`
+	JWTSecret       string `envconfig:"JWT_SECRET" required:"true"`
+	TranscodingMode string `envconfig:"TRANSCODING_MODE" default:"ffmpeg"`
 
 	PostgresUser     string `envconfig:"POSTGRES_USER" required:"true"`
 	PostgresHost     string `envconfig:"POSTGRES_HOST" required:"true"`

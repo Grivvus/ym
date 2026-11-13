@@ -50,6 +50,27 @@ type TrackStream struct {
 	Reader           io.ReadSeekCloser
 }
 
+type transcodingModeT int
+
+const (
+	ffmpeg transcodingModeT = iota + 1
+	none
+)
+
+func transcodingModeFromString(mode string) (transcodingModeT, error) {
+	switch mode {
+	case "ffmpeg":
+		return ffmpeg, nil
+	case "none":
+		return none, nil
+	default:
+		return 0, fmt.Errorf(
+			"unknown transcoding mode, expect values from [ffmpeg, none], but got '%s'",
+			mode,
+		)
+	}
+}
+
 type TrackService struct {
 	repo                   repository.TrackRepository
 	userRepo               repository.UserRepository
@@ -58,6 +79,7 @@ type TrackService struct {
 	objStorage             storage.Storage
 	logger                 *slog.Logger
 	transcodingQueueSignal chan<- struct{}
+	transcodingMode        transcodingModeT
 }
 
 func NewTrackService(
@@ -65,7 +87,15 @@ func NewTrackService(
 	artistRepo repository.ArtistRepository, albumRepo repository.AlbumRepository,
 	st storage.Storage, logger *slog.Logger,
 	transcodingQueueSignal chan<- struct{},
-) TrackService {
+	transcodingMode string,
+) (TrackService, error) {
+	tsmode, err := transcodingModeFromString(transcodingMode)
+	if err != nil {
+		return TrackService{}, err
+	}
+	if tsmode == none {
+		close(transcodingQueueSignal)
+	}
 	return TrackService{
 		repo:                   repo,
 		userRepo:               userRepo,
@@ -74,7 +104,8 @@ func NewTrackService(
 		objStorage:             st,
 		logger:                 logger,
 		transcodingQueueSignal: transcodingQueueSignal,
-	}
+		transcodingMode:        tsmode,
+	}, nil
 }
 
 func (s *TrackService) UploadTrack(
@@ -148,12 +179,14 @@ func (s *TrackService) UploadTrack(
 		return ret, fmt.Errorf("can't put track in storage; %w caused by: %w", ErrUnknownDBError, err)
 	}
 
-	err = s.repo.AddToTranscodingQueue(ctx, track.ID, tmpFname)
-	if err != nil {
-		return ret, fmt.Errorf("can't add track to transcoding queue; %w caused by: %w", ErrUnknownDBError, err)
-	}
+	if s.transcodingMode == ffmpeg {
+		err = s.repo.AddToTranscodingQueue(ctx, track.ID, tmpFname)
+		if err != nil {
+			return ret, fmt.Errorf("can't add track to transcoding queue; %w caused by: %w", ErrUnknownDBError, err)
+		}
 
-	s.transcodingQueueSignal <- struct{}{}
+		s.transcodingQueueSignal <- struct{}{}
+	}
 
 	return ret, nil
 }

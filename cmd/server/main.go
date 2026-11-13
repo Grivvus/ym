@@ -111,12 +111,13 @@ func main() {
 	}
 
 	queueNotificationChan := make(chan struct{})
-
-	transcoderRepo := repository.NewTranscodingQueueRepository(pool, dbInst)
-	tcoder := transcoder.NewTranscoder(
-		logger, storageClient, transcoderRepo, queueNotificationChan,
-	)
-	tcoder.StartListener(ctx)
+	if cfg.TranscodingMode == "ffmpeg" {
+		transcoderRepo := repository.NewTranscodingQueueRepository(pool, dbInst)
+		tcoder := transcoder.NewTranscoder(
+			logger, storageClient, transcoderRepo, queueNotificationChan,
+		)
+		tcoder.StartListener(ctx)
+	}
 
 	playlistRepo := repository.NewPlaylistRepository(pool)
 	authRepo := repository.NewAuthRepository(pool)
@@ -137,9 +138,16 @@ func main() {
 	albumService := service.NewAlbumService(
 		albumRepo, artistRepo, trackRepo, storageClient, logger,
 	)
-	trackService := service.NewTrackService(
-		trackRepo, userRepo, artistRepo, albumRepo, storageClient, logger, queueNotificationChan,
+	trackService, err := service.NewTrackService(
+		trackRepo, userRepo, artistRepo, albumRepo,
+		storageClient, logger, queueNotificationChan,
+		cfg.TranscodingMode,
 	)
+	if err != nil {
+		logger.Error(err.Error())
+		exitCode = 1
+		return
+	}
 	playlistService := service.NewPlaylistService(playlistRepo, trackRepo, storageClient, logger)
 	artistService := service.NewArtistService(artistRepo, storageClient, logger)
 	backupService := service.NewBackupService(logger, dbInst, storageClient)
