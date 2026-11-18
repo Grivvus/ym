@@ -71,9 +71,12 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	)
 	userService := service.NewUserService(userRepo, env.Storage, logger)
 	albumService := service.NewAlbumService(albumRepo, artistRepo, trackRepo, env.Storage, logger)
-	trackService := service.NewTrackService(
-		trackRepo, userRepo, artistRepo, albumRepo, env.Storage, logger, queueNotificationChan,
+	trackService, err := service.NewTrackService(
+		trackRepo, userRepo, artistRepo, albumRepo,
+		env.Storage, logger,
+		queueNotificationChan, env.Config.TranscodingMode,
 	)
+	s.Require().NoError(err)
 	playlistService := service.NewPlaylistService(playlistRepo, trackRepo, env.Storage, logger)
 	artistService := service.NewArtistService(artistRepo, env.Storage, logger)
 	backupService := service.NewBackupService(logger, env.Queries, env.Storage)

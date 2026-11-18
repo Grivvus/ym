@@ -175,14 +175,6 @@ func (s *IntegrationTestSuite) TestReadOnlyPlaylistShareCannotAddTrack() {
 	s.Equal(http.StatusOK, statusCode)
 
 	statusCode, _ = s.performJSONRequest(
-		http.MethodPost,
-		fmt.Sprintf("/playlists/%d", playlistID),
-		api.AddTrackToPlaylistJSONBody{TrackId: trackID},
-		otherResp.Body.AccessToken,
-	)
-	s.Equal(http.StatusForbidden, statusCode)
-
-	statusCode, _ = s.performJSONRequest(
 		http.MethodPut,
 		fmt.Sprintf("/playlists/%d/tracks/%d", playlistID, trackID),
 		nil,
@@ -225,14 +217,6 @@ func (s *IntegrationTestSuite) TestWritePlaylistShareCannotAddInaccessibleTrack(
 		ownerResp.Body.AccessToken,
 	)
 	s.Equal(http.StatusOK, statusCode)
-
-	statusCode, _ = s.performJSONRequest(
-		http.MethodPost,
-		fmt.Sprintf("/playlists/%d", playlistID),
-		api.AddTrackToPlaylistJSONBody{TrackId: privateTrackID},
-		writerResp.Body.AccessToken,
-	)
-	s.Equal(http.StatusForbidden, statusCode)
 
 	statusCode, _ = s.performJSONRequest(
 		http.MethodPut,

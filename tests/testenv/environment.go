@@ -193,6 +193,7 @@ func buildConfig(
 		S3AccessKey:        defaultS3User,
 		S3SecretKey:        defaultS3Pass,
 		S3SecureConnection: false,
+		TranscodingMode:    "ffmpeg",
 	}
 
 	return cfg, postgresConnectionString(cfg), nil
