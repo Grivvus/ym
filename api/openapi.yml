@@ -1185,49 +1185,6 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   /playlists/{playlistId}:
-    post:
-      summary: Adds a track to a playlist.
-      deprecated: true
-      operationId: addTrackToPlaylist
-      parameters:
-        - in: path
-          name: playlistId
-          schema:
-            type: integer
-            format: int32
-          required: true
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - track_id
-              properties:
-                track_id:
-                  type: integer
-                  format: int32
-      responses:
-        "200":
-          description: The track was added to the playlist successfully.
-        "401":
-          description: Unauthorized.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: You do not have permission to modify this playlist.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: Playlist not found.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
     patch:
       summary: Updates a playlist.
       operationId: updatePlaylist

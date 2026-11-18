@@ -373,11 +373,6 @@ type GetPlaylistsParams struct {
 	IncludeOwned  *bool `form:"include_owned,omitempty" json:"include_owned,omitempty"`
 }
 
-// AddTrackToPlaylistJSONBody defines parameters for AddTrackToPlaylist.
-type AddTrackToPlaylistJSONBody struct {
-	TrackId int32 `json:"track_id"`
-}
-
 // SearchParams defines parameters for Search.
 type SearchParams struct {
 	Q     string               `form:"q" json:"q"`
@@ -444,9 +439,6 @@ type CreatePlaylistMultipartRequestBody = PlaylistCreateRequest
 
 // UpdatePlaylistJSONRequestBody defines body for UpdatePlaylist for application/json ContentType.
 type UpdatePlaylistJSONRequestBody = PlaylistUpdateRequest
-
-// AddTrackToPlaylistJSONRequestBody defines body for AddTrackToPlaylist for application/json ContentType.
-type AddTrackToPlaylistJSONRequestBody AddTrackToPlaylistJSONBody
 
 // RevokePlaylistJSONRequestBody defines body for RevokePlaylist for application/json ContentType.
 type RevokePlaylistJSONRequestBody = PlaylistRevokeAccessRequest
@@ -564,9 +556,6 @@ type ServerInterface interface {
 	// Updates a playlist.
 	// (PATCH /playlists/{playlistId})
 	UpdatePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
-	// Adds a track to a playlist.
-	// (POST /playlists/{playlistId})
-	AddTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32)
 
 	// (DELETE /playlists/{playlistId}/cover)
 	DeletePlaylistCover(w http.ResponseWriter, r *http.Request, playlistId int32)
@@ -833,12 +822,6 @@ func (_ Unimplemented) GetPlaylist(w http.ResponseWriter, r *http.Request, playl
 // Updates a playlist.
 // (PATCH /playlists/{playlistId})
 func (_ Unimplemented) UpdatePlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Adds a track to a playlist.
-// (POST /playlists/{playlistId})
-func (_ Unimplemented) AddTrackToPlaylist(w http.ResponseWriter, r *http.Request, playlistId int32) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1910,37 +1893,6 @@ func (siw *ServerInterfaceWrapper) UpdatePlaylist(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdatePlaylist(w, r, playlistId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// AddTrackToPlaylist operation middleware
-func (siw *ServerInterfaceWrapper) AddTrackToPlaylist(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	// ------------- Path parameter "playlistId" -------------
-	var playlistId int32
-
-	err = runtime.BindStyledParameterWithOptions("simple", "playlistId", chi.URLParam(r, "playlistId"), &playlistId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playlistId", Err: err})
-		return
-	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AddTrackToPlaylist(w, r, playlistId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3038,9 +2990,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/playlists/{playlistId}", wrapper.UpdatePlaylist)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/playlists/{playlistId}", wrapper.AddTrackToPlaylist)
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/playlists/{playlistId}/cover", wrapper.DeletePlaylistCover)

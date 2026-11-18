@@ -132,37 +132,6 @@ func (h PlaylistHandlers) GetPlaylists(
 		h.logger.Error("can't encode response", "err", err)
 	}
 }
-func (h PlaylistHandlers) AddTrackToPlaylist(
-	w http.ResponseWriter, r *http.Request, playlistID int32,
-) {
-	userID, _ := requireAuthenticatedUserID(w, r)
-	var body api.AddTrackToPlaylistJSONBody
-	err := json.UnmarshalRead(r.Body, &body)
-	if err != nil {
-		MustWriteError(
-			w, http.StatusBadRequest,
-			fmt.Errorf("invalid body: %w", err), h.logger,
-		)
-		return
-	}
-	err = h.playlistService.AddTrack(r.Context(), playlistID, userID, body.TrackId)
-	if err != nil {
-		if e, ok := errors.AsType[service.ErrAlreadyExists](err); ok {
-			MustWriteError(w, http.StatusConflict, e, h.logger)
-			return
-		}
-		if _, ok := errors.AsType[service.ErrNotFound](err); ok {
-			MustWriteError(w, http.StatusNotFound, err, h.logger)
-			return
-		}
-		if errors.Is(err, service.ErrUnauthorized) {
-			MustWriteError(w, http.StatusForbidden, err, h.logger)
-			return
-		}
-		MustWriteError(w, http.StatusInternalServerError, err, h.logger)
-		return
-	}
-}
 
 func (h PlaylistHandlers) PutTrackToPlaylist(
 	w http.ResponseWriter, r *http.Request, playlistID int32, trackID int32,
