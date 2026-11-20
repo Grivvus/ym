@@ -1,0 +1,119 @@
+{
+  "apiVersion": "dashboard.grafana.app/v1",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "ym-traffic-by-version",
+    "labels": { "app": "ym-service" }
+  },
+  "spec": {
+    "uid": "ym-traffic-by-version",
+    "title": "YM Service Traffic by Version",
+    "description": "Share of observed YM HTTP requests handled by the selected app version, relative to all YM instances.",
+    "schemaVersion": 41,
+    "version": 1,
+    "editable": true,
+    "refresh": "30s",
+    "timezone": "browser",
+    "tags": ["ym", "http", "traffic"],
+    "time": { "from": "now-1h", "to": "now" },
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "label": "Datasource",
+          "type": "datasource",
+          "query": "prometheus",
+          "current": { "text": "Prometheus", "value": "Prometheus" },
+          "refresh": 1,
+          "options": []
+        },
+        {
+          "name": "app_version",
+          "label": "App version",
+          "type": "query",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "definition": "label_values(ym_http_requests_total{job=\"ym-service\"}, app_vesion)",
+          "query": {
+            "query": "label_values(ym_http_requests_total{job=\"ym-service\"}, app_vesion)",
+            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          },
+          "refresh": 2,
+          "sort": 1,
+          "multi": false,
+          "includeAll": false,
+          "options": []
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "type": "stat",
+        "title": "Version traffic share for selected range",
+        "description": "Requests handled by all instances of the selected version divided by requests handled by all YM instances over the selected time range. No data is shown if there is no measured traffic.",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 5, "w": 24, "x": 0, "y": 0 },
+        "fieldConfig": {
+          "defaults": { "unit": "percent", "decimals": 1, "min": 0, "max": 100 },
+          "overrides": []
+        },
+        "options": {
+          "colorMode": "none",
+          "graphMode": "none",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "instant": true,
+            "range": false,
+            "expr": "100 * (sum(increase(ym_http_requests_total{job=\"ym-service\", app_vesion=\"$app_version\"}[$__range])) or vector(0)) / (sum(increase(ym_http_requests_total{job=\"ym-service\"}[$__range])) > 0)"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "type": "timeseries",
+        "title": "Version and instance traffic share over time",
+        "description": "The version total and each matching instance's request rate as a percentage of the request rate across all YM instances. In Kubernetes, each instance is a scraped pod.",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "gridPos": { "h": 12, "w": 24, "x": 0, "y": 5 },
+        "fieldConfig": {
+          "defaults": { "unit": "percent", "decimals": 1, "min": 0, "max": 100 },
+          "overrides": [
+            {
+              "matcher": { "id": "byFrameRefID", "options": "A" },
+              "properties": [{ "id": "custom.lineWidth", "value": 3 }]
+            }
+          ]
+        },
+        "options": {
+          "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "instant": false,
+            "range": true,
+            "legendFormat": "Version total",
+            "expr": "100 * (sum(rate(ym_http_requests_total{job=\"ym-service\", app_vesion=\"$app_version\"}[$__rate_interval])) or vector(0)) / (sum(rate(ym_http_requests_total{job=\"ym-service\"}[$__rate_interval])) > 0)"
+          },
+          {
+            "refId": "B",
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "editorMode": "code",
+            "instant": false,
+            "range": true,
+            "legendFormat": "{{instance}}",
+            "expr": "100 * sum by (instance) (rate(ym_http_requests_total{job=\"ym-service\", app_vesion=\"$app_version\"}[$__rate_interval])) / on() group_left() (sum(rate(ym_http_requests_total{job=\"ym-service\"}[$__rate_interval])) > 0)"
+          }
+        ]
+      }
+    ]
+  }
+}

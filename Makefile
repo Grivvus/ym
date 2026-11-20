@@ -35,15 +35,25 @@ run-kube:
 	helm upgrade --install vls vm/victoria-logs-single -f helm/victorialogs-values.yml
 	helm upgrade --install vector vector/vector -f helm/vector-values.yml
 	helm upgrade --install vmsingle vm/victoria-metrics-single -f helm/vmsingle-values.yml
-	helm upgrade --install grafana grafana-community/grafana -f helm/grafana-values.yml
+	$(MAKE) run-kube-grafana
 	helm upgrade --install alertmanager prometheus-community/alertmanager -f helm/alertmanager-values.yml 
 	helm upgrade --install vmalert vm/victoria-metrics-alert --namespace default --values helm/vmalert-values.yml
+
+.PHONY: run-kube-grafana
+run-kube-grafana: sync-grafana-dashboards
+	helm upgrade --install grafana grafana-community/grafana -f helm/grafana-values.yml
+
+.PHONY: sync-grafana-dashboards
+sync-grafana-dashboards:
+	kubectl create configmap ym-grafana-dashboards --from-file=grafana/dashboards/ --dry-run=client -o yaml \
+		| kubectl apply --server-side --field-manager=ym-grafana-dashboards -f -
 
 .PHONY: stop-kube
 stop-kube:
 	helm uninstall vmalert
 	helm uninstall alertmanager
 	helm uninstall grafana
+	kubectl delete configmap ym-grafana-dashboards --ignore-not-found
 	helm uninstall vmsingle
 	helm uninstall vector
 	helm uninstall vls

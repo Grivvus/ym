@@ -902,17 +902,28 @@ notifiers: {}
 ## `path` must be /var/lib/grafana/dashboards/<provider_name>
 ##
 dashboardProviders:
- dashboardproviders.yaml:
-   apiVersion: 1
-   providers:
-   - name: 'default'
-     orgId: 1
-     folder: ''
-     type: file
-     disableDeletion: true
-     editable: true
-     options:
-       path: /var/lib/grafana/dashboards/default
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: default
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: true
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+      - name: ym
+        orgId: 1
+        folder: ym
+        type: file
+        disableDeletion: false
+        editable: true
+        allowUiUpdates: true
+        # Poll the ConfigMap mount: kubelet switches symlinks when files change.
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards/ym
 
 ## Configure how curl fetches remote dashboards. The beginning dash is required.
 ## NOTE: This sets the default short flags for all dashboards, but these
@@ -940,14 +951,13 @@ defaultShellOptions: "eufo pipefail"
 ## the dashboard title in the downloaded JSON so the UI displays your custom title.
 ##
 dashboards:
-  dashboards:
-    default:
-      victoriametrics:
-        gnetId: 10229
-        datasource: victoriametrics
-      kubernetes:
-        gnetId: 14205
-        datasource: victoriametrics
+  default:
+    victoriametrics:
+      gnetId: 10229
+      datasource: victoriametrics
+    kubernetes:
+      gnetId: 14205
+      datasource: victoriametrics
   # default:
   #   some-dashboard:
   #     json: |
@@ -986,8 +996,8 @@ dashboards:
 ##   example-dashboard.json: |
 ##     RAW_JSON
 ##
-dashboardsConfigMaps: {}
-#  default: ""
+dashboardsConfigMaps:
+  ym: ym-grafana-dashboards
 
 ## Grafana's primary configuration
 ## NOTE: values in map will be converted to ini format
