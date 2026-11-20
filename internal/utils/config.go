@@ -9,6 +9,7 @@ import (
 )
 
 type Config struct {
+	AppVersion      string `envconfig:"APP_VERSION" default:"0.1.0"`
 	Host            string `envconfig:"APPLICATION_HOST" required:"true"`
 	Port            string `envconfig:"APPLICATION_PORT" required:"true"`
 	JWTSecret       string `envconfig:"JWT_SECRET" required:"true"`

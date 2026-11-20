@@ -170,7 +170,7 @@ func main() {
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
 
-	appmetrics := metrics.New(logger, metricsRepo)
+	appmetrics := metrics.New(logger, metricsRepo, cfg.AppVersion)
 	appmetrics.Register(reg)
 
 	go appmetrics.Job(ctx, time.Duration(10*time.Second))

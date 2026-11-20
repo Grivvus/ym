@@ -34,7 +34,9 @@ type MetricsManager struct {
 	values metrics
 }
 
-func New(logger *slog.Logger, repo repository.MetricsRepository) MetricsManager {
+func New(
+	logger *slog.Logger, repo repository.MetricsRepository, appVersion string,
+) MetricsManager {
 	return MetricsManager{
 		repo:   repo,
 		logger: logger,
@@ -44,6 +46,9 @@ func New(logger *slog.Logger, repo repository.MetricsRepository) MetricsManager 
 					Namespace: "ym",
 					Subsystem: "http",
 					Name:      "requests_total",
+					ConstLabels: map[string]string{
+						"app_vesion": appVersion,
+					},
 				},
 				[]string{"method", "route", "status"},
 			),
@@ -91,7 +96,7 @@ func (m *MetricsManager) Register(registry *prometheus.Registry) error {
 	var err error
 	for _, errn := range errs {
 		if errn != nil {
-			errors.Join(err, errn)
+			err = errors.Join(err, errn)
 		}
 	}
 	if err != nil {
